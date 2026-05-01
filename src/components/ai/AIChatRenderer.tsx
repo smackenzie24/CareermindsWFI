@@ -3,7 +3,7 @@ import {
   Sparkles, ArrowRight, AlertTriangle, UserPlus, BookOpen,
   RefreshCw, Eye, Zap, Scale, AlertCircle, CheckCircle2,
   MinusCircle, ExternalLink, Users, TrendingUp, MoveRight,
-  CircleDot, Check, Pencil, ChevronRight,
+  CircleDot, Check, Pencil, ChevronRight, X,
 } from 'lucide-react';
 import {
   type ChatMessage,
@@ -611,9 +611,102 @@ function CommitmentCaptureCard({ data }: { data: CommitmentPrompt }) {
   );
 }
 
+// ── Inline upsell strip ───────────────────────────────────────────────
+
+type InlineUpsellVariant = 'outplacement' | 'talent-development' | 'leadership-dev' | 'manager-coaching';
+
+interface InlineUpsellConfig {
+  provider: string;
+  headline: string;
+  cta: string;
+  accent: string;
+  iconBg: string;
+  icon: React.ReactNode;
+}
+
+const INLINE_UPSELL_CONFIGS: Record<InlineUpsellVariant, InlineUpsellConfig> = {
+  'outplacement': {
+    provider: 'Careerminds',
+    headline: 'Need support managing this transition? Careerminds places 95% of affected employees.',
+    cta: 'Learn about Outplacement',
+    accent: 'text-rose-700',
+    iconBg: 'bg-rose-50 border-rose-200',
+    icon: <ArrowRight size={11} />,
+  },
+  'talent-development': {
+    provider: 'Careerminds',
+    headline: 'Want to close these gaps faster? Careerminds builds role-specific learning tracks aligned to your framework.',
+    cta: 'Explore Talent Development',
+    accent: 'text-teal-700',
+    iconBg: 'bg-teal-50 border-teal-200',
+    icon: <BookOpen size={11} />,
+  },
+  'leadership-dev': {
+    provider: 'Keystone Partners',
+    headline: 'Ready to accelerate your bench? Keystone provides 1:1 coaching tailored to each candidate\'s readiness profile.',
+    cta: 'Explore Leadership Development',
+    accent: 'text-emerald-700',
+    iconBg: 'bg-emerald-50 border-emerald-200',
+    icon: <TrendingUp size={11} />,
+  },
+  'manager-coaching': {
+    provider: 'Keystone Partners',
+    headline: 'Struggling manager? Keystone\'s coaching programme improves team velocity and reduces attrition.',
+    cta: 'Explore Manager Coaching',
+    accent: 'text-sky-700',
+    iconBg: 'bg-sky-50 border-sky-200',
+    icon: <Users size={11} />,
+  },
+};
+
+function InlineUpsell({ variant }: { variant: InlineUpsellVariant }) {
+  const [dismissed, setDismissed] = useState(false);
+  if (dismissed) return null;
+  const cfg = INLINE_UPSELL_CONFIGS[variant];
+  return (
+    <div className={`mt-3 flex items-start gap-3 px-3.5 py-3 rounded-xl border bg-white group`} style={{ borderColor: 'rgb(229 231 235)' }}>
+      <div className={`w-6 h-6 rounded-lg border flex items-center justify-center flex-shrink-0 mt-0.5 ${cfg.iconBg} ${cfg.accent}`}>
+        {cfg.icon}
+      </div>
+      <div className="flex-1 min-w-0">
+        <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-0.5">Need support? — {cfg.provider}</p>
+        <p className="text-xs text-gray-600 leading-relaxed">{cfg.headline}</p>
+        <button className={`mt-1.5 inline-flex items-center gap-1 text-[11px] font-semibold ${cfg.accent} hover:underline underline-offset-2 transition-colors`}>
+          <ExternalLink size={9} />
+          {cfg.cta}
+        </button>
+      </div>
+      <button onClick={() => setDismissed(true)} className="flex-shrink-0 w-5 h-5 rounded flex items-center justify-center text-gray-300 hover:text-gray-500 transition-colors">
+        <X size={11} />
+      </button>
+    </div>
+  );
+}
+
 // ── Results block — renders any QueryResult[] ─────────────────────────
 
+function pickUpsell(results: QueryResult[]): InlineUpsellVariant | null {
+  for (const r of results) {
+    if (r.kind === 'reduction') return 'outplacement';
+    if (r.kind === 'churn-risk-list' && r.items.length >= 3) return 'outplacement';
+    if (r.kind === 'labeled-people' && r.isChurn && r.items.length >= 3) return 'outplacement';
+    if (r.kind === 'skill-gap-list' && r.items.length >= 3) return 'talent-development';
+    if (r.kind === 'scenario' && r.items.some(s => s.risk === 'high')) return 'outplacement';
+    if (r.kind === 'recommendation') {
+      const hasRestructure = r.items.some(rec =>
+        rec.actions.some(a => a.type === 'restructure') &&
+        (rec.urgency === 'critical' || rec.urgency === 'high')
+      );
+      if (hasRestructure) return 'outplacement';
+      const hasUpskill = r.items.some(rec => rec.actions.some(a => a.type === 'upskill'));
+      if (hasUpskill) return 'talent-development';
+    }
+  }
+  return null;
+}
+
 export function ResultsBlock({ results, onSend, onNavigate, wide }: { results: QueryResult[]; onSend?: (text: string) => void; onNavigate?: (target: ActionNavTarget) => void; wide?: boolean }) {
+  const upsellVariant = pickUpsell(results);
   return (
     <div className={`mt-3 space-y-3 ${wide ? 'grid grid-cols-1 gap-3' : ''}`}>
       {results.map((r, i) => {
@@ -682,6 +775,7 @@ export function ResultsBlock({ results, onSend, onNavigate, wide }: { results: Q
         }
         return null;
       })}
+      {upsellVariant && <InlineUpsell variant={upsellVariant} />}
     </div>
   );
 }
