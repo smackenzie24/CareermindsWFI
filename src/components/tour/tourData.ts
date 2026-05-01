@@ -21,15 +21,6 @@ export const TOUR_STEPS: TourStep[] = [
   {
     id: 'home-1',
     view: 'home',
-    title: 'Workforce AI',
-    body: 'Ask any question about your workforce in plain English — "Who is at risk of leaving?", "Where are our biggest skills gaps?". The AI reads your live org data and returns a structured briefing, not generic advice.',
-    anchorId: 'home-ai-hero',
-    anchorOffsetX: 0.5, anchorOffsetY: 0.5,
-    side: 'bottom',
-  },
-  {
-    id: 'home-2',
-    view: 'home',
     title: 'Org Health KPIs',
     body: 'Seven live metrics updated weekly: overall health score, critical skill gaps, employees promotable now, people stalled 24+ months, underperforming managers, industry rank, and employees with no recent 1:1. Each card is clickable and drills into the relevant view.',
     anchorId: 'home-kpi-strip',
@@ -37,7 +28,7 @@ export const TOUR_STEPS: TourStep[] = [
     side: 'bottom',
   },
   {
-    id: 'home-3',
+    id: 'home-2',
     view: 'home',
     title: 'Priority Risks',
     body: 'Progression automatically surfaces the highest-urgency workforce signals. Red = action overdue; Amber = developing issue. Each card shows the specific metric driving the alert and a direct shortcut to address it.',
@@ -46,7 +37,7 @@ export const TOUR_STEPS: TourStep[] = [
     side: 'right',
   },
   {
-    id: 'home-4',
+    id: 'home-3',
     view: 'home',
     title: 'Highlights to communicate upward',
     body: 'Positive signals surfaced alongside the risks — team wins, strong performers, departments outperforming peers. Designed to give a balanced picture for board or exec reporting.',
@@ -55,7 +46,7 @@ export const TOUR_STEPS: TourStep[] = [
     side: 'left',
   },
   {
-    id: 'home-5',
+    id: 'home-4',
     view: 'home',
     title: '1:1 Check-in Coverage',
     body: 'Shows whether managers are holding regular development conversations. Amber = overdue (30–90 days); Red = critical (90+ days). Low check-in coverage is one of the strongest leading indicators of regrettable attrition.',
@@ -64,13 +55,22 @@ export const TOUR_STEPS: TourStep[] = [
     side: 'top',
   },
   {
-    id: 'home-6',
+    id: 'home-5',
     view: 'home',
     title: 'Department Health Table',
     body: 'One row per department. The bar shows overall health score; the four pills break it down into average skill level, promotion readiness, stalled headcount, and industry quartile position. Click Gaps, Pipeline, or Benchmark on any row to drill directly into that department.',
     anchorId: 'home-dept-table',
     anchorOffsetX: 0.5, anchorOffsetY: 0.2,
     side: 'top',
+  },
+  {
+    id: 'home-6',
+    view: 'home',
+    title: 'Workforce AI',
+    body: 'Ask any question about your workforce in plain English — "Who is at risk of leaving?", "Where are our biggest skills gaps?". The AI reads your live org data and returns a structured briefing, not generic advice.',
+    anchorId: 'home-ai-hero',
+    anchorOffsetX: 0.5, anchorOffsetY: 0.5,
+    side: 'bottom',
   },
 
   // ── Skills Gap Heatmap ────────────────────────────────────────────────────
