@@ -1,9 +1,13 @@
-import { X, Clock, MapPin, Users, CheckCircle, AlertCircle } from 'lucide-react';
+import { X, Clock, MapPin, Users, CheckCircle, AlertCircle, ChevronLeft, ChevronRight } from 'lucide-react';
 import { TIER_CONFIG, getReadinessTier, type ReadinessResult } from '../../data/promotionData';
 
 interface Props {
   result: ReadinessResult;
   onClose: () => void;
+  peers?: ReadinessResult[];
+  currentIndex?: number;
+  onPrev?: () => void;
+  onNext?: () => void;
 }
 
 function RatingDots({ actual, required }: { actual: number; required: number }) {
@@ -27,10 +31,11 @@ function RatingDots({ actual, required }: { actual: number; required: number }) 
   );
 }
 
-export function PersonPanel({ result, onClose }: Props) {
+export function PersonPanel({ result, onClose, peers, currentIndex, onPrev, onNext }: Props) {
   const tier = getReadinessTier(result.readinessPct);
   const cfg = TIER_CONFIG[tier];
   const { person } = result;
+  const hasPeers = peers && peers.length > 1 && currentIndex !== undefined;
 
   return (
     <div
@@ -43,6 +48,27 @@ export function PersonPanel({ result, onClose }: Props) {
       >
         {/* Header */}
         <div className="p-6 border-b border-gray-100 flex-shrink-0">
+          {/* Prev/next navigation */}
+          {hasPeers && (
+            <div className="flex items-center justify-between mb-4">
+              <button
+                onClick={onPrev}
+                disabled={currentIndex === 0}
+                className="flex items-center gap-1 text-xs text-gray-500 hover:text-gray-900 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+              >
+                <ChevronLeft size={14} />Prev
+              </button>
+              <span className="text-xs text-gray-400">{currentIndex! + 1} of {peers!.length}</span>
+              <button
+                onClick={onNext}
+                disabled={currentIndex === peers!.length - 1}
+                className="flex items-center gap-1 text-xs text-gray-500 hover:text-gray-900 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+              >
+                Next<ChevronRight size={14} />
+              </button>
+            </div>
+          )}
+
           <div className="flex items-start justify-between mb-4">
             <div className="flex items-center gap-3">
               <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-slate-700 to-slate-900 flex items-center justify-center text-white text-lg font-bold flex-shrink-0">

@@ -66,8 +66,24 @@ function CandidateCard({ result, onClick }: { result: ReadinessResult; onClick: 
   );
 }
 
+interface Selection {
+  result: ReadinessResult;
+  peers: ReadinessResult[];
+  index: number;
+}
+
 export function DeptPipelineView({ department, onBack, onNavigateToGapReport, onNavigateToManagers }: Props) {
-  const [selectedResult, setSelectedResult] = useState<ReadinessResult | null>(null);
+  const [selection, setSelection] = useState<Selection | null>(null);
+
+  function openPerson(result: ReadinessResult, peers: ReadinessResult[]) {
+    setSelection({ result, peers, index: peers.indexOf(result) });
+  }
+
+  function navigateTo(index: number) {
+    if (!selection) return;
+    const result = selection.peers[index];
+    if (result) setSelection({ ...selection, result, index });
+  }
 
   const allResults = useMemo(() => getAllReadiness(), []);
 
@@ -212,7 +228,7 @@ export function DeptPipelineView({ department, onBack, onNavigateToGapReport, on
                             <CandidateCard
                               key={result.person.id}
                               result={result}
-                              onClick={() => setSelectedResult(result)}
+                              onClick={() => openPerson(result, items)}
                             />
                           ))}
                           {items.length === 0 && (
@@ -231,8 +247,15 @@ export function DeptPipelineView({ department, onBack, onNavigateToGapReport, on
         </div>
       </main>
 
-      {selectedResult && (
-        <PersonPanel result={selectedResult} onClose={() => setSelectedResult(null)} />
+      {selection && (
+        <PersonPanel
+          result={selection.result}
+          onClose={() => setSelection(null)}
+          peers={selection.peers}
+          currentIndex={selection.index}
+          onPrev={() => navigateTo(selection.index - 1)}
+          onNext={() => navigateTo(selection.index + 1)}
+        />
       )}
     </div>
   );
