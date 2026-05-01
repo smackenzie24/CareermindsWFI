@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import {
   ClipboardList, CheckCircle2, X, TrendingUp,
-  AlertTriangle, BookOpen, BarChart2, Sparkles, RefreshCw,
+  AlertTriangle, BookOpen, BarChart2, Sparkles, RefreshCw, ExternalLink,
 } from 'lucide-react';
 import { FeedbackBanner } from './feedback/FeedbackBanner';
 import { supabase, type Commitment } from '../lib/supabase';
@@ -31,10 +31,12 @@ function CommitmentRow({
   commitment,
   onMarkDone,
   onDismiss,
+  onReviewSource,
 }: {
   commitment: Commitment;
   onMarkDone: (id: string) => void;
   onDismiss: (id: string) => void;
+  onReviewSource?: (query: string) => void;
 }) {
   const meta = kindMeta(commitment.insight_kind);
   const isDone = commitment.status === 'done';
@@ -72,8 +74,17 @@ function CommitmentRow({
         </div>
         {commitment.context && (
           <p className="text-[11px] text-gray-400 mt-1.5 leading-relaxed italic">
-            Context: {commitment.context}
+            {commitment.context}
           </p>
+        )}
+        {commitment.source_query && onReviewSource && (
+          <button
+            onClick={() => onReviewSource(commitment.source_query!)}
+            className="inline-flex items-center gap-1 mt-1.5 text-[11px] font-medium text-sky-600 hover:text-sky-800 transition-colors"
+          >
+            <ExternalLink size={10} />
+            Review source in Ask AI
+          </button>
         )}
       </div>
 
@@ -93,7 +104,7 @@ function CommitmentRow({
 
 // ── Main component ─────────────────────────────────────────────────────
 
-export function CommitmentsJournal() {
+export function CommitmentsJournal({ onReviewSource }: { onReviewSource?: (query: string) => void } = {}) {
   const [commitments, setCommitments] = useState<Commitment[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<'open' | 'done' | 'all'>('open');
@@ -207,7 +218,7 @@ export function CommitmentsJournal() {
           </div>
         ) : (
           visible.map(c => (
-            <CommitmentRow key={c.id} commitment={c} onMarkDone={markDone} onDismiss={dismiss} />
+            <CommitmentRow key={c.id} commitment={c} onMarkDone={markDone} onDismiss={dismiss} onReviewSource={onReviewSource} />
           ))
         )}
       </div>

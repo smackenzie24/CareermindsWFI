@@ -153,6 +153,7 @@ export interface CommitmentPrompt {
   insightSummary: string;
   insightKind: string;
   department?: string;
+  sourceQuery?: string;
 }
 
 export type QueryResult =
@@ -1278,6 +1279,17 @@ function handleHeadcountReduction(query: string): { text: string; results: Query
 
 export function query(input: string): { text: string; results: QueryResult[]; needsAI?: boolean } {
   const q = input.toLowerCase().trim();
+  const result = _queryInner(q, input);
+  // Stamp the original question onto any commitment-prompt results
+  if (result.results) {
+    for (const r of result.results) {
+      if (r.kind === 'commitment-prompt') r.data.sourceQuery = input;
+    }
+  }
+  return result;
+}
+
+function _queryInner(q: string, _input: string): { text: string; results: QueryResult[]; needsAI?: boolean } {
 
   // ── Strategy / Planning intents (checked first — more specific) ──────
 

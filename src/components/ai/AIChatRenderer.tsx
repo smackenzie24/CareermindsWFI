@@ -563,6 +563,7 @@ function CommitmentCaptureCard({ data }: { data: CommitmentPrompt }) {
       context: data.insightSummary,
       insight_kind: data.insightKind,
       department: data.department ?? null,
+      source_query: data.sourceQuery ?? null,
       status: 'open',
     });
     setStatus('saved');

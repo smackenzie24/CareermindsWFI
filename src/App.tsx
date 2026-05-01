@@ -240,7 +240,7 @@ export default function App() {
             onNavigateToGapReport={(dept) => setNav({ view: 'gap-report', department: dept })}
           />
         )}
-        {nav.view === 'journal' && <CommitmentsJournal />}
+        {nav.view === 'journal' && <CommitmentsJournal onReviewSource={openAI} />}
       </div>
 
       {/* Sidebar panel — kept for quick access from non-home views if needed */}

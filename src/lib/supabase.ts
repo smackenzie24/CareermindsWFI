@@ -11,6 +11,7 @@ export interface Commitment {
   context: string;
   insight_kind: string;
   department: string | null;
+  source_query: string | null;
   status: 'open' | 'done' | 'dismissed';
   created_at: string;
   updated_at: string;
