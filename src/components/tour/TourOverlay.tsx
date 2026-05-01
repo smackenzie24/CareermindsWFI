@@ -160,10 +160,15 @@ export function TourOverlay({ activeView, onClose }: TourOverlayProps) {
   // Reset step when view changes
   useEffect(() => { setLocalIdx(0); }, [activeView]);
 
-  // Recalculate dot position when step changes or on scroll/resize
+  // Scroll anchor into view when step changes, then recalculate dot position
   useEffect(() => {
-    updateDotPos();
-    const t = setTimeout(updateDotPos, 120);
+    if (!step) return;
+    const el = document.querySelector(`[data-tour="${step.anchorId}"]`);
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'nearest' });
+    }
+    // Wait for scroll to settle before pinning the dot
+    const t = setTimeout(updateDotPos, 400);
     window.addEventListener('scroll', updateDotPos, true);
     window.addEventListener('resize', updateDotPos);
     return () => {
@@ -171,7 +176,7 @@ export function TourOverlay({ activeView, onClose }: TourOverlayProps) {
       window.removeEventListener('scroll', updateDotPos, true);
       window.removeEventListener('resize', updateDotPos);
     };
-  }, [updateDotPos]);
+  }, [step, updateDotPos]);
 
   if (viewSteps.length === 0) return null;
   if (!step) return null;
