@@ -7,7 +7,7 @@ import { ManagerDetail } from './ManagerDetail';
 import { UpsellBanner } from '../UpsellBanner';
 import { FeedbackBanner } from '../feedback/FeedbackBanner';
 
-type SortKey = 'readiness' | 'stalled' | 'teamSize' | 'tenure' | 'completionRate';
+type SortKey = 'readiness' | 'stalled' | 'teamSize' | 'completionRate';
 
 function TrendIcon({ trend }: { trend: 'up' | 'flat' | 'down' }) {
   if (trend === 'up') return <TrendingUp size={13} className="text-emerald-500" />;
@@ -167,7 +167,6 @@ export function ManagerEffectiveness({ initialManagerId, selectedManager: select
       case 'readiness': return [...result].sort((a, b) => effectivenessScore(b) - effectivenessScore(a));
       case 'stalled': return [...result].sort((a, b) => b.stalledCount - a.stalledCount);
       case 'teamSize': return [...result].sort((a, b) => b.reports.length - a.reports.length);
-      case 'tenure': return [...result].sort((a, b) => a.avgReadiness - b.avgReadiness);
       case 'completionRate': return [...result].sort((a, b) => b.avgFrameworkCompletion - a.avgFrameworkCompletion);
     }
   }, [allMetrics, deptFilter, sortKey]);
