@@ -151,7 +151,7 @@ export function PromotionPipeline({ initialDepartment, selectedDept: selectedDep
     setInternalDept(dept);
     onSelectDept?.(dept);
   };
-  const [orgExpanded, setOrgExpanded] = useState(false);
+  const [orgExpanded, setOrgExpanded] = useState(true);
 
   const allResults = useMemo(() => getAllReadiness(), []);
 
