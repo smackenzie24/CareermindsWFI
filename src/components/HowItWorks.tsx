@@ -288,13 +288,13 @@ export function HowItWorks({ onNavigate }: Props) {
 
       {/* Features grid */}
       <div className="px-6 py-16">
-        <div className="max-w-5xl mx-auto">
+        <div className="max-w-6xl mx-auto">
           <div className="text-center mb-12">
             <h2 className="text-2xl font-bold text-gray-900 mb-2">Eight views. One workforce picture.</h2>
             <p className="text-sm text-gray-500">Every module connects to the others — gaps link to pipelines, managers link to skills, AI links to everything.</p>
           </div>
 
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
+          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-5">
             {FEATURES.map((f) => {
               const isAI = f.accent;
               const isExpanded = activeFeature === f.id;
@@ -303,39 +303,24 @@ export function HowItWorks({ onNavigate }: Props) {
                 return (
                   <div
                     key={f.id}
-                    className="sm:col-span-2 lg:col-span-3 relative overflow-hidden rounded-2xl cursor-pointer group"
-                    style={{ background: 'linear-gradient(135deg, #0ea5e9 0%, #0284c7 50%, #0369a1 100%)' }}
+                    className="relative overflow-hidden rounded-2xl cursor-pointer group"
+                    style={{ background: 'linear-gradient(135deg, #0ea5e9 0%, #0284c7 60%, #0369a1 100%)' }}
                     onClick={() => onNavigate('ask-ai')}
                   >
                     <div className="absolute inset-0 opacity-10"
-                      style={{ backgroundImage: 'radial-gradient(circle, white 1px, transparent 1px)', backgroundSize: '28px 28px' }}
+                      style={{ backgroundImage: 'radial-gradient(circle, white 1px, transparent 1px)', backgroundSize: '24px 24px' }}
                     />
-                    <div className="absolute right-0 top-0 bottom-0 w-64 opacity-10"
-                      style={{ background: 'radial-gradient(ellipse at right center, white 0%, transparent 70%)' }}
-                    />
-                    <div className="relative p-7 flex flex-col sm:flex-row sm:items-center gap-6">
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 mb-2">
-                          <div className="w-8 h-8 rounded-xl bg-white/20 border border-white/30 flex items-center justify-center text-white">
-                            <Sparkles size={16} />
-                          </div>
-                          <span className="text-[11px] font-bold text-sky-200 uppercase tracking-widest">AI-Powered</span>
+                    <div className="relative p-5 flex flex-col h-full">
+                      <div className="flex items-start justify-between gap-2 mb-3">
+                        <div className="w-10 h-10 rounded-xl bg-white/20 border border-white/30 flex items-center justify-center flex-shrink-0 text-white">
+                          <Sparkles size={18} />
                         </div>
-                        <h3 className="text-xl font-bold text-white mb-1.5">{f.label}</h3>
-                        <p className="text-sm text-sky-100 leading-relaxed mb-4 max-w-lg">{f.tagline}</p>
-                        <div className="grid sm:grid-cols-2 gap-2">
-                          {f.bullets.map((b, i) => (
-                            <div key={i} className="flex items-start gap-2">
-                              <CheckCircle size={12} className="text-sky-300 flex-shrink-0 mt-0.5" />
-                              <span className="text-xs text-sky-100 leading-snug">{b}</span>
-                            </div>
-                          ))}
-                        </div>
+                        <span className="text-[9px] font-bold text-sky-200 uppercase tracking-widest mt-1">AI-Powered</span>
                       </div>
-                      <div className="flex-shrink-0">
-                        <div className="flex items-center gap-2 px-5 py-3 rounded-xl bg-white text-sky-700 text-sm font-bold shadow-md group-hover:shadow-lg group-hover:-translate-y-px transition-all">
-                          Ask the AI <ArrowRight size={14} />
-                        </div>
+                      <h3 className="text-sm font-bold text-white mb-1">{f.label}</h3>
+                      <p className="text-xs text-sky-100 leading-relaxed mb-4 flex-1">{f.tagline}</p>
+                      <div className="flex items-center gap-1.5 text-xs font-bold text-white/80 group-hover:text-white transition-colors">
+                        Ask the AI <ArrowRight size={11} />
                       </div>
                     </div>
                   </div>
