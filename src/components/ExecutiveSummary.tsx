@@ -1,4 +1,5 @@
 import { useMemo, useState, useRef } from 'react';
+import { ChevronDown, ChevronUp } from 'lucide-react';
 import { AlertTriangle, CheckCircle2, TrendingUp, Users, BarChart3, Globe, Star, ArrowRight, Zap, Shield, Clock, CalendarX, Sparkles, SendHorizontal as SendHorizonal } from 'lucide-react';
 import {
   computeExecSummary,
@@ -445,6 +446,7 @@ function DeptRow({ snap, onNavigate }: { snap: DeptHealthSnapshot; onNavigate: (
 
 export function ExecutiveSummary({ onNavigate, onAskAI }: Props) {
   const summary = useMemo(() => computeExecSummary(), []);
+  const [kpiExpanded, setKpiExpanded] = useState(false);
 
   return (
     <div className="flex flex-col min-h-screen bg-gray-50 font-sans">
@@ -472,10 +474,34 @@ export function ExecutiveSummary({ onNavigate, onAskAI }: Props) {
         <div className="max-w-6xl mx-auto space-y-8">
 
           {/* ── KPI metric strip ──────────────────────────────────────────── */}
-          <div className="grid grid-cols-7 gap-3" data-tour="home-kpi-strip">
-            {buildKpiCards(summary).map(card => (
-              <KpiCard key={card.label} card={card} onNavigate={onNavigate} />
-            ))}
+          <div data-tour="home-kpi-strip">
+            {/* Primary 4 — always visible */}
+            <div className="grid grid-cols-4 gap-3">
+              {buildKpiCards(summary).slice(0, 4).map(card => (
+                <KpiCard key={card.label} card={card} onNavigate={onNavigate} />
+              ))}
+            </div>
+
+            {/* Secondary 3 — revealed on expand */}
+            {kpiExpanded && (
+              <div className="grid grid-cols-3 gap-3 mt-3">
+                {buildKpiCards(summary).slice(4).map(card => (
+                  <KpiCard key={card.label} card={card} onNavigate={onNavigate} />
+                ))}
+              </div>
+            )}
+
+            <div className="flex justify-center mt-3">
+              <button
+                onClick={() => setKpiExpanded(e => !e)}
+                className="flex items-center gap-1.5 text-xs text-gray-400 hover:text-gray-600 transition-colors group"
+              >
+                {kpiExpanded
+                  ? <><ChevronUp size={13} className="group-hover:text-gray-600" />Hide managers, rank &amp; check-ins</>
+                  : <><ChevronDown size={13} className="group-hover:text-gray-600" />Show managers, rank &amp; check-ins</>
+                }
+              </button>
+            </div>
           </div>
 
           {/* ── Main body: risks + wins ────────────────────────────────────── */}
