@@ -471,11 +471,6 @@ export function ExecutiveSummary({ onNavigate, onAskAI }: Props) {
       <main className="flex-1 overflow-auto p-8">
         <div className="max-w-6xl mx-auto space-y-8">
 
-          {/* ── AI Hero ───────────────────────────────────────────────────── */}
-          <div data-tour="home-ai-hero">
-            <AIHero onAskAI={onAskAI} />
-          </div>
-
           {/* ── KPI metric strip ──────────────────────────────────────────── */}
           <div className="grid grid-cols-7 gap-3" data-tour="home-kpi-strip">
             {buildKpiCards(summary).map(card => (
@@ -483,7 +478,7 @@ export function ExecutiveSummary({ onNavigate, onAskAI }: Props) {
             ))}
           </div>
 
-          {/* ── Main body: risks + dept table ─────────────────────────────── */}
+          {/* ── Main body: risks + wins ────────────────────────────────────── */}
           <div className="grid grid-cols-[1fr_420px] gap-6">
 
             {/* Left: risks */}
@@ -561,6 +556,11 @@ export function ExecutiveSummary({ onNavigate, onAskAI }: Props) {
                 </div>
               </div>
             </div>
+          </div>
+
+          {/* ── AI Hero ───────────────────────────────────────────────────── */}
+          <div data-tour="home-ai-hero">
+            <AIHero onAskAI={onAskAI} />
           </div>
 
           {/* ── Check-in coverage ────────────────────────────────────────── */}
