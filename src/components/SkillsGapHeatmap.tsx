@@ -288,7 +288,7 @@ function DeptHeatmap({ department, onBack, onNavigateToPipeline, onNavigateToGap
                 }`}
               >
                 <Map size={13} />
-                Location
+                By Location
               </button>
               <button
                 onClick={() => setGroupBy('department')}
@@ -297,7 +297,7 @@ function DeptHeatmap({ department, onBack, onNavigateToPipeline, onNavigateToGap
                 }`}
               >
                 <LayoutGrid size={13} />
-                Combined
+                Department
               </button>
             </div>
           </div>
