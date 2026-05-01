@@ -157,7 +157,8 @@ export function CommitmentsJournal({ onReviewSource }: { onReviewSource?: (query
   const doneCount = commitments.filter(c => c.status === 'done').length;
 
   return (
-    <div className="max-w-3xl mx-auto px-8 py-10">
+    <div className="min-h-full bg-gray-50 px-8 py-10">
+      <div className="max-w-3xl mx-auto">
       {/* Header */}
       <div className="flex items-start justify-between mb-8" data-tour="journal-header">
         <div>
@@ -246,6 +247,7 @@ export function CommitmentsJournal({ onReviewSource }: { onReviewSource?: (query
         )}
       </div>
       <FeedbackBanner context="Decisions Journal" className="mt-4" />
+      </div>
     </div>
   );
 }

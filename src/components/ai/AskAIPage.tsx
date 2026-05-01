@@ -678,7 +678,7 @@ export function AskAIPage({ initialQuestion, onNavigate }: Props) {
   const isEmpty = active.messages.length === 0;
 
   return (
-    <div className="flex h-full bg-white overflow-hidden">
+    <div className="flex h-full bg-gray-50 overflow-hidden">
 
       {/* ── Chat panel ────────────────────────────────────────────────── */}
       <div className="w-72 flex-shrink-0 flex flex-col bg-gray-950 border-r border-white/5">
