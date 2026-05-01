@@ -727,6 +727,13 @@ export function AskAIPage({ initialQuestion, onNavigate }: Props) {
                   {p}
                 </button>
               ))}
+              <div className="pt-2 border-t border-white/10 mt-1">
+                <button onClick={() => sendMessage('How can Careerminds support me?')}
+                  className="w-full text-left text-xs px-3 py-2.5 rounded-xl border transition-all flex items-center gap-2 group bg-teal-500/10 border-teal-500/30 text-teal-300 hover:bg-teal-500/20 hover:border-teal-400/50">
+                  <Sparkles size={11} className="flex-shrink-0 text-teal-400" />
+                  How can Careerminds support me?
+                </button>
+              </div>
             </div>
           ) : (
             <>

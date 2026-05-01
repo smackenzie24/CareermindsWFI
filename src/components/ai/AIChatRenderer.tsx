@@ -20,6 +20,7 @@ import {
   type ActionNavTarget,
   type DecisionFrame,
   type CommitmentPrompt,
+  type PartnerRecommendation,
 } from '../../data/chatEngine';
 import { DEPT_COLORS } from '../../data/mockData';
 import { supabase } from '../../lib/supabase';
@@ -417,12 +418,22 @@ export function ClarificationCard({ data, onChipClick }: { data: ClarificationRe
     setAnswered(next);
     if (Object.keys(next).length === data.questions.length) {
       setSubmitted(true);
-      const composed = [
-        next[0] ? `Savings target: ${next[0]}` : '',
-        next[1] && next[1] !== 'Not sure yet — explore options' ? `Target reduction: ${next[1]}` : 'Target reduction: explore options',
-        next[2] ? `Timeline: ${next[2]}` : '',
-      ].filter(Boolean).join(', ');
-      setTimeout(() => onChipClick(`Headcount reduction plan — ${composed}`), 150);
+      let composed: string;
+      if (data.composeKey === 'careerminds') {
+        composed = [
+          next[0] ? `Challenge: ${next[0]}` : '',
+          next[1] ? `Scale: ${next[1]}` : '',
+          next[2] ? `Timeline: ${next[2]}` : '',
+        ].filter(Boolean).join(', ');
+        setTimeout(() => onChipClick(`Careerminds support — ${composed}`), 150);
+      } else {
+        composed = [
+          next[0] ? `Savings target: ${next[0]}` : '',
+          next[1] && next[1] !== 'Not sure yet — explore options' ? `Target reduction: ${next[1]}` : 'Target reduction: explore options',
+          next[2] ? `Timeline: ${next[2]}` : '',
+        ].filter(Boolean).join(', ');
+        setTimeout(() => onChipClick(`Headcount reduction plan — ${composed}`), 150);
+      }
     }
   }
 
@@ -611,6 +622,49 @@ function CommitmentCaptureCard({ data }: { data: CommitmentPrompt }) {
   );
 }
 
+// ── Partner recommendation card ───────────────────────────────────────
+
+const PARTNER_SERVICE_CONFIG: Record<PartnerRecommendation['service'], { accent: string; border: string; bg: string; badgeBg: string; badgeText: string; icon: React.ReactNode }> = {
+  'outplacement':       { accent: 'text-rose-700',    border: 'border-rose-200',    bg: 'bg-rose-50',    badgeBg: 'bg-rose-100',    badgeText: 'text-rose-700',    icon: <ArrowRight size={14} /> },
+  'talent-development': { accent: 'text-teal-700',    border: 'border-teal-200',    bg: 'bg-teal-50',    badgeBg: 'bg-teal-100',    badgeText: 'text-teal-700',    icon: <BookOpen size={14} /> },
+  'leadership-dev':     { accent: 'text-emerald-700', border: 'border-emerald-200', bg: 'bg-emerald-50', badgeBg: 'bg-emerald-100', badgeText: 'text-emerald-700', icon: <TrendingUp size={14} /> },
+  'manager-coaching':   { accent: 'text-sky-700',     border: 'border-sky-200',     bg: 'bg-sky-50',     badgeBg: 'bg-sky-100',     badgeText: 'text-sky-700',     icon: <Users size={14} /> },
+  'comp-review':        { accent: 'text-amber-700',   border: 'border-amber-200',   bg: 'bg-amber-50',   badgeBg: 'bg-amber-100',   badgeText: 'text-amber-700',   icon: <Sparkles size={14} /> },
+};
+
+function PartnerRecommendationCard({ data }: { data: PartnerRecommendation }) {
+  const cfg = PARTNER_SERVICE_CONFIG[data.service];
+  return (
+    <div className={`rounded-2xl border ${cfg.border} ${cfg.bg} overflow-hidden`}>
+      <div className="px-5 py-4">
+        <div className="flex items-start gap-3.5">
+          <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${cfg.badgeBg} ${cfg.accent}`}>
+            {cfg.icon}
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 flex-wrap mb-1.5">
+              <span className={`inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full ${cfg.badgeBg} ${cfg.badgeText} uppercase tracking-wider`}>
+                <Sparkles size={9} />
+                {data.provider}
+              </span>
+            </div>
+            <p className={`text-sm font-bold leading-snug ${cfg.accent} mb-1.5`}>{data.headline}</p>
+            <div className={`mb-3 flex items-start gap-1.5 px-3 py-2 rounded-lg border ${cfg.border} bg-white/60`}>
+              <Zap size={10} className={`${cfg.accent} mt-0.5 flex-shrink-0`} />
+              <p className={`text-[11px] font-medium leading-relaxed ${cfg.accent}`}>{data.why}</p>
+            </div>
+            <p className="text-xs text-gray-600 leading-relaxed mb-3">{data.body}</p>
+            <button className={`inline-flex items-center gap-1.5 text-xs font-semibold px-4 py-2 rounded-full ${cfg.badgeBg} ${cfg.accent} border ${cfg.border} hover:opacity-80 transition-opacity`}>
+              <ExternalLink size={10} />
+              {data.cta}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── Inline upsell strip ───────────────────────────────────────────────
 
 type InlineUpsellVariant = 'outplacement' | 'talent-development' | 'leadership-dev' | 'manager-coaching';
@@ -686,6 +740,7 @@ function InlineUpsell({ variant }: { variant: InlineUpsellVariant }) {
 // ── Results block — renders any QueryResult[] ─────────────────────────
 
 function pickUpsell(results: QueryResult[]): InlineUpsellVariant | null {
+  if (results.some(r => r.kind === 'partner-recommendation')) return null;
   for (const r of results) {
     if (r.kind === 'reduction') return 'outplacement';
     if (r.kind === 'churn-risk-list' && r.items.length >= 3) return 'outplacement';
@@ -753,6 +808,7 @@ export function ResultsBlock({ results, onSend, onNavigate, wide }: { results: Q
         if (r.kind === 'clarification') return <ClarificationCard key={i} data={r.data} onChipClick={onSend ?? (() => {})} />;
         if (r.kind === 'decision') return <DecisionFrameCard key={i} frame={r.frame} onSend={onSend} />;
         if (r.kind === 'commitment-prompt') return <CommitmentCaptureCard key={i} data={r.data} />;
+        if (r.kind === 'partner-recommendation') return <PartnerRecommendationCard key={i} data={r.data} />;
         if (r.kind === 'labeled-people') {
           return (
             <div key={i}>

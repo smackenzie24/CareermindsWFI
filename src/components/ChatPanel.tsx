@@ -176,6 +176,13 @@ export function ChatPanel({ open, onClose, initialQuestion, onNavigate }: Props)
                     {p}
                   </button>
                 ))}
+                <div className="pt-1.5 border-t border-gray-100 mt-1">
+                  <button onClick={() => sendMessage('How can Careerminds support me?')}
+                    className="w-full text-left text-xs font-medium text-teal-700 px-3 py-2.5 rounded-xl bg-teal-50 border border-teal-200 transition-all flex items-center gap-2 group hover:bg-teal-100 hover:border-teal-300">
+                    <Sparkles size={11} className="text-teal-500 flex-shrink-0" />
+                    How can Careerminds support me?
+                  </button>
+                </div>
               </div>
             </div>
           ) : (

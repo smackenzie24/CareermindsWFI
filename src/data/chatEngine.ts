@@ -81,6 +81,7 @@ export interface ClarificationResult {
   intro: string;
   reasoning: string; // transparent explanation of why we ask
   questions: ClarificationQuestion[];
+  composeKey?: 'headcount-reduction' | 'careerminds'; // how to build the follow-up prompt
 }
 
 export interface ReductionAnalysis {
@@ -130,7 +131,8 @@ export type QueryResultKind =
   | 'reduction'
   | 'clarification'
   | 'decision'
-  | 'commitment-prompt';
+  | 'commitment-prompt'
+  | 'partner-recommendation';
 
 export interface DecisionOption {
   id: string;
@@ -156,6 +158,22 @@ export interface CommitmentPrompt {
   sourceQuery?: string;
 }
 
+export type PartnerService =
+  | 'outplacement'
+  | 'talent-development'
+  | 'leadership-dev'
+  | 'manager-coaching'
+  | 'comp-review';
+
+export interface PartnerRecommendation {
+  service: PartnerService;
+  provider: string;
+  headline: string;
+  body: string;
+  cta: string;
+  why: string; // personalised rationale based on their answers
+}
+
 export type QueryResult =
   | { kind: 'person-list'; items: PersonResult[] }
   | { kind: 'skill-gap-list'; items: SkillGapResult[] }
@@ -168,7 +186,8 @@ export type QueryResult =
   | { kind: 'clarification'; data: ClarificationResult }
   | { kind: 'labeled-people'; label: string; subLabel?: string; isChurn?: boolean; items: PersonResult[] }
   | { kind: 'decision'; frame: DecisionFrame }
-  | { kind: 'commitment-prompt'; data: CommitmentPrompt };
+  | { kind: 'commitment-prompt'; data: CommitmentPrompt }
+  | { kind: 'partner-recommendation'; data: PartnerRecommendation };
 
 // ── Suggest prompts shown when chat is empty ─────────────────────────
 export const SUGGESTED_PROMPTS = [
@@ -1087,6 +1106,7 @@ function handleBenchmarkStrategy(query: string): { text: string; results: QueryR
 
 function handleHeadcountReductionClarify(): { text: string; results: QueryResult[] } {
   const data: ClarificationResult = {
+    composeKey: 'headcount-reduction',
     intro: "Before I run the analysis I need to ask a few questions. Headcount reduction is one of the most consequential decisions an organisation makes — getting the inputs right means the output is actually useful rather than generic.",
     reasoning: "Here's my thinking: most reductions are driven by a specific cost savings target, but the headcount impact depends heavily on your salary mix and which departments you're willing to cut. I also need to understand the driver (budget vs. strategic) and timeline — a 20% cut in 30 days looks completely different from the same cut over 6 months. Getting these three inputs right is the difference between a useful plan and a generic one.",
     questions: [
@@ -1275,6 +1295,132 @@ function handleHeadcountReduction(query: string): { text: string; results: Query
   };
 }
 
+// ── Careerminds / partner qualification ──────────────────────────────
+
+function handleCareermindsIntro(): { text: string; results: QueryResult[] } {
+  const all = getAllReadiness();
+  const churnCount = all.filter(r => r.person.tenure >= 18 && r.readinessPct < 70).length;
+  const skillGaps = SKILLS_DATA.filter(s => s.expectedLevel > s.averageActual).length;
+  const nearReady = all.filter(r => getReadinessTier(r.readinessPct) === 'near-ready').length;
+
+  // Tailor the intro based on what's actually pressing in their data
+  const topSignal =
+    churnCount >= 5 ? `you have ${churnCount} people at high churn risk` :
+    skillGaps >= 10 ? `there are ${skillGaps} active skills gaps across the org` :
+    nearReady >= 4 ? `${nearReady} people are promotion-ready but may be waiting` :
+    'your workforce data surfaces some areas worth addressing';
+
+  const data: ClarificationResult = {
+    composeKey: 'careerminds',
+    intro: `Good question — and timely. Based on your data, ${topSignal}. Careerminds and Keystone Partners offer services that map directly onto what we're seeing. I just want to make sure I point you to the right one.`,
+    reasoning: 'Different situations call for different services. Outplacement is for transitions; talent development is for building skills; leadership coaching is for accelerating your pipeline. The right fit depends on what\'s most urgent for you right now.',
+    questions: [
+      {
+        question: 'What\'s the most pressing challenge you\'re trying to solve?',
+        chips: [
+          'People leaving (or at risk of leaving)',
+          'Skills gaps slowing us down',
+          'Managers not developing their teams',
+          'Promotion pipeline feels thin',
+          'Planning a headcount reduction',
+        ],
+      },
+      {
+        question: 'How many people are affected?',
+        chips: ['1–5 people', '6–20 people', '20–50 people', '50+ people'],
+      },
+      {
+        question: 'What\'s your timeline?',
+        chips: ['This needs to move now', 'Next 1–3 months', 'Planning for H2', 'Early exploration'],
+      },
+    ],
+  };
+
+  return {
+    text: `Let me ask you a few quick questions so I can point you to the right support.`,
+    results: [{ kind: 'clarification', data }],
+  };
+}
+
+function handleCareermindsResult(query: string): { text: string; results: QueryResult[] } {
+  const q = query.toLowerCase();
+
+  // Parse what they answered from the composed prompt
+  const isChurn = /leaving|at risk|churn|transition|headcount reduction/i.test(q);
+  const isSkills = /skills gap|slowing/i.test(q);
+  const isManagers = /manager|coaching/i.test(q);
+  const isPipeline = /pipeline|promotion|thin/i.test(q);
+  const isReduction = /headcount reduction/i.test(q);
+
+  const isLarge = /50\+|20.50/i.test(q);
+  const isUrgent = /now|urgent/i.test(q);
+
+  let service: PartnerService;
+  let provider: string;
+  let headline: string;
+  let body: string;
+  let cta: string;
+  let why: string;
+
+  if (isReduction || (isChurn && isLarge)) {
+    service = 'outplacement';
+    provider = 'Careerminds';
+    headline = 'Careerminds Outplacement — protect your employer brand through the transition';
+    body = 'Careerminds places 95% of affected employees in new roles, typically in under 3 months. Their digital-first model means cost-effective coverage for every impacted employee, not just senior leaders.';
+    cta = 'Talk to Careerminds about Outplacement';
+    why = isReduction
+      ? 'You\'re planning a headcount reduction. Outplacement support is the single biggest factor in maintaining trust with the employees who remain — and in managing legal and reputational risk.'
+      : `With ${isLarge ? '20+ people' : 'multiple people'} at flight risk, having a transition programme in place protects you if they do leave, while also signalling to the whole team that you take career outcomes seriously.`;
+  } else if (isSkills) {
+    service = 'talent-development';
+    provider = 'Careerminds';
+    headline = 'Careerminds Talent Development — structured upskilling aligned to your competency framework';
+    body = 'Careerminds builds role-specific learning tracks that map directly to the skill gaps in your data. Programmes are typically 8–12 weeks and designed for working professionals — no long classroom commitments.';
+    cta = 'Explore Talent Development with Careerminds';
+    why = 'Your data shows active skills gaps across the org. A structured programme with clear milestones closes gaps faster than ad-hoc learning — and creates a paper trail for performance conversations.';
+  } else if (isManagers) {
+    service = 'manager-coaching';
+    provider = 'Keystone Partners';
+    headline = 'Keystone Partners Manager Coaching — improve team velocity from the top down';
+    body = 'Keystone\'s leadership programme pairs managers with experienced executive coaches. Sessions are fortnightly, focused on practical skills: running 1:1s, giving developmental feedback, unblocking team growth.';
+    cta = 'Explore Manager Coaching with Keystone';
+    why = 'Manager quality is the strongest single predictor of team readiness velocity. Investing here typically produces visible improvements in team promotion rates within one review cycle.';
+  } else if (isPipeline) {
+    service = 'leadership-dev';
+    provider = 'Keystone Partners';
+    headline = 'Keystone Partners Leadership Development — accelerate your near-ready candidates';
+    body = 'Keystone provides 1:1 executive coaching programmes tailored to each candidate\'s specific readiness gaps. Rather than generic training, every session targets the exact criteria they\'re not yet meeting.';
+    cta = 'Explore Leadership Development with Keystone';
+    why = 'You have near-ready employees who are close to promotion. Targeted coaching at this stage is 3–5x more effective than a learning course — and far cheaper than losing them to a competitor who will develop them.';
+  } else if (isChurn) {
+    service = 'outplacement';
+    provider = 'Careerminds';
+    headline = 'Careerminds Career Transition — turn a risk into a positive outcome';
+    body = 'When employees are disengaged and unlikely to recover, having a clear, supportive off-ramp protects the relationship, your employer brand, and the morale of those who stay. Careerminds makes this cost-effective at any scale.';
+    cta = 'Learn about Careerminds Career Transition';
+    why = 'You have people at flight risk. Whether they leave voluntarily or through managed departure, having a transition programme in place is better than an unmanaged exit every time.';
+  } else {
+    service = 'talent-development';
+    provider = 'Careerminds';
+    headline = 'Careerminds Talent Development — a structured path for your team\'s growth';
+    body = 'Careerminds builds role-specific learning tracks that close skills gaps and accelerate your promotion pipeline. Programmes are designed to deliver measurable readiness improvements within one review cycle.';
+    cta = 'Explore Talent Development with Careerminds';
+    why = 'Based on your data, a structured talent development programme would directly address the gaps we\'re seeing and accelerate your pipeline.';
+  }
+
+  const urgencyNote = isUrgent ? ' Given your timeline, it\'s worth having a conversation this week.' : '';
+
+  return {
+    text: `Based on what you\'ve told me, here\'s the service I\'d recommend.${urgencyNote}`,
+    results: [
+      {
+        kind: 'partner-recommendation',
+        data: { service, provider, headline, body, cta, why },
+      },
+    ],
+  };
+}
+
 // ── Main query router ─────────────────────────────────────────────────
 
 export function query(input: string): { text: string; results: QueryResult[]; needsAI?: boolean } {
@@ -1290,6 +1436,18 @@ export function query(input: string): { text: string; results: QueryResult[]; ne
 }
 
 function _queryInner(q: string, _input: string): { text: string; results: QueryResult[]; needsAI?: boolean } {
+
+  // ── Careerminds / partner qualification ──────────────────────────────
+
+  // Entry point — "how can Careerminds help" or similar
+  if (/careerminds|keystone|how can.{0,20}(support|help|assist)|partner support|what support|what services/i.test(q)) {
+    return handleCareermindsIntro();
+  }
+
+  // Follow-up: qualification answers submitted via clarification chips
+  if (/^careerminds support —/i.test(q)) {
+    return handleCareermindsResult(q);
+  }
 
   // ── Strategy / Planning intents (checked first — more specific) ──────
 
