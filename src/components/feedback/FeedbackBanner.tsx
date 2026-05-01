@@ -31,24 +31,25 @@ export function FeedbackBanner({ context, className = '' }: Props) {
 
   return (
     <>
-      <div className={`flex items-center justify-between gap-6 border-t border-gray-100 pt-5 ${className}`}>
+      <div className={`flex items-center justify-between gap-4 bg-gray-50 border border-gray-200 rounded-xl px-4 py-3.5 ${className}`}>
         <div className="flex items-center gap-3 min-w-0">
-          <div className="w-7 h-7 rounded-lg bg-gray-100 flex items-center justify-center flex-shrink-0">
-            <MessageSquare size={13} className="text-gray-400" />
+          <div className="w-8 h-8 rounded-lg bg-sky-100 flex items-center justify-center flex-shrink-0">
+            <MessageSquare size={14} className="text-sky-600" />
           </div>
           <div className="min-w-0">
-            <p className="text-xs font-semibold text-gray-600 leading-snug truncate">
+            <p className="text-sm font-semibold text-gray-800 leading-snug">
               {copy.question}
             </p>
-            <p className="text-[11px] text-gray-400 mt-0.5 hidden sm:block">
+            <p className="text-xs text-gray-500 mt-0.5 hidden sm:block">
               {copy.sub}
             </p>
           </div>
         </div>
         <button
           onClick={() => setOpen(true)}
-          className="flex-shrink-0 text-xs font-semibold text-gray-500 hover:text-gray-900 px-3 py-1.5 rounded-lg hover:bg-gray-100 transition-all whitespace-nowrap"
+          className="flex-shrink-0 flex items-center gap-1.5 text-xs font-semibold text-white bg-gray-900 hover:bg-gray-700 px-4 py-2 rounded-lg transition-all whitespace-nowrap shadow-sm"
         >
+          <MessageSquare size={11} />
           Share feedback
         </button>
       </div>
