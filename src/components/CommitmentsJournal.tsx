@@ -31,11 +31,13 @@ function CommitmentRow({
   commitment,
   onMarkDone,
   onDismiss,
+  onUndismiss,
   onReviewSource,
 }: {
   commitment: Commitment;
   onMarkDone: (id: string) => void;
   onDismiss: (id: string) => void;
+  onUndismiss?: (id: string) => void;
   onReviewSource?: (query: string) => void;
 }) {
   const meta = kindMeta(commitment.insight_kind);
@@ -88,8 +90,16 @@ function CommitmentRow({
         )}
       </div>
 
-      {/* Dismiss */}
-      {!isDone && !isDismissed && (
+      {/* Dismiss / Undo */}
+      {isDismissed ? (
+        <button
+          onClick={() => onUndismiss?.(commitment.id)}
+          className="flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity text-[11px] font-semibold text-gray-400 hover:text-gray-700 px-2 py-1 rounded-lg hover:bg-gray-100 whitespace-nowrap"
+          title="Restore"
+        >
+          Undo
+        </button>
+      ) : !isDone && (
         <button
           onClick={() => onDismiss(commitment.id)}
           className="flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity w-6 h-6 rounded-lg flex items-center justify-center text-gray-300 hover:text-gray-600 hover:bg-gray-100"
@@ -107,7 +117,7 @@ function CommitmentRow({
 export function CommitmentsJournal({ onReviewSource }: { onReviewSource?: (query: string) => void } = {}) {
   const [commitments, setCommitments] = useState<Commitment[]>([]);
   const [loading, setLoading] = useState(true);
-  const [filter, setFilter] = useState<'open' | 'done' | 'all'>('open');
+  const [filter, setFilter] = useState<'open' | 'done' | 'all' | 'dismissed'>('open');
 
   async function load() {
     setLoading(true);
@@ -131,9 +141,15 @@ export function CommitmentsJournal({ onReviewSource }: { onReviewSource?: (query
     await supabase.from('commitments').update({ status: 'dismissed', updated_at: new Date().toISOString() }).eq('id', id);
   }
 
+  async function undismiss(id: string) {
+    setCommitments(prev => prev.map(c => c.id === id ? { ...c, status: 'open' } : c));
+    await supabase.from('commitments').update({ status: 'open', updated_at: new Date().toISOString() }).eq('id', id);
+  }
+
   const visible = commitments.filter(c => {
     if (filter === 'open') return c.status === 'open';
     if (filter === 'done') return c.status === 'done';
+    if (filter === 'dismissed') return c.status === 'dismissed';
     return c.status !== 'dismissed';
   });
 
@@ -180,15 +196,20 @@ export function CommitmentsJournal({ onReviewSource }: { onReviewSource?: (query
 
       {/* Filter tabs */}
       <div className="flex gap-0 border-b border-gray-200 mb-1">
-        {(['open', 'done', 'all'] as const).map(f => (
+        {([
+          ['open', 'Open'],
+          ['done', 'Completed'],
+          ['all', 'All'],
+          ['dismissed', 'Dismissed'],
+        ] as const).map(([f, label]) => (
           <button
             key={f}
             onClick={() => setFilter(f)}
-            className={`px-4 py-2 text-xs font-semibold border-b-2 -mb-px transition-colors capitalize ${
+            className={`px-4 py-2 text-xs font-semibold border-b-2 -mb-px transition-colors ${
               filter === f ? 'border-gray-900 text-gray-900' : 'border-transparent text-gray-400 hover:text-gray-600'
             }`}
           >
-            {f === 'all' ? 'All' : f === 'done' ? 'Completed' : 'Open'}
+            {label}
           </button>
         ))}
       </div>
@@ -207,18 +228,20 @@ export function CommitmentsJournal({ onReviewSource }: { onReviewSource?: (query
             </div>
             <div>
               <p className="text-sm font-semibold text-gray-400">
-                {filter === 'open' ? 'No open commitments' : 'Nothing here yet'}
+                {filter === 'open' ? 'No open commitments' : filter === 'dismissed' ? 'No dismissed commitments' : 'Nothing here yet'}
               </p>
               <p className="text-xs text-gray-300 mt-1">
                 {filter === 'open'
                   ? 'Ask the AI about promotions or churn risk to get started'
+                  : filter === 'dismissed'
+                  ? 'Commitments you dismiss will appear here and can be restored'
                   : 'Commitments you log from AI insights will appear here'}
               </p>
             </div>
           </div>
         ) : (
           visible.map(c => (
-            <CommitmentRow key={c.id} commitment={c} onMarkDone={markDone} onDismiss={dismiss} onReviewSource={onReviewSource} />
+            <CommitmentRow key={c.id} commitment={c} onMarkDone={markDone} onDismiss={dismiss} onUndismiss={undismiss} onReviewSource={onReviewSource} />
           ))
         )}
       </div>
