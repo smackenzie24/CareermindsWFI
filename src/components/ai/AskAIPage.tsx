@@ -740,22 +740,6 @@ function OutputPanel({
             </div>
           )}
 
-          {/* Context request — shown when AI explicitly needs more info */}
-          {entry.needsMoreContext && entry.contextQuestion && (
-            <div className="mb-6">
-              <ContextRequestBanner
-                question={entry.contextQuestion}
-                onUpload={onUpload}
-                onPaste={onPaste}
-              />
-            </div>
-          )}
-
-          {/* Legacy missing context nudge (for local query results) */}
-          {entry.needsMoreContext && !entry.contextQuestion && (
-            <MissingContextNudge onUpload={onUpload} onPaste={onPaste} />
-          )}
-
           {/* Data results */}
           {entry.results.length > 0 && (
             <>
@@ -860,6 +844,20 @@ export function AskAIPage({ initialQuestion, onNavigate }: Props) {
     attachDoc({ name: file.name, content, size: file.size });
   }
 
+  function detectLocalClarifyQuestion(q: string): string | null {
+    const lower = q.toLowerCase();
+    if (/restructur|reorg|reorgani/.test(lower) && !/which|who|department|team|score/.test(lower)) {
+      return "What kind of restructuring are you exploring — career pathway redesign, org structure changes, headcount adjustments, or something else? And are there specific teams or business goals driving this?";
+    }
+    if (/strateg|plan|roadmap|priorit/.test(lower) && !/skill|promot|churn|flight/.test(lower)) {
+      return "To give you useful strategic recommendations I'd need a bit more context — what's the main business goal or constraint driving this? For example: growth, cost reduction, retention, or capability building?";
+    }
+    if (/budget|cost|salary|compensation|pay/.test(lower) && !active.attachedDoc) {
+      return "Salary and compensation data isn't in the system yet. To answer this, could you upload a file or paste the relevant figures? I can work with a spreadsheet, CSV, or even pasted text.";
+    }
+    return null;
+  }
+
   async function sendMessage(text: string) {
     const trimmed = text.trim();
     if (!trimmed) return;
@@ -910,13 +908,25 @@ export function AskAIPage({ initialQuestion, onNavigate }: Props) {
     };
 
     if (response.needsAI) {
-      // Pure AI question — wait for full response before showing anything
+      // Detect queries that are likely to require clarification before the AI can help.
+      // For these, fire the clarifying question instantly into the chat thread — no AI round-trip needed.
+      const localClarifyQuestion = detectLocalClarifyQuestion(trimmed);
+      if (localClarifyQuestion) {
+        const clarifyMsg: ChatMessage = { id: makeId(), role: 'assistant', text: localClarifyQuestion, results: [], timestamp: new Date() };
+        setConversations(prev => prev.map(c => {
+          if (c.id !== activeId) return c;
+          return { ...c, messages: [...c.messages, clarifyMsg] };
+        }));
+        setTyping(false);
+        return;
+      }
+
+      // All other AI questions — wait for full response
       try {
         const aiResp = await callWorkforceAI(trimmed, docContext);
 
-        // If AI only needs clarification and has no real answer yet, just show
-        // the clarifying question directly in the chat thread — no output panel entry
-        if (aiResp.needsMoreContext && aiResp.contextQuestion && !aiResp.text.trim()) {
+        // If AI still only needs clarification, inject into chat thread, no output panel entry
+        if (aiResp.needsMoreContext && aiResp.contextQuestion) {
           const clarifyMsg: ChatMessage = { id: makeId(), role: 'assistant', text: aiResp.contextQuestion, results: [], timestamp: new Date() };
           setConversations(prev => prev.map(c => {
             if (c.id !== activeId) return c;
