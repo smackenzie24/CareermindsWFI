@@ -552,6 +552,9 @@ function DeptHeatmap({ department, onBack, onNavigateToPipeline, tourActive }: D
             </div>
           ) : (
             <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+              {/* Check-in row — above column headers so it doesn't read as a skill row */}
+              <CheckInRow department={department} selected={selectedSkill === '__checkins__'} onSelect={() => { setSelectedSkill(selectedSkill === '__checkins__' ? null : '__checkins__'); setPanelCollapsed(false); }} colCount={groupKeys.length} />
+
               {/* Column headers */}
               <div
                 className="grid border-b border-gray-100 bg-gray-50/80"
@@ -566,9 +569,6 @@ function DeptHeatmap({ department, onBack, onNavigateToPipeline, tourActive }: D
                   </div>
                 ))}
               </div>
-
-              {/* Check-in row */}
-              <CheckInRow department={department} selected={selectedSkill === '__checkins__'} onSelect={() => { setSelectedSkill(selectedSkill === '__checkins__' ? null : '__checkins__'); setPanelCollapsed(false); }} colCount={groupKeys.length} />
 
               {/* Rows */}
               <div className="divide-y divide-gray-50" data-tour="heatmap-skill-col">
