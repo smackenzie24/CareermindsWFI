@@ -846,7 +846,7 @@ export function AskAIPage({ initialQuestion, onNavigate }: Props) {
 
   function detectLocalClarifyQuestion(q: string): string | null {
     const lower = q.toLowerCase();
-    if (/restructur|reorg|reorgani/.test(lower) && !/which|who|department|team|score/.test(lower)) {
+    if (/restructur|reorg|reorgani/.test(lower)) {
       return "What kind of restructuring are you exploring — career pathway redesign, org structure changes, headcount adjustments, or something else? And are there specific teams or business goals driving this?";
     }
     if (/strateg|plan|roadmap|priorit/.test(lower) && !/skill|promot|churn|flight/.test(lower)) {
@@ -886,7 +886,7 @@ export function AskAIPage({ initialQuestion, onNavigate }: Props) {
       const output: OutputEntry = { id: outputId, question: trimmed, answer: text, results, timestamp: new Date(), ...opts };
       // When the AI needs more context, inject its clarifying question directly into the chat thread
       const clarifyMsg: ChatMessage | null = (opts.needsMoreContext && opts.contextQuestion)
-        ? { id: makeId(), role: 'assistant', text: opts.contextQuestion, results: [], timestamp: new Date() }
+        ? { id: makeId(), role: 'assistant', text: opts.contextQuestion, results: [], timestamp: new Date(), isClarifyQuestion: true }
         : null;
       setConversations(prev => prev.map(c => {
         if (c.id !== activeId) return c;
@@ -912,7 +912,7 @@ export function AskAIPage({ initialQuestion, onNavigate }: Props) {
       // For these, fire the clarifying question instantly into the chat thread — no AI round-trip needed.
       const localClarifyQuestion = detectLocalClarifyQuestion(trimmed);
       if (localClarifyQuestion) {
-        const clarifyMsg: ChatMessage = { id: makeId(), role: 'assistant', text: localClarifyQuestion, results: [], timestamp: new Date() };
+        const clarifyMsg: ChatMessage = { id: makeId(), role: 'assistant', text: localClarifyQuestion, results: [], timestamp: new Date(), isClarifyQuestion: true };
         setConversations(prev => prev.map(c => {
           if (c.id !== activeId) return c;
           return { ...c, messages: [...c.messages, clarifyMsg] };
@@ -927,7 +927,7 @@ export function AskAIPage({ initialQuestion, onNavigate }: Props) {
 
         // If AI still only needs clarification, inject into chat thread, no output panel entry
         if (aiResp.needsMoreContext && aiResp.contextQuestion) {
-          const clarifyMsg: ChatMessage = { id: makeId(), role: 'assistant', text: aiResp.contextQuestion, results: [], timestamp: new Date() };
+          const clarifyMsg: ChatMessage = { id: makeId(), role: 'assistant', text: aiResp.contextQuestion, results: [], timestamp: new Date(), isClarifyQuestion: true };
           setConversations(prev => prev.map(c => {
             if (c.id !== activeId) return c;
             return { ...c, messages: [...c.messages, clarifyMsg] };
@@ -1060,9 +1060,7 @@ export function AskAIPage({ initialQuestion, onNavigate }: Props) {
                 const isUser = msg.role === 'user';
                 const linkedOutput = isUser ? active.outputs.find(o => o.question === msg.text) : null;
                 const isActiveOutput = linkedOutput && activeOutput?.id === linkedOutput.id;
-                // A clarifying question: assistant message with no linked output that comes after a user message
-                const prevMsg = msgIdx > 0 ? active.messages[msgIdx - 1] : null;
-                const isClarifyQuestion = !isUser && !linkedOutput && prevMsg?.role === 'user' && msg.results?.length === 0;
+                const isClarifyQuestion = !isUser && !!msg.isClarifyQuestion;
 
                 return (
                   <div key={msg.id} className={`flex flex-col ${isUser ? 'items-end' : 'items-start'}`}>

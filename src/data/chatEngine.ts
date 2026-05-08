@@ -20,6 +20,7 @@ export interface ChatMessage {
   text: string;
   results?: QueryResult[];
   timestamp: Date;
+  isClarifyQuestion?: boolean;
 }
 
 export interface PersonResult {
