@@ -153,7 +153,7 @@ Deno.serve(async (req: Request) => {
 
     const message = await client.messages.create({
       model: "claude-opus-4-5",
-      max_tokens: 900,
+      max_tokens: 3000,
       system: fullContext,
       messages: [{ role: "user", content: question }],
     });
@@ -167,7 +167,14 @@ Deno.serve(async (req: Request) => {
     let parsed: {
       confidence: string;
       text: string;
-      reasoning: string[];
+      reasoning: {
+        summary: string;
+        methodology: string;
+        steps: { label: string; detail: string; dataPoint: string }[];
+        keySignals: { signal: string; howUsed: string; threshold: string; limitation: string }[];
+        whatWasNotConsidered: string[];
+        alternativeInterpretations: string[];
+      } | null;
       sources: string[];
       assumptions: string[];
       needsMoreContext: boolean;
@@ -185,6 +192,7 @@ Deno.serve(async (req: Request) => {
       parsed = {
         confidence: "medium",
         text: raw,
+        reasoning: null,
         sources: ["Workforce context snapshot"],
         assumptions: [],
         needsMoreContext: false,

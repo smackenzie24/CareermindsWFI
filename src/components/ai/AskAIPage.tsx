@@ -757,7 +757,7 @@ export function AskAIPage({ initialQuestion, onNavigate }: Props) {
     const finalize = (
       text: string,
       results: QueryResult[],
-      opts: Partial<Pick<OutputEntry, 'needsMoreContext' | 'contextQuestion' | 'confidence' | 'sources' | 'assumptions' | 'ethicsNote' | 'careermindsSuggestion'>> = {}
+      opts: Partial<Pick<OutputEntry, 'needsMoreContext' | 'contextQuestion' | 'confidence' | 'reasoning' | 'sources' | 'assumptions' | 'ethicsNote' | 'careermindsSuggestion'>> = {}
     ) => {
       const aiMsg: ChatMessage = { id: makeId(), role: 'assistant', text, results, timestamp: new Date() };
       const output: OutputEntry = { id: outputId, question: trimmed, answer: text, results, timestamp: new Date(), ...opts };
