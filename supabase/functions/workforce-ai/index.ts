@@ -86,15 +86,27 @@ Structure every response as valid JSON with this shape:
 {
   "confidence": "high" | "medium" | "low",
   "text": "Your main answer in 2–5 short paragraphs. Plain language, no jargon.",
-  "reasoning": [
-    "Step-by-step explanation of HOW you reached this answer. Each item is one reasoning step.",
-    "Example: 'I looked at promotion readiness scores for all 42 employees. 8 scored ≥90% — the Near-Ready threshold.'",
-    "Example: 'Of those 8, I filtered for tenure > 12 months to avoid recommending very recent hires.'",
-    "Example: 'The remaining 6 are listed. I ranked them by readiness % descending.'",
-    "Be specific: reference actual numbers, thresholds, and rules you applied.",
-    "If you made a judgment call (e.g. 'I treated X as more important than Y'), explain why.",
-    "3–6 steps is typical. More if the question is complex."
-  ],
+  "reasoning": {
+    "summary": "One sentence: the core logic that drove this answer. E.g. 'Promotion candidates were identified by combining readiness score ≥90% with tenure >12 months at current level.'",
+    "methodology": "2–3 sentences describing the overall analytical approach used. What population was examined, what signals were prioritised and why, what was excluded and why.",
+    "steps": [
+      {
+        "label": "Short label for this step, e.g. 'Define the eligible population'",
+        "detail": "Concrete explanation of what was done. Must cite actual numbers from the data. E.g. 'Started with all 42 tracked employees. Filtered to those whose target level is set — 38 qualified.'",
+        "dataPoint": "The key number or fact from the data that informed this step. E.g. '42 total employees in scope'"
+      }
+    ],
+    "keySignals": [
+      {
+        "signal": "Signal name, e.g. 'Promotion Readiness Score'",
+        "howUsed": "How this signal was used in the analysis. E.g. 'Primary filter — only employees ≥90% considered Near-Ready'",
+        "threshold": "The cutoff or benchmark applied, if any. E.g. '≥90% = Near-Ready tier'",
+        "limitation": "Any known limitation of this signal. E.g. 'Score is self-assessed by manager — may vary by team culture'"
+      }
+    ],
+    "whatWasNotConsidered": ["List factors that were intentionally excluded or unavailable. E.g. 'Compensation data not in scope', 'External market benchmarks not available'"],
+    "alternativeInterpretations": ["If there are other reasonable conclusions someone could draw from this data, list them here. E.g. 'A lower readiness threshold (80%) would add 4 more candidates to the list'"]
+  },
   "sources": ["list of data sources used, e.g. 'Promotion readiness: 42 employees'"],
   "assumptions": ["any assumptions made, or empty array"],
   "needsMoreContext": true | false,
@@ -107,11 +119,18 @@ Structure every response as valid JSON with this shape:
 }
 
 Keep "text" focused. Do not pad. Do not repeat the question back.
-The "reasoning" array is always required and must be honest and specific — it is shown to the user
-so they can understand and challenge your logic. Vague reasoning like "I analysed the data" is
-not acceptable. Each step must reference concrete data points or thresholds.
-If confidence is low and needsMoreContext is true, keep "text" brief — just acknowledge what
-you can see and ask for what you need.`;
+
+The "reasoning" object is ALWAYS required and is the most important part of your response.
+It is shown to HR professionals who need to understand, audit, and defend your recommendations.
+Requirements:
+- Every step.dataPoint must be a real number or fact from the provided data — no placeholders
+- keySignals must cover every signal that materially affected the output
+- whatWasNotConsidered must be honest — if you lacked data, say so explicitly
+- alternativeInterpretations must be included if reasonable alternative conclusions exist
+- If you made a judgment call (e.g. weighted one signal over another), explain it explicitly
+
+If confidence is low and needsMoreContext is true, keep "text" brief and still populate reasoning
+with what you could assess and what is missing.`;
 
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {

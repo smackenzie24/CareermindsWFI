@@ -24,6 +24,7 @@ import {
   ReasoningAccordion,
   CareermindsCard,
   ContextRequestBanner,
+  type StructuredReasoning,
 } from './AITrustComponents';
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL as string;
@@ -103,7 +104,7 @@ function detectsMissingContext(text: string): boolean {
 export interface AIResponse {
   confidence: 'high' | 'medium' | 'low';
   text: string;
-  reasoning: string[];
+  reasoning: StructuredReasoning | string[] | null;
   sources: string[];
   assumptions: string[];
   needsMoreContext: boolean;
@@ -173,7 +174,7 @@ interface OutputEntry {
   needsMoreContext?: boolean;
   contextQuestion?: string;
   confidence?: 'high' | 'medium' | 'low';
-  reasoning?: string[];
+  reasoning?: StructuredReasoning | string[] | null;
   sources?: string[];
   assumptions?: string[];
   ethicsNote?: string | null;

@@ -9,7 +9,34 @@ import {
   Clipboard,
   ExternalLink,
   Scale,
+  Database,
+  Sliders,
+  ListChecks,
+  AlertOctagon,
+  GitBranch,
 } from 'lucide-react';
+
+export interface ReasoningStep {
+  label: string;
+  detail: string;
+  dataPoint: string;
+}
+
+export interface KeySignal {
+  signal: string;
+  howUsed: string;
+  threshold: string;
+  limitation: string;
+}
+
+export interface StructuredReasoning {
+  summary: string;
+  methodology: string;
+  steps: ReasoningStep[];
+  keySignals: KeySignal[];
+  whatWasNotConsidered: string[];
+  alternativeInterpretations: string[];
+}
 
 // ── Shared popover primitive ──────────────────────────────────────────────────
 
@@ -204,95 +231,228 @@ export function EthicsBadge() {
 // ── 4. ReasoningAccordion ─────────────────────────────────────────────────────
 
 interface ReasoningAccordionProps {
-  reasoning: string[];
+  reasoning: StructuredReasoning | string[] | null | undefined;
   sources: string[];
   assumptions: string[];
   ethicsNote?: string | null;
 }
 
+function SectionHeading({ icon, label }: { icon: React.ReactNode; label: string }) {
+  return (
+    <div className="flex items-center gap-2 mb-3">
+      <div className="w-5 h-5 rounded-md bg-slate-100 flex items-center justify-center flex-shrink-0">
+        {icon}
+      </div>
+      <span className="text-xs font-bold text-slate-600 uppercase tracking-wider">{label}</span>
+    </div>
+  );
+}
+
 export function ReasoningAccordion({ reasoning, sources, assumptions, ethicsNote }: ReasoningAccordionProps) {
   const [open, setOpen] = useState(false);
 
-  const hasContent = reasoning.length > 0 || sources.length > 0 || assumptions.length > 0 || ethicsNote;
+  const isStructured = reasoning && !Array.isArray(reasoning);
+  const isLegacyArray = Array.isArray(reasoning) && reasoning.length > 0;
+  const structured = isStructured ? (reasoning as StructuredReasoning) : null;
+
+  const hasContent = isStructured || isLegacyArray || sources.length > 0 || assumptions.length > 0 || ethicsNote;
   if (!hasContent) return null;
 
   return (
-    <div className="rounded-xl border border-gray-100 bg-gray-50/70 overflow-hidden">
+    <div className="rounded-2xl border border-slate-200 bg-white overflow-hidden shadow-sm">
+      {/* Header — always visible */}
       <button
         onClick={() => setOpen((v) => !v)}
-        className="w-full flex items-center justify-between px-4 py-2.5 text-left group"
+        className="w-full flex items-start justify-between px-5 py-4 text-left group hover:bg-slate-50 transition-colors"
         aria-expanded={open}
       >
-        <span className="text-[11px] font-semibold text-gray-400 group-hover:text-gray-500 transition-colors">
-          How did we get here?
-        </span>
-        {open ? (
-          <ChevronUp size={13} className="text-gray-300 group-hover:text-gray-400 transition-colors" />
-        ) : (
-          <ChevronDown size={13} className="text-gray-300 group-hover:text-gray-400 transition-colors" />
-        )}
+        <div className="flex-1 min-w-0 pr-4">
+          <div className="flex items-center gap-2 mb-1">
+            <ListChecks size={14} className="text-slate-500 flex-shrink-0" />
+            <span className="text-sm font-bold text-slate-700">How this recommendation was reached</span>
+          </div>
+          {/* Always-visible summary line */}
+          {structured?.summary ? (
+            <p className="text-xs text-slate-500 leading-relaxed">{structured.summary}</p>
+          ) : (
+            <p className="text-xs text-slate-400">Click to see the full reasoning audit trail</p>
+          )}
+        </div>
+        <div className="flex-shrink-0 mt-0.5">
+          {open
+            ? <ChevronUp size={15} className="text-slate-400 group-hover:text-slate-600 transition-colors" />
+            : <ChevronDown size={15} className="text-slate-400 group-hover:text-slate-600 transition-colors" />
+          }
+        </div>
       </button>
 
       {open && (
-        <div className="px-4 pb-4 space-y-4 border-t border-gray-100 pt-3">
+        <div className="border-t border-slate-100">
 
-          {/* Step-by-step reasoning chain */}
-          {reasoning.length > 0 && (
-            <div>
-              <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-2">
-                Reasoning steps
-              </p>
-              <ol className="space-y-2">
-                {reasoning.map((step, i) => (
-                  <li key={i} className="flex items-start gap-2.5 text-[11px] text-gray-600 leading-relaxed">
-                    <span className="flex-shrink-0 w-4 h-4 rounded-full bg-sky-100 text-sky-600 text-[9px] font-bold flex items-center justify-center mt-0.5">
-                      {i + 1}
-                    </span>
-                    {step}
-                  </li>
-                ))}
-              </ol>
+          {structured ? (
+            <div className="divide-y divide-slate-100">
+
+              {/* ── Methodology ─────────────────────────────────────── */}
+              {structured.methodology && (
+                <div className="px-5 py-4 bg-slate-50/50">
+                  <p className="text-xs text-slate-600 leading-relaxed">{structured.methodology}</p>
+                </div>
+              )}
+
+              {/* ── Step-by-step process ─────────────────────────────── */}
+              {structured.steps?.length > 0 && (
+                <div className="px-5 py-4">
+                  <SectionHeading icon={<ListChecks size={11} className="text-slate-500" />} label="Analysis steps" />
+                  <ol className="space-y-3">
+                    {structured.steps.map((step, i) => (
+                      <li key={i} className="flex gap-3">
+                        <div className="flex-shrink-0 flex flex-col items-center">
+                          <div className="w-6 h-6 rounded-full bg-sky-500 text-white text-[10px] font-bold flex items-center justify-center">
+                            {i + 1}
+                          </div>
+                          {i < structured.steps.length - 1 && (
+                            <div className="w-px flex-1 bg-sky-100 mt-1 mb-0" />
+                          )}
+                        </div>
+                        <div className="flex-1 pb-1">
+                          <p className="text-xs font-semibold text-slate-700 mb-0.5">{step.label}</p>
+                          <p className="text-xs text-slate-500 leading-relaxed mb-1.5">{step.detail}</p>
+                          {step.dataPoint && (
+                            <div className="inline-flex items-center gap-1.5 bg-sky-50 border border-sky-100 rounded-lg px-2.5 py-1">
+                              <Database size={9} className="text-sky-500 flex-shrink-0" />
+                              <span className="text-[11px] font-semibold text-sky-700">{step.dataPoint}</span>
+                            </div>
+                          )}
+                        </div>
+                      </li>
+                    ))}
+                  </ol>
+                </div>
+              )}
+
+              {/* ── Key signals ──────────────────────────────────────── */}
+              {structured.keySignals?.length > 0 && (
+                <div className="px-5 py-4">
+                  <SectionHeading icon={<Sliders size={11} className="text-slate-500" />} label="Signals used" />
+                  <div className="space-y-3">
+                    {structured.keySignals.map((sig, i) => (
+                      <div key={i} className="rounded-xl border border-slate-100 bg-slate-50 p-3">
+                        <div className="flex items-start justify-between gap-3 mb-2">
+                          <span className="text-xs font-bold text-slate-700">{sig.signal}</span>
+                          {sig.threshold && (
+                            <span className="flex-shrink-0 text-[10px] font-semibold text-emerald-700 bg-emerald-50 border border-emerald-100 rounded-full px-2 py-0.5">
+                              Threshold: {sig.threshold}
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-[11px] text-slate-500 leading-relaxed mb-1.5">{sig.howUsed}</p>
+                        {sig.limitation && (
+                          <div className="flex items-start gap-1.5">
+                            <AlertCircle size={10} className="text-amber-500 flex-shrink-0 mt-0.5" />
+                            <p className="text-[11px] text-amber-700 leading-relaxed">{sig.limitation}</p>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* ── What was not considered ───────────────────────────── */}
+              {structured.whatWasNotConsidered?.length > 0 && (
+                <div className="px-5 py-4">
+                  <SectionHeading icon={<AlertOctagon size={11} className="text-slate-500" />} label="What was not considered" />
+                  <ul className="space-y-1.5">
+                    {structured.whatWasNotConsidered.map((item, i) => (
+                      <li key={i} className="flex items-start gap-2 text-xs text-slate-500 leading-relaxed">
+                        <span className="flex-shrink-0 w-1.5 h-1.5 rounded-full bg-slate-300 mt-1.5" />
+                        {item}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              {/* ── Alternative interpretations ──────────────────────── */}
+              {structured.alternativeInterpretations?.length > 0 && (
+                <div className="px-5 py-4">
+                  <SectionHeading icon={<GitBranch size={11} className="text-slate-500" />} label="Alternative interpretations" />
+                  <ul className="space-y-1.5">
+                    {structured.alternativeInterpretations.map((item, i) => (
+                      <li key={i} className="flex items-start gap-2 text-xs text-slate-600 leading-relaxed">
+                        <span className="flex-shrink-0 w-1.5 h-1.5 rounded-full bg-amber-300 mt-1.5" />
+                        {item}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              {/* ── Assumptions ──────────────────────────────────────── */}
+              {assumptions.length > 0 && (
+                <div className="px-5 py-4">
+                  <SectionHeading icon={<AlertCircle size={11} className="text-slate-500" />} label="Assumptions made" />
+                  <ul className="space-y-1.5">
+                    {assumptions.map((a, i) => (
+                      <li key={i} className="flex items-start gap-2 text-xs text-amber-700 leading-relaxed bg-amber-50 border border-amber-100 rounded-lg px-3 py-2">
+                        <AlertCircle size={10} className="text-amber-500 flex-shrink-0 mt-0.5" />
+                        {a}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              {/* ── Ethics note ──────────────────────────────────────── */}
+              {ethicsNote && (
+                <div className="px-5 py-4">
+                  <div className="rounded-xl bg-teal-50 border border-teal-200 px-4 py-3">
+                    <div className="flex items-center gap-2 mb-1">
+                      <Scale size={12} className="text-teal-600" />
+                      <span className="text-[11px] font-bold text-teal-700 uppercase tracking-wide">Ethics note</span>
+                    </div>
+                    <p className="text-xs text-teal-700 leading-relaxed">{ethicsNote}</p>
+                  </div>
+                </div>
+              )}
+
             </div>
-          )}
-
-          {/* Data sources */}
-          {sources.length > 0 && (
-            <div>
-              <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-1.5">
-                Sources
-              </p>
-              <ul className="space-y-1">
-                {sources.map((s) => (
-                  <li key={s} className="flex items-center gap-1.5 text-[11px] text-gray-500">
-                    <span className="w-1 h-1 rounded-full bg-gray-300 flex-shrink-0" />
-                    {s}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
-
-          {/* Assumptions */}
-          {assumptions.length > 0 && (
-            <div>
-              <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-1.5">
-                Assumptions
-              </p>
-              <ul className="space-y-1">
-                {assumptions.map((a) => (
-                  <li key={a} className="flex items-center gap-1.5 text-[11px] text-gray-500">
-                    <span className="w-1 h-1 rounded-full bg-amber-300 flex-shrink-0" />
-                    {a}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
-
-          {/* Ethics note */}
-          {ethicsNote && (
-            <div className="rounded-lg bg-teal-50 border border-teal-100 px-3 py-2">
-              <p className="text-[11px] text-teal-700">{ethicsNote}</p>
+          ) : (
+            /* ── Legacy flat array fallback ─────────────────────── */
+            <div className="px-5 py-4 space-y-4">
+              {isLegacyArray && (
+                <div>
+                  <SectionHeading icon={<ListChecks size={11} className="text-slate-500" />} label="Reasoning steps" />
+                  <ol className="space-y-2">
+                    {(reasoning as string[]).map((step, i) => (
+                      <li key={i} className="flex items-start gap-2.5 text-xs text-slate-600 leading-relaxed">
+                        <span className="flex-shrink-0 w-5 h-5 rounded-full bg-sky-100 text-sky-600 text-[9px] font-bold flex items-center justify-center mt-0.5">
+                          {i + 1}
+                        </span>
+                        {step}
+                      </li>
+                    ))}
+                  </ol>
+                </div>
+              )}
+              {sources.length > 0 && (
+                <div>
+                  <SectionHeading icon={<Database size={11} className="text-slate-500" />} label="Sources" />
+                  <ul className="space-y-1">
+                    {sources.map((s) => (
+                      <li key={s} className="flex items-center gap-1.5 text-xs text-slate-500">
+                        <span className="w-1 h-1 rounded-full bg-slate-300 flex-shrink-0" />
+                        {s}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+              {ethicsNote && (
+                <div className="rounded-xl bg-teal-50 border border-teal-200 px-4 py-3">
+                  <p className="text-xs text-teal-700">{ethicsNote}</p>
+                </div>
+              )}
             </div>
           )}
         </div>
