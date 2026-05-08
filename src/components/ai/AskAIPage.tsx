@@ -5,7 +5,7 @@ import {
   TrendingUp, AlertTriangle, BarChart2, User,
   UserPlus, Zap, BookOpen, RefreshCw,
   Download, Mail, X, Check, Paperclip, FileText,
-  ClipboardPaste, Upload,
+  ClipboardPaste, Upload, ShieldAlert, Scale, Lock,
 } from 'lucide-react';
 import {
   query,
@@ -541,6 +541,105 @@ function EmptyOutput({ mode }: { mode: ChatMode }) {
   );
 }
 
+// ── Reduction detection ───────────────────────────────────────────────
+
+const REDUCTION_PATTERN = /\b(redundan|layoff|lay.off|let.go|let go|retrench|downsize|down.size|headcount.reduc|reduc.headcount|who.should.we.cut|who.to.cut|who.should.be.cut|who.to.fire|who.should.we.fire|who.should.be.fired|cut.staff|staff.cut|workforce.reduc|reduc.workforce|reduction.in.force|rif\b|involuntary|termination.list|who.should.leave|who.can.we.lose)\b/i;
+
+function isReductionEntry(entry: OutputEntry): boolean {
+  if (entry.results.some(r => r.kind === 'reduction')) return true;
+  return REDUCTION_PATTERN.test(entry.question) || REDUCTION_PATTERN.test(entry.answer ?? '');
+}
+
+// ── Reduction interstitial modal ──────────────────────────────────────
+
+function ReductionInterstitial({ onConfirm }: { onConfirm: () => void }) {
+  const [checked, setChecked] = useState(false);
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+      <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full overflow-hidden">
+        {/* Red header bar */}
+        <div className="bg-red-600 px-6 py-5 flex items-start gap-4">
+          <div className="flex-shrink-0 w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center mt-0.5">
+            <ShieldAlert size={20} className="text-white" />
+          </div>
+          <div>
+            <p className="text-white font-bold text-base leading-snug">Headcount Reduction Analysis</p>
+            <p className="text-red-100 text-sm mt-0.5 leading-snug">Legal and HR review required before any action</p>
+          </div>
+        </div>
+
+        <div className="px-6 py-5 space-y-4">
+          <p className="text-sm text-gray-700 leading-relaxed">
+            This analysis touches on headcount reduction. It provides <strong>aggregate, structural-level insight only</strong> and must not be used as the basis for individual selection decisions.
+          </p>
+
+          <div className="rounded-xl bg-amber-50 border border-amber-200 px-4 py-3 space-y-2">
+            <div className="flex items-start gap-2">
+              <Scale size={14} className="text-amber-600 flex-shrink-0 mt-0.5" />
+              <p className="text-xs text-amber-800 leading-relaxed">
+                Individual selection for redundancy is a <strong>legal process</strong> requiring documented, objective criteria developed with qualified HR and employment law expertise.
+              </p>
+            </div>
+            <div className="flex items-start gap-2">
+              <AlertTriangle size={14} className="text-amber-600 flex-shrink-0 mt-0.5" />
+              <p className="text-xs text-amber-800 leading-relaxed">
+                Even performance-based criteria can constitute <strong>indirect discrimination</strong> if they disproportionately affect a protected group. Disparate impact analysis by a qualified lawyer is required.
+              </p>
+            </div>
+          </div>
+
+          <label className="flex items-start gap-3 cursor-pointer group">
+            <div
+              onClick={() => setChecked(v => !v)}
+              className={`flex-shrink-0 w-5 h-5 rounded border-2 flex items-center justify-center mt-0.5 transition-colors ${
+                checked ? 'bg-red-600 border-red-600' : 'border-gray-300 group-hover:border-red-400'
+              }`}
+            >
+              {checked && <Check size={11} className="text-white" />}
+            </div>
+            <span className="text-sm text-gray-700 leading-snug select-none" onClick={() => setChecked(v => !v)}>
+              I confirm I understand this analysis must not be used for individual selection decisions without HR and legal review, and that I will involve a qualified employment lawyer before any selection process begins.
+            </span>
+          </label>
+        </div>
+
+        <div className="px-6 pb-6">
+          <button
+            onClick={onConfirm}
+            disabled={!checked}
+            className={`w-full py-3 rounded-xl font-semibold text-sm transition-all ${
+              checked
+                ? 'bg-red-600 text-white hover:bg-red-700 shadow-sm'
+                : 'bg-gray-100 text-gray-400 cursor-not-allowed'
+            }`}
+          >
+            I understand — show analysis
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Reduction warning banner ──────────────────────────────────────────
+
+function ReductionWarningBanner() {
+  return (
+    <div className="flex items-start gap-3 px-5 py-4 bg-red-50 border border-red-200 rounded-2xl">
+      <div className="flex-shrink-0 w-8 h-8 rounded-xl bg-red-100 flex items-center justify-center mt-0.5">
+        <ShieldAlert size={15} className="text-red-600" />
+      </div>
+      <div className="flex-1 min-w-0">
+        <p className="text-sm font-bold text-red-700 mb-1">Legal review required before any action</p>
+        <p className="text-xs text-red-600 leading-relaxed">
+          This analysis is for structural planning only. It must not be used as the basis for individual selection decisions. Individual redundancy selection is a legal process — involve qualified HR and employment law counsel before any criteria are finalised. Even performance-based criteria can constitute indirect discrimination if they disproportionately affect a protected group.
+        </p>
+      </div>
+    </div>
+  );
+}
+
 // ── Output panel ──────────────────────────────────────────────────────
 
 function OutputPanel({
@@ -558,8 +657,12 @@ function OutputPanel({
 }) {
   const [emailOpen, setEmailOpen] = useState(false);
   const [downloaded, setDownloaded] = useState(false);
+  const isReduction = isReductionEntry(entry);
+  const [reductionAcknowledged, setReductionAcknowledged] = useState(false);
+  const exportsLocked = isReduction && !reductionAcknowledged;
 
   function handleDownload() {
+    if (exportsLocked) return;
     downloadAsText(entry);
     setDownloaded(true);
     setTimeout(() => setDownloaded(false), 2000);
@@ -571,6 +674,11 @@ function OutputPanel({
 
   return (
     <>
+      {/* Interstitial — blocks the output until user actively acknowledges */}
+      {isReduction && !reductionAcknowledged && (
+        <ReductionInterstitial onConfirm={() => setReductionAcknowledged(true)} />
+      )}
+
       <div className="h-full overflow-y-auto flex flex-col">
         <div className="flex-1 max-w-4xl mx-auto w-full px-12 py-10">
           {/* Header */}
@@ -589,20 +697,30 @@ function OutputPanel({
               <div className="flex items-center gap-2 flex-shrink-0">
                 <button
                   onClick={handleDownload}
+                  disabled={exportsLocked}
+                  title={exportsLocked ? 'Acknowledge the legal notice to unlock exports' : undefined}
                   className={`flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-lg border transition-all ${
-                    downloaded
-                      ? 'bg-emerald-50 border-emerald-200 text-emerald-600'
+                    exportsLocked
+                      ? 'bg-gray-50 border-gray-200 text-gray-300 cursor-not-allowed'
+                      : downloaded
+                        ? 'bg-emerald-50 border-emerald-200 text-emerald-600'
+                        : 'bg-white border-gray-200 text-gray-500 hover:border-gray-300 hover:text-gray-700'
+                  }`}
+                >
+                  {exportsLocked ? <Lock size={12} /> : downloaded ? <Check size={12} /> : <Download size={12} />}
+                  {downloaded && !exportsLocked ? 'Downloaded' : 'Download'}
+                </button>
+                <button
+                  onClick={() => { if (!exportsLocked) setEmailOpen(true); }}
+                  disabled={exportsLocked}
+                  title={exportsLocked ? 'Acknowledge the legal notice to unlock exports' : undefined}
+                  className={`flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-lg border transition-all ${
+                    exportsLocked
+                      ? 'bg-gray-50 border-gray-200 text-gray-300 cursor-not-allowed'
                       : 'bg-white border-gray-200 text-gray-500 hover:border-gray-300 hover:text-gray-700'
                   }`}
                 >
-                  {downloaded ? <Check size={12} /> : <Download size={12} />}
-                  {downloaded ? 'Downloaded' : 'Download'}
-                </button>
-                <button
-                  onClick={() => setEmailOpen(true)}
-                  className="flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-lg border bg-white border-gray-200 text-gray-500 hover:border-gray-300 hover:text-gray-700 transition-all"
-                >
-                  <Mail size={12} />
+                  {exportsLocked ? <Lock size={12} /> : <Mail size={12} />}
                   Email me
                 </button>
               </div>
@@ -614,6 +732,13 @@ function OutputPanel({
               </p>
             )}
           </div>
+
+          {/* Persistent reduction warning banner — replaces the subtle footer */}
+          {isReduction && reductionAcknowledged && (
+            <div className="mb-6">
+              <ReductionWarningBanner />
+            </div>
+          )}
 
           {/* Context request — shown when AI explicitly needs more info */}
           {entry.needsMoreContext && entry.contextQuestion && (
