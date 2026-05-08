@@ -894,7 +894,7 @@ export function AskAIPage({ initialQuestion, onNavigate }: Props) {
     };
 
     const patchReasoning = (
-      opts: Partial<Pick<OutputEntry, 'reasoning' | 'sources' | 'assumptions' | 'confidence' | 'ethicsNote' | 'careermindsSuggestion' | 'needsMoreContext' | 'contextQuestion' | 'answer'>>
+      opts: Partial<Pick<OutputEntry, 'reasoning' | 'sources' | 'assumptions' | 'confidence' | 'ethicsNote' | 'careermindsSuggestion' | 'needsMoreContext' | 'contextQuestion'>>
     ) => {
       setConversations(prev => prev.map(c => ({
         ...c,
@@ -936,7 +936,6 @@ export function AskAIPage({ initialQuestion, onNavigate }: Props) {
       // Fetch AI reasoning in background and patch it in when ready
       callWorkforceAI(trimmed, docContext).then(aiResp => {
         patchReasoning({
-          answer: aiResp.text || response.text,
           reasoning: aiResp.reasoning,
           sources: aiResp.sources?.length ? aiResp.sources : ['Structured workforce data'],
           assumptions: aiResp.assumptions,
