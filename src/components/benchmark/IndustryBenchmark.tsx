@@ -4,6 +4,7 @@ import {
   BarChart3, Globe, Star, AlertTriangle, ChevronDown, ChevronUp, Info,
   LogOut, Calendar, Building2, Briefcase,
 } from 'lucide-react';
+
 import { ExportButtons } from '../ExportButtons';
 import { UpsellBanner } from '../UpsellBanner';
 import { FeedbackBanner } from '../feedback/FeedbackBanner';
@@ -12,7 +13,6 @@ import {
   getDeptSkillBenchmarks,
   getDeptCompBenchmarks,
   getDeptSizeBenchmarks,
-  getCategoryBenchmarks,
   getOrgBenchmarks,
   getTopDestinations,
   getAttritionTrend,
@@ -25,22 +25,20 @@ import {
   ACME_FRAMEWORK_MATURITY,
   ACME_PROMOTION_VELOCITY,
   type DeptBenchmark,
-  type CategoryBenchmark,
   type QuartilePosition,
   type PeerCompany,
   type AttritionRecord,
 } from '../../data/benchmarkData';
 import { DEPT_COLORS, type Department } from '../../data/mockData';
 
-type TabId = 'overview' | 'skills' | 'compensation' | 'team-size' | 'categories' | 'talent-flow';
+type TabId = 'overview' | 'skills' | 'compensation' | 'team-size' | 'talent-flow';
 
 const TABS: { id: TabId; label: string; icon: React.ReactNode }[] = [
-  { id: 'overview',     label: 'Overview',          icon: <Globe size={13} /> },
-  { id: 'skills',       label: 'Skill Competency',  icon: <BarChart3 size={13} /> },
-  { id: 'compensation', label: 'Compensation',       icon: <DollarSign size={13} /> },
-  { id: 'team-size',    label: 'Team Composition',   icon: <Users size={13} /> },
-  { id: 'categories',   label: 'Skill Categories',  icon: <Star size={13} /> },
-  { id: 'talent-flow',  label: 'Talent Flow',        icon: <LogOut size={13} /> },
+  { id: 'overview',     label: 'Overview',         icon: <Globe size={13} /> },
+  { id: 'skills',       label: 'Skill Competency', icon: <BarChart3 size={13} /> },
+  { id: 'compensation', label: 'Compensation',      icon: <DollarSign size={13} /> },
+  { id: 'team-size',    label: 'Team Composition',  icon: <Users size={13} /> },
+  { id: 'talent-flow',  label: 'Talent Flow',       icon: <LogOut size={13} /> },
 ];
 
 function fmtK(n: number) {
@@ -388,73 +386,6 @@ function TeamSizeTab({ peers, onNavigateToGapReport }: TabProps) {
   );
 }
 
-function CategoriesTab({ peers }: { peers: PeerCompany[] }) {
-  const benchmarks = useMemo(() => getCategoryBenchmarks(peers), [peers]);
-  const [showAll, setShowAll] = useState(false);
-  const visible = showAll ? benchmarks : benchmarks.slice(0, 12);
-
-  return (
-    <div className="space-y-4">
-      <div className="flex items-start gap-2 bg-sky-50 border border-sky-100 rounded-xl p-4">
-        <Info size={14} className="text-sky-500 mt-0.5 flex-shrink-0" />
-        <p className="text-xs text-sky-700">Average competency by skill category across all departments, sorted by gap to peer median. Sorted worst gaps first.</p>
-      </div>
-      <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden shadow-sm">
-        <div className="grid grid-cols-[1fr_80px_80px_160px_120px] gap-3 px-5 py-3 border-b border-gray-100 bg-gray-50">
-          <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Category</span>
-          <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider text-center">Acme</span>
-          <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider text-center">Median</span>
-          <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Peer distribution</span>
-          <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider text-right">Position</span>
-        </div>
-        {visible.map((b, i) => {
-          const cfg = QUARTILE_CONFIG[b.position];
-          return (
-            <div
-              key={b.category}
-              className={`grid grid-cols-[1fr_80px_80px_160px_120px] gap-3 px-5 py-3 items-center ${i % 2 === 0 ? 'bg-white' : 'bg-gray-50/50'}`}
-            >
-              <span className="text-xs font-medium text-gray-700">{b.category}</span>
-              <span className={`text-sm font-black text-center ${cfg.color}`}>{b.acmeValue.toFixed(1)}</span>
-              <span className="text-xs font-semibold text-gray-500 text-center">{b.peerMedian.toFixed(1)}</span>
-              <div className="relative h-5 flex items-center">
-                <div className="absolute inset-x-0 h-1.5 bg-gray-100 rounded-full" />
-                {(() => {
-                  const { min, max, p25, p75, p50 } = b.quartiles;
-                  const range = max - min || 1;
-                  const pct = (v: number) => ((v - min) / range) * 100;
-                  return (
-                    <>
-                      <div className="absolute h-3 bg-gray-200 rounded-sm" style={{ left: `${pct(p25)}%`, width: `${pct(p75) - pct(p25)}%` }} />
-                      <div className="absolute h-4 w-0.5 bg-gray-400" style={{ left: `${pct(p50)}%` }} />
-                      <div
-                        className="absolute w-3 h-3 rounded-full border-2 border-white shadow-sm z-10 -translate-x-1/2"
-                        style={{ left: `${Math.min(Math.max(pct(b.acmeValue), 2), 98)}%`, background: '#0ea5e9' }}
-                      />
-                    </>
-                  );
-                })()}
-              </div>
-              <div className="text-right">
-                <QuartileBadge pos={b.position} />
-                <DeltaChip delta={b.delta} />
-              </div>
-            </div>
-          );
-        })}
-      </div>
-      {benchmarks.length > 12 && (
-        <button
-          onClick={() => setShowAll(s => !s)}
-          className="flex items-center gap-1.5 text-xs text-gray-400 hover:text-gray-700 transition-colors mx-auto"
-        >
-          {showAll ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
-          {showAll ? 'Show fewer' : `Show all ${benchmarks.length} categories`}
-        </button>
-      )}
-    </div>
-  );
-}
 
 // ── Talent Flow tab ─────────────────────────────────────────────────────
 
@@ -862,8 +793,7 @@ export function IndustryBenchmark({ initialTab, onNavigateToGapReport }: Props) 
           {tab === 'skills'       && <SkillsTab peers={peers} onNavigateToGapReport={onNavigateToGapReport} />}
           {tab === 'compensation' && <CompensationTab peers={peers} onNavigateToGapReport={onNavigateToGapReport} />}
           {tab === 'team-size'    && <TeamSizeTab peers={peers} onNavigateToGapReport={onNavigateToGapReport} />}
-          {tab === 'categories'   && <CategoriesTab peers={peers} />}
-          {tab === 'talent-flow'  && <TalentFlowTab />}
+{tab === 'talent-flow'  && <TalentFlowTab />}
           {/* Careerminds upsell — contextual to compensation tab, general otherwise */}
           <UpsellBanner
             variant={tab === 'compensation' ? 'comp-review' : 'talent-development'}
