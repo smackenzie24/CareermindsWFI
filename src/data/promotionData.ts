@@ -459,84 +459,91 @@ function scorePerson(person: Person, framework: LevelFramework): number {
   return Math.round((met / framework.criteria.length) * 100);
 }
 
+// Map an IC level id to a numeric rank: IC1=1, IC2=2, IC3=3, IC4=4, M1=3, M2=4
+function icRank(levelId: string): number {
+  if (levelId.includes('ic4') || levelId.includes('m2')) return 4;
+  if (levelId.includes('ic3') || levelId.includes('m1')) return 3;
+  if (levelId.includes('ic2')) return 2;
+  return 1;
+}
+
+/**
+ * Compute how well a person fits their *current* department at their current
+ * level by scoring them against every IC framework in their dept and taking
+ * the best (highest) match. This gives a realistic baseline even when the
+ * person hasn't been assessed against every framework.
+ */
+function currentDeptFitPct(person: Person): number {
+  const deptFrameworks = LEVEL_FRAMEWORKS.filter(f => {
+    const lvl = LEVEL_DEFINITIONS.find(l => l.id === f.levelId);
+    return lvl?.department === person.department && lvl?.track === 'IC';
+  });
+  if (deptFrameworks.length === 0) return 0;
+  const scores = deptFrameworks.map(f => scorePerson(person, f));
+  // Return the best score — this represents "how well do they fit the role family"
+  return Math.max(...scores);
+}
+
 /**
  * For each person with inferred skills, compute their fit score against every
- * other department's entry-level framework. Flag those whose cross-dept fit
- * exceeds their current-dept readiness by MIN_DELTA or more.
+ * other department's IC frameworks. Surface candidates where:
+ *   - suggested dept fit >= MIN_SUGGESTED_FIT (they're a plausible match)
+ *   - suggested fit exceeds current dept fit by MIN_DELTA (it's meaningfully better)
  *
- * Only considers IC-track frameworks (not manager levels) to avoid noise.
- * Returns results sorted by delta descending.
+ * Only considers IC-track frameworks. Returns results sorted by delta descending.
  */
-const ROLE_FIT_MIN_DELTA = 15; // minimum gap (in %) to surface as a candidate
+const ROLE_FIT_MIN_SUGGESTED = 50; // suggested dept fit must be at least 50%
+const ROLE_FIT_MIN_DELTA = 20;     // must beat current dept fit by at least 20 points
 
 export function getCrossDeptFitCandidates(): CrossDeptFitResult[] {
   const results: CrossDeptFitResult[] = [];
-  const allReadiness = getAllReadiness();
 
   for (const person of PEOPLE) {
-    // Only flag people with inferred skills — without LinkedIn data we can't do cross-dept fit
     if (!person.inferredSkills || Object.keys(person.inferredSkills).length === 0) continue;
 
-    // Current readiness
-    const currentReadinessResult = allReadiness.find(r => r.person.id === person.id);
-    const currentReadinessPct = currentReadinessResult?.readinessPct ?? 0;
+    const currentFit = currentDeptFitPct(person);
+    const personRank = icRank(person.currentLevelId);
 
-    // Try every framework that belongs to a DIFFERENT department on the IC track
     for (const framework of LEVEL_FRAMEWORKS) {
       const targetLevel = LEVEL_DEFINITIONS.find(l => l.id === framework.levelId);
       if (!targetLevel) continue;
       if (targetLevel.department === person.department) continue;
       if (targetLevel.track !== 'IC') continue;
 
-      // Only look at equivalent or adjacent levels (IC1, IC2, IC3 equivalent)
-      // We check the first IC level in each dept to find baseline fit
-      const currentLevel = LEVEL_DEFINITIONS.find(l => l.id === person.currentLevelId);
-      if (!currentLevel) continue;
-      // Map IC track positions: IC1=1, IC2=2, IC3=3, IC4=4
-      const icRank = (id: string) => {
-        if (id.includes('ic1')) return 1;
-        if (id.includes('ic2')) return 2;
-        if (id.includes('ic3')) return 3;
-        if (id.includes('ic4')) return 4;
-        if (id.includes('m1')) return 3;
-        if (id.includes('m2')) return 4;
-        return 2;
-      };
-      // Only compare to same or adjacent IC level in target dept
-      const currentRank = icRank(person.currentLevelId);
+      // Only score against same or adjacent IC level in the target dept
       const targetRank = icRank(framework.levelId);
-      if (Math.abs(targetRank - currentRank) > 1) continue;
+      if (Math.abs(targetRank - personRank) > 1) continue;
 
       const fitPct = scorePerson(person, framework);
-      const delta = fitPct - currentReadinessPct;
+      if (fitPct < ROLE_FIT_MIN_SUGGESTED) continue;
 
-      if (delta >= ROLE_FIT_MIN_DELTA) {
-        const matchedCount = framework.criteria.filter(c => {
-          const skills = mergedSkills(person);
-          return (skills[c.skillId] ?? 0) >= c.requiredRating;
-        }).length;
+      const delta = fitPct - currentFit;
+      if (delta < ROLE_FIT_MIN_DELTA) continue;
 
-        // Top inferred signals that overlap with this framework's criteria
-        const frameworkSkillIds = new Set(framework.criteria.map(c => c.skillId));
-        const topSignals = (person.inferredNotes ?? [])
-          .filter(n => frameworkSkillIds.has(n.skillId))
-          .slice(0, 3);
+      const skills = mergedSkills(person);
+      const matchedCount = framework.criteria.filter(
+        c => (skills[c.skillId] ?? 0) >= c.requiredRating
+      ).length;
 
-        results.push({
-          person,
-          currentDept: person.department,
-          currentReadinessPct,
-          suggestedDept: targetLevel.department,
-          suggestedLevelId: framework.levelId,
-          suggestedLevelLabel: targetLevel.label,
-          fitPct,
-          delta,
-          matchedCriteria: matchedCount,
-          totalCriteria: framework.criteria.length,
-          topInferredSignals: topSignals,
-          linkedInSignals: person.linkedInSignals ?? [],
-        });
-      }
+      const frameworkSkillIds = new Set(framework.criteria.map(c => c.skillId));
+      const topSignals = (person.inferredNotes ?? [])
+        .filter(n => frameworkSkillIds.has(n.skillId))
+        .slice(0, 3);
+
+      results.push({
+        person,
+        currentDept: person.department,
+        currentReadinessPct: currentFit,
+        suggestedDept: targetLevel.department,
+        suggestedLevelId: framework.levelId,
+        suggestedLevelLabel: targetLevel.label,
+        fitPct,
+        delta,
+        matchedCriteria: matchedCount,
+        totalCriteria: framework.criteria.length,
+        topInferredSignals: topSignals,
+        linkedInSignals: person.linkedInSignals ?? [],
+      });
     }
   }
 
