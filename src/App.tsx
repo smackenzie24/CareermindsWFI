@@ -56,7 +56,6 @@ interface NavState {
   view: ActiveView;
   department?: Department;
   managerId?: string;
-  benchmarkTab?: 'overview' | 'skills' | 'compensation' | 'team-size' | 'categories';
   aiQuestion?: string;
 }
 
@@ -83,7 +82,6 @@ export default function App() {
       view: target.view as ActiveView,
       department: target.department,
       managerId: target.managerId,
-      benchmarkTab: target.benchmarkTab,
     });
   }
 
@@ -221,9 +219,7 @@ export default function App() {
           />
         )}
         {nav.view === 'benchmark' && (
-          <IndustryBenchmark
-            initialTab={nav.benchmarkTab}
-          />
+          <IndustryBenchmark onNavigateToGapReport={(dept) => setNav({ view: 'gap-report', department: dept })} />
         )}
         {nav.view === 'journal' && <CommitmentsJournal onReviewSource={openAI} />}
         {nav.view === 'how-it-works' && (

@@ -40,7 +40,6 @@ export interface NavTarget {
   department?: Department;
   skill?: string;
   managerId?: string;
-  benchmarkTab?: 'overview' | 'skills' | 'compensation' | 'team-size' | 'categories' | 'talent-flow';
 }
 
 export interface DeptHealthSnapshot {
@@ -272,7 +271,7 @@ export function computeExecSummary(): ExecSummary {
       title: `${worst.department} skills in bottom quartile vs industry`,
       detail: `Your ${worst.department} team's average competency (${worst.acmeValue.toFixed(1)}/5) is below 75% of similar-sized companies. This affects recruiting, retention, and delivery capacity.`,
       metric: `${worst.acmeValue.toFixed(1)} vs ${worst.peerMedian.toFixed(1)} peer median`,
-      action: { view: 'benchmark', benchmarkTab: 'skills' },
+      action: { view: 'benchmark' },
       actionLabel: 'View skill benchmarks',
       secondaryAction: { view: 'gap-report', department: worst.department },
       secondaryLabel: `${worst.department} gap report`,
@@ -289,7 +288,7 @@ export function computeExecSummary(): ExecSummary {
       title: `${worst.department} compensation below market`,
       detail: `Average ${worst.department} comp is ${Math.abs(Math.round(worst.delta / 1000))}K below the peer median. Combined with bottom-quartile skills, this creates a flight-risk profile.`,
       metric: `$${Math.abs(Math.round(worst.delta / 1000))}K below median`,
-      action: { view: 'benchmark', benchmarkTab: 'compensation' },
+      action: { view: 'benchmark' },
       actionLabel: 'Compensation benchmarks',
       source: 'benchmark',
     });
