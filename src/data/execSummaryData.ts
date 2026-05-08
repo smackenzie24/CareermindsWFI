@@ -13,9 +13,13 @@ import {
   getCategoryBenchmarks,
   getOrgBenchmarks,
   getOverallBenchmarkSummary,
+  computeAttritionScore,
+  ATTRITION_RECORDS,
+  ACME_TOTAL_HEADCOUNT,
   QUARTILE_CONFIG,
   SIMILAR_PEERS,
   type QuartilePosition,
+  type AttritionScore,
 } from './benchmarkData';
 
 export type RiskLevel = 'critical' | 'warning' | 'healthy';
@@ -79,6 +83,7 @@ export interface ExecSummary {
   benchmarkPosition: QuartilePosition;
   benchmarkRank: number;
   benchmarkTotal: number;
+  attritionScore: AttritionScore;
 
   /** Check-in coverage */
   checkInCoverage: number; // % who have checked in within 30 days
@@ -103,6 +108,7 @@ function computeOrgHealth(
   stalledCount: number,
   managersNeedingSupport: number,
   benchmarkPos: QuartilePosition,
+  attritionRiskScore: number,
 ): number {
   let score = 100;
   score -= Math.min(criticalGapCount * 4, 25);
@@ -110,6 +116,8 @@ function computeOrgHealth(
   score -= managersNeedingSupport * 5;
   const benchPenalty = { top: 0, 'above-median': 5, 'below-median': 12, bottom: 20 }[benchmarkPos];
   score -= benchPenalty;
+  // Attrition risk: scale 0–100 score to 0–15 penalty
+  score -= Math.round((attritionRiskScore / 100) * 15);
   return Math.max(10, Math.min(100, Math.round(score)));
 }
 
@@ -203,12 +211,16 @@ export function computeExecSummary(): ExecSummary {
   const underPaidDepts = compBenchmarks.filter(b => b.position === 'bottom' || b.position === 'below-median');
   const topGapCategories = categoryBenchmarks.filter(b => b.delta < -0.2).slice(0, 3);
 
+  // ── Attrition score ────────────────────────────────────────────────
+  const attritionScore = computeAttritionScore(ATTRITION_RECORDS, ACME_TOTAL_HEADCOUNT);
+
   // ── Org health ─────────────────────────────────────────────────────
   const orgHealthScore = computeOrgHealth(
     criticalSkillGaps,
     totalStalled,
     managersNeedingSupport.length,
     benchSummary.overallPosition,
+    attritionScore.score,
   );
 
   // ── Build risk list ────────────────────────────────────────────────
@@ -290,6 +302,20 @@ export function computeExecSummary(): ExecSummary {
       metric: `$${Math.abs(Math.round(worst.delta / 1000))}K below median`,
       action: { view: 'benchmark' },
       actionLabel: 'Compensation benchmarks',
+      source: 'benchmark',
+    });
+  }
+
+  // Attrition risk signal
+  if (attritionScore.score >= 45) {
+    risks.push({
+      id: 'attrition-risk',
+      level: attritionScore.score >= 70 ? 'critical' : 'warning',
+      title: `Attrition risk: ${attritionScore.riskLabel} (${attritionScore.annualisedRate}% annualised)`,
+      detail: attritionScore.headline,
+      metric: `${attritionScore.competitorPct}% to competitors · ${attritionScore.compDrivenPct}% comp-driven`,
+      action: { view: 'benchmark' },
+      actionLabel: 'View talent flow',
       source: 'benchmark',
     });
   }
@@ -421,6 +447,7 @@ export function computeExecSummary(): ExecSummary {
     benchmarkPosition: benchSummary.overallPosition,
     benchmarkRank: benchSummary.acmeRank,
     benchmarkTotal: benchSummary.totalCompanies,
+    attritionScore,
     checkInCoverage,
     overdueCheckIns,
     criticalCheckIns,

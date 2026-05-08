@@ -568,3 +568,107 @@ export function getAttritionTrend(records: AttritionRecord[] = ATTRITION_RECORDS
     .map(([month, count]) => ({ month, count }))
     .sort((a, b) => new Date(a.month).getTime() - new Date(b.month).getTime());
 }
+
+// ── Attrition risk score ────────────────────────────────────────────────
+
+/**
+ * Industry peer attrition rates (annualised %, voluntarily disclosed).
+ * Typical healthy SaaS scaleup: 10–15% annual voluntary attrition.
+ */
+const PEER_ATTRITION_RATES: number[] = [8, 10, 11, 12, 13, 14, 15, 17];
+
+export interface AttritionScore {
+  /** 0–100: higher = worse (more at-risk) */
+  score: number;
+  /** Percentile label vs peers */
+  position: QuartilePosition;
+  /** Annualised attrition rate as a percentage */
+  annualisedRate: number;
+  peerMedianRate: number;
+  peerRateQuartiles: Quartile;
+  /** % of leavers going to direct competitors */
+  competitorPct: number;
+  /** % of leavers citing compensation */
+  compDrivenPct: number;
+  /** % of leavers citing career growth */
+  careerDrivenPct: number;
+  /** Average tenure at exit (months) */
+  avgTenureMonths: number;
+  /** Human-readable risk label */
+  riskLabel: 'Low' | 'Moderate' | 'Elevated' | 'High';
+  riskColor: string;
+  riskBg: string;
+  riskBorder: string;
+  /** One-line headline for the score card */
+  headline: string;
+}
+
+export function computeAttritionScore(
+  records: AttritionRecord[] = ATTRITION_RECORDS,
+  totalHeadcount: number = ACME_TOTAL_HEADCOUNT,
+): AttritionScore {
+  const total = records.length;
+
+  // Annualised voluntary attrition rate
+  const annualisedRate = parseFloat(((total / totalHeadcount) * 100).toFixed(1));
+
+  const rateQuartiles = computeQuartiles(PEER_ATTRITION_RATES);
+  // For attrition, LOWER is better — so we invert position logic
+  const rawPosition = getQuartilePosition(annualisedRate, rateQuartiles);
+  // Invert: if rate is in "top" (highest attrition) → that's actually bottom quartile for health
+  const INVERT: Record<QuartilePosition, QuartilePosition> = {
+    top: 'bottom',
+    'above-median': 'below-median',
+    'below-median': 'above-median',
+    bottom: 'top',
+  };
+  const position = INVERT[rawPosition];
+
+  // Sub-metrics
+  const competitorCount  = records.filter(r => r.destinationType === 'Competitor').length;
+  const compDrivenCount  = records.filter(r => r.reason === 'compensation').length;
+  const careerDrivenCount = records.filter(r => r.reason === 'career-growth').length;
+  const competitorPct  = total > 0 ? Math.round((competitorCount  / total) * 100) : 0;
+  const compDrivenPct  = total > 0 ? Math.round((compDrivenCount  / total) * 100) : 0;
+  const careerDrivenPct = total > 0 ? Math.round((careerDrivenCount / total) * 100) : 0;
+  const avgTenureMonths = total > 0
+    ? Math.round(records.reduce((s, r) => s + r.tenureMonths, 0) / total)
+    : 0;
+
+  // Composite risk score (0–100, higher = worse)
+  // Rate contributes most weight; competitor drain and early-tenure exits amplify it
+  const rateScore       = Math.min((annualisedRate / 25) * 50, 50);          // 0–50 based on rate
+  const competitorScore = Math.min((competitorPct / 40) * 20, 20);           // 0–20
+  const compScore       = Math.min((compDrivenPct / 60) * 15, 15);           // 0–15
+  const tenureScore     = avgTenureMonths < 18 ? 15 : avgTenureMonths < 24 ? 8 : 0; // 0–15
+  const score = Math.round(rateScore + competitorScore + compScore + tenureScore);
+
+  const riskLabel: AttritionScore['riskLabel'] =
+    score >= 70 ? 'High' : score >= 45 ? 'Elevated' : score >= 25 ? 'Moderate' : 'Low';
+  const riskColor  = score >= 70 ? 'text-red-700'    : score >= 45 ? 'text-amber-700'  : score >= 25 ? 'text-sky-700'     : 'text-emerald-700';
+  const riskBg     = score >= 70 ? 'bg-red-50'       : score >= 45 ? 'bg-amber-50'     : score >= 25 ? 'bg-sky-50'        : 'bg-emerald-50';
+  const riskBorder = score >= 70 ? 'border-red-200'  : score >= 45 ? 'border-amber-200': score >= 25 ? 'border-sky-200'   : 'border-emerald-200';
+
+  const headline =
+    score >= 70 ? `Attrition is a critical risk — ${annualisedRate}% rate with ${competitorPct}% going to competitors`
+    : score >= 45 ? `Elevated attrition (${annualisedRate}%) — compensation and career growth are primary drivers`
+    : score >= 25 ? `Moderate attrition risk (${annualisedRate}%) — early-tenure exits merit attention`
+    : `Healthy attrition levels at ${annualisedRate}% — below peer median`;
+
+  return {
+    score,
+    position,
+    annualisedRate,
+    peerMedianRate: rateQuartiles.p50,
+    peerRateQuartiles: rateQuartiles,
+    competitorPct,
+    compDrivenPct,
+    careerDrivenPct,
+    avgTenureMonths,
+    riskLabel,
+    riskColor,
+    riskBg,
+    riskBorder,
+    headline,
+  };
+}

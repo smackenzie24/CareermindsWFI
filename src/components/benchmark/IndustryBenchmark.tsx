@@ -26,11 +26,12 @@ import {
   getOrgBenchmarks,
   getTopDestinations,
   getAttritionTrend,
+  computeAttritionScore,
   ATTRITION_RECORDS,
+  ACME_TOTAL_HEADCOUNT,
   QUARTILE_CONFIG,
   PEER_COMPANIES,
   SIMILAR_PEERS,
-  ACME_TOTAL_HEADCOUNT,
   type DeptBenchmark,
   type QuartilePosition,
   type PeerCompany,
@@ -323,6 +324,7 @@ export function IndustryBenchmark({ onNavigateToGapReport }: Props) {
   const compRecs         = useMemo(() => getCompRecommendations(peers),         [peers]);
   const compositionRecs  = useMemo(() => getCompositionRecommendations(peers),  [peers]);
   const talentFlowRecs   = useMemo(() => getTalentFlowRecommendations(),        []);
+  const attritionScore   = useMemo(() => computeAttritionScore(ATTRITION_RECORDS, ACME_TOTAL_HEADCOUNT), []);
 
   const deptMetricRecs = deptMetric === 'skills' ? skillsRecs
     : deptMetric === 'compensation' ? compRecs
@@ -648,6 +650,57 @@ export function IndustryBenchmark({ onNavigateToGapReport }: Props) {
                 Shows employees who left Acme Corp in the last 12 months and the companies they joined.
                 Data sourced from exit interviews and publicly available LinkedIn signals.
               </p>
+            </div>
+
+            {/* Attrition score card */}
+            <div className={`rounded-2xl border p-6 ${attritionScore.riskBg} ${attritionScore.riskBorder}`}>
+              <div className="flex items-start justify-between gap-6">
+                <div className="flex-1">
+                  <p className="text-xs font-semibold text-gray-500 uppercase tracking-widest mb-1">Attrition Risk Score</p>
+                  <div className="flex items-baseline gap-3 mb-2">
+                    <span className={`text-5xl font-black leading-none ${attritionScore.riskColor}`}>
+                      {attritionScore.score}
+                    </span>
+                    <div>
+                      <span className={`text-base font-bold ${attritionScore.riskColor}`}>/100</span>
+                      <span className={`ml-2 text-sm font-bold ${attritionScore.riskColor}`}>{attritionScore.riskLabel} risk</span>
+                    </div>
+                  </div>
+                  <p className="text-sm text-gray-600 max-w-xl">{attritionScore.headline}</p>
+                </div>
+                {/* Score bar */}
+                <div className="flex-shrink-0 w-40">
+                  <div className="relative h-3 bg-white/60 rounded-full overflow-hidden border border-white mb-2">
+                    <div
+                      className={`h-full rounded-full transition-all ${
+                        attritionScore.score >= 70 ? 'bg-red-400' :
+                        attritionScore.score >= 45 ? 'bg-amber-400' :
+                        attritionScore.score >= 25 ? 'bg-sky-400' : 'bg-emerald-400'
+                      }`}
+                      style={{ width: `${attritionScore.score}%` }}
+                    />
+                  </div>
+                  <div className="flex justify-between text-[9px] text-gray-400">
+                    <span>Low</span><span>High</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Sub-metrics */}
+              <div className="grid grid-cols-4 gap-3 mt-5">
+                {[
+                  { label: 'Annualised rate', value: `${attritionScore.annualisedRate}%`, sub: `Peer median: ${attritionScore.peerMedianRate}%`, warn: attritionScore.annualisedRate > attritionScore.peerMedianRate },
+                  { label: 'To competitors',  value: `${attritionScore.competitorPct}%`,  sub: 'of leavers',                                      warn: attritionScore.competitorPct >= 20 },
+                  { label: 'Comp-driven',     value: `${attritionScore.compDrivenPct}%`,  sub: 'cited pay as reason',                             warn: attritionScore.compDrivenPct >= 40 },
+                  { label: 'Avg tenure exit', value: `${attritionScore.avgTenureMonths}m`,sub: 'months at exit',                                   warn: attritionScore.avgTenureMonths < 18 },
+                ].map(m => (
+                  <div key={m.label} className="bg-white/60 rounded-xl px-4 py-3 border border-white">
+                    <p className={`text-xl font-black leading-none ${m.warn ? attritionScore.riskColor : 'text-gray-700'}`}>{m.value}</p>
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-gray-500 mt-1.5">{m.label}</p>
+                    <p className="text-[10px] text-gray-400 mt-0.5">{m.sub}</p>
+                  </div>
+                ))}
+              </div>
             </div>
 
             {/* Dept filter */}

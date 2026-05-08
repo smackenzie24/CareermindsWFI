@@ -1,6 +1,6 @@
 import { useMemo, useState, useCallback } from 'react';
 import { ChevronDown, ChevronUp } from 'lucide-react';
-import { AlertTriangle, CheckCircle2, TrendingUp, Users, BarChart3, Globe, Star, ArrowRight, Zap, Shield, Clock, CalendarX, Sparkles, SendHorizontal as SendHorizonal, RefreshCw } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, TrendingUp, Users, BarChart3, Globe, Star, ArrowRight, Zap, Shield, Clock, CalendarX, Sparkles, SendHorizontal as SendHorizonal, RefreshCw, LogOut } from 'lucide-react';
 import {
   computeExecSummary,
   type ExecSummary,
@@ -152,6 +152,13 @@ function buildKpiCards(
   const rankColor = summary.benchmarkRank === 1 ? 'text-emerald-600' :
     summary.benchmarkRank <= Math.ceil(summary.benchmarkTotal / 2) ? 'text-amber-500' : 'text-red-600';
 
+  const attritionColor = summary.attritionScore.score >= 70 ? 'text-red-600' :
+    summary.attritionScore.score >= 45 ? 'text-amber-500' :
+    summary.attritionScore.score >= 25 ? 'text-sky-600' : 'text-emerald-600';
+  const attritionIconColor = summary.attritionScore.score >= 70 ? 'text-red-500' :
+    summary.attritionScore.score >= 45 ? 'text-amber-500' :
+    summary.attritionScore.score >= 25 ? 'text-sky-500' : 'text-emerald-500';
+
   const checkInColor = totalFlagged === 0 ? 'text-emerald-600' :
     summary.criticalCheckIns > 0 ? 'text-red-600' : 'text-amber-500';
 
@@ -213,6 +220,17 @@ function buildKpiCards(
       valueNoteColor: 'text-gray-500',
       valueColor: rankColor,
       label: 'Industry Rank',
+      action: { view: 'benchmark' },
+    },
+    {
+      icon: <LogOut size={20} />,
+      iconColor: attritionIconColor,
+      value: String(summary.attritionScore.score),
+      valueSuffix: '/100',
+      valueNote: summary.attritionScore.riskLabel,
+      valueNoteColor: attritionColor,
+      valueColor: attritionColor,
+      label: 'Attrition Risk',
       action: { view: 'benchmark' },
     },
     {
@@ -557,8 +575,8 @@ export function ExecutiveSummary({ onNavigate, onAskAI }: Props) {
                 className="flex items-center gap-1.5 text-xs text-gray-400 hover:text-gray-600 transition-colors group"
               >
                 {kpiExpanded
-                  ? <><ChevronUp size={13} className="group-hover:text-gray-600" />Hide managers, rank &amp; check-ins</>
-                  : <><ChevronDown size={13} className="group-hover:text-gray-600" />Show managers, rank &amp; check-ins</>
+                  ? <><ChevronUp size={13} className="group-hover:text-gray-600" />Hide managers, rank, attrition &amp; check-ins</>
+                  : <><ChevronDown size={13} className="group-hover:text-gray-600" />Show managers, rank, attrition &amp; check-ins</>
                 }
               </button>
             </div>
