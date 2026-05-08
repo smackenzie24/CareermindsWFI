@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import {
   TrendingUp, TrendingDown, Minus, Users, DollarSign,
   BarChart3, Globe, Star, AlertTriangle, ChevronDown, ChevronUp, Info,
-  LogOut, Calendar, Building2, Briefcase,
+  LogOut, Calendar, Building2,
 } from 'lucide-react';
 
 import { ExportButtons } from '../ExportButtons';
@@ -398,21 +398,6 @@ const DESTINATION_TYPE_CONFIG: Record<AttritionRecord['destinationType'], { colo
   'Unknown':    { color: 'text-gray-400',    bg: 'bg-gray-50',    border: 'border-gray-200',   dot: 'bg-gray-300'   },
 };
 
-const REASON_LABELS: Record<AttritionRecord['reason'], string> = {
-  'compensation':  'Compensation',
-  'career-growth': 'Career growth',
-  'culture':       'Culture fit',
-  'location':      'Location / remote',
-  'unknown':       'Unknown',
-};
-
-const REASON_COLORS: Record<AttritionRecord['reason'], string> = {
-  'compensation':  'text-red-600 bg-red-50 border-red-200',
-  'career-growth': 'text-amber-700 bg-amber-50 border-amber-200',
-  'culture':       'text-sky-700 bg-sky-50 border-sky-200',
-  'location':      'text-gray-600 bg-gray-100 border-gray-200',
-  'unknown':       'text-gray-400 bg-gray-50 border-gray-200',
-};
 
 function fmtDate(iso: string): string {
   return new Date(iso).toLocaleDateString([], { day: 'numeric', month: 'short', year: 'numeric' });
@@ -420,24 +405,18 @@ function fmtDate(iso: string): string {
 
 function TalentFlowTab() {
   const [deptFilter, setDeptFilter] = useState<string>('All');
-  const [reasonFilter, setReasonFilter] = useState<string>('All');
   const [showAllRecords, setShowAllRecords] = useState(false);
 
   const departments = useMemo(
     () => ['All', ...Array.from(new Set(ATTRITION_RECORDS.map(r => r.department))).sort()],
     [],
   );
-  const reasons = useMemo(
-    () => ['All', ...Array.from(new Set(ATTRITION_RECORDS.map(r => r.reason)))],
-    [],
-  );
 
   const filtered = useMemo(() => {
     return ATTRITION_RECORDS.filter(r =>
-      (deptFilter === 'All' || r.department === deptFilter) &&
-      (reasonFilter === 'All' || r.reason === reasonFilter),
+      deptFilter === 'All' || r.department === deptFilter,
     ).sort((a, b) => b.date.localeCompare(a.date));
-  }, [deptFilter, reasonFilter]);
+  }, [deptFilter]);
 
   const topDestinations = useMemo(() => getTopDestinations(filtered), [filtered]);
   const trend = useMemo(() => getAttritionTrend(filtered), [filtered]);
@@ -449,13 +428,8 @@ function TalentFlowTab() {
   const avgTenure = totalLeavers > 0
     ? Math.round(filtered.reduce((s, r) => s + r.tenureMonths, 0) / totalLeavers)
     : 0;
-  const topReason = useMemo(() => {
-    if (filtered.length === 0) return null;
-    const counts: Record<string, number> = {};
-    for (const r of filtered) counts[r.reason] = (counts[r.reason] ?? 0) + 1;
-    return Object.entries(counts).sort((a, b) => b[1] - a[1])[0][0] as AttritionRecord['reason'];
-  }, [filtered]);
   const competitorCount = filtered.filter(r => r.destinationType === 'Competitor').length;
+  const bigTechCount = filtered.filter(r => r.destinationType === 'Big Tech').length;
 
   return (
     <div className="space-y-6">
@@ -469,34 +443,18 @@ function TalentFlowTab() {
       </div>
 
       {/* Filters */}
-      <div className="flex items-center gap-4 flex-wrap">
-        <div className="flex items-center gap-2">
-          <span className="text-xs font-medium text-gray-500">Department:</span>
-          <div className="flex flex-wrap gap-1">
-            {departments.map(d => (
-              <button
-                key={d}
-                onClick={() => setDeptFilter(d)}
-                className={`text-xs px-2.5 py-1 rounded-lg font-medium transition-colors ${deptFilter === d ? 'bg-gray-900 text-white' : 'text-gray-500 hover:bg-gray-100'}`}
-              >
-                {d}
-              </button>
-            ))}
-          </div>
-        </div>
-        <div className="flex items-center gap-2">
-          <span className="text-xs font-medium text-gray-500">Reason:</span>
-          <div className="flex flex-wrap gap-1">
-            {reasons.map(r => (
-              <button
-                key={r}
-                onClick={() => setReasonFilter(r)}
-                className={`text-xs px-2.5 py-1 rounded-lg font-medium transition-colors ${reasonFilter === r ? 'bg-gray-900 text-white' : 'text-gray-500 hover:bg-gray-100'}`}
-              >
-                {r === 'All' ? 'All' : REASON_LABELS[r as AttritionRecord['reason']]}
-              </button>
-            ))}
-          </div>
+      <div className="flex items-center gap-2">
+        <span className="text-xs font-medium text-gray-500">Department:</span>
+        <div className="flex flex-wrap gap-1">
+          {departments.map(d => (
+            <button
+              key={d}
+              onClick={() => setDeptFilter(d)}
+              className={`text-xs px-2.5 py-1 rounded-lg font-medium transition-colors ${deptFilter === d ? 'bg-gray-900 text-white' : 'text-gray-500 hover:bg-gray-100'}`}
+            >
+              {d}
+            </button>
+          ))}
         </div>
       </div>
 
@@ -505,7 +463,7 @@ function TalentFlowTab() {
         {[
           { label: 'Total leavers', value: String(totalLeavers), sub: 'last 12 months', icon: <LogOut size={16} />, color: 'text-gray-700', iconColor: 'text-gray-400' },
           { label: 'Avg tenure at exit', value: `${avgTenure}m`, sub: 'months in role', icon: <Calendar size={16} />, color: 'text-amber-600', iconColor: 'text-amber-400' },
-          { label: 'Primary exit reason', value: topReason ? REASON_LABELS[topReason] : '—', sub: 'most cited factor', icon: <Briefcase size={16} />, color: 'text-red-600', iconColor: 'text-red-400' },
+          { label: 'Went to Big Tech', value: String(bigTechCount), sub: `${totalLeavers > 0 ? Math.round((bigTechCount / totalLeavers) * 100) : 0}% of leavers`, icon: <Building2 size={16} />, color: bigTechCount > 4 ? 'text-amber-600' : 'text-gray-700', iconColor: bigTechCount > 4 ? 'text-amber-400' : 'text-gray-400' },
           { label: 'Went to competitors', value: String(competitorCount), sub: `${totalLeavers > 0 ? Math.round((competitorCount / totalLeavers) * 100) : 0}% of leavers`, icon: <Building2 size={16} />, color: competitorCount > 3 ? 'text-red-600' : 'text-gray-700', iconColor: competitorCount > 3 ? 'text-red-400' : 'text-gray-400' },
         ].map(kpi => (
           <div key={kpi.label} className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
@@ -568,9 +526,6 @@ function TalentFlowTab() {
                     <p className="text-xl font-black text-gray-800">{dest.count}</p>
                     <p className="text-[10px] text-gray-400">{dest.count === 1 ? 'person' : 'people'}</p>
                     <p className="text-[10px] text-gray-400 mt-1">Avg tenure: <span className="font-semibold text-gray-600">{dest.avgTenureMonths}m</span></p>
-                    <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded border mt-1 inline-block ${REASON_COLORS[dest.primaryReason]}`}>
-                      {REASON_LABELS[dest.primaryReason]}
-                    </span>
                   </div>
                 </div>
               );
@@ -637,8 +592,8 @@ function TalentFlowTab() {
             <p className="text-xs text-gray-400 mt-0.5">{filtered.length} records · sorted by most recent</p>
           </div>
         </div>
-        <div className="grid grid-cols-[160px_1fr_120px_120px_110px_120px] gap-3 px-6 py-2.5 border-b border-gray-100 bg-gray-50">
-          {['Date', 'Person', 'Department', 'Destination', 'Tenure', 'Reason'].map(h => (
+        <div className="grid grid-cols-[160px_1fr_120px_120px_110px] gap-3 px-6 py-2.5 border-b border-gray-100 bg-gray-50">
+          {['Date', 'Person', 'Department', 'Destination', 'Tenure'].map(h => (
             <span key={h} className="text-[10px] font-bold uppercase tracking-wider text-gray-400">{h}</span>
           ))}
         </div>
@@ -647,7 +602,7 @@ function TalentFlowTab() {
           return (
             <div
               key={`${r.name}-${r.date}`}
-              className={`grid grid-cols-[160px_1fr_120px_120px_110px_120px] gap-3 px-6 py-3 items-center ${i % 2 === 0 ? 'bg-white' : 'bg-gray-50/40'}`}
+              className={`grid grid-cols-[160px_1fr_120px_120px_110px] gap-3 px-6 py-3 items-center ${i % 2 === 0 ? 'bg-white' : 'bg-gray-50/40'}`}
             >
               <span className="text-xs text-gray-500">{fmtDate(r.date)}</span>
               <span className="text-xs font-semibold text-gray-800">{r.name}</span>
@@ -657,9 +612,6 @@ function TalentFlowTab() {
                 <span className="text-xs font-medium text-gray-700 truncate">{r.destination}</span>
               </div>
               <span className="text-xs text-gray-500">{r.tenureMonths}m</span>
-              <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded border ${REASON_COLORS[r.reason]}`}>
-                {REASON_LABELS[r.reason]}
-              </span>
             </div>
           );
         })}
