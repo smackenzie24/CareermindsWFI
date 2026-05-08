@@ -114,6 +114,11 @@ interface DeptSummary {
   topGapSkill: string;
   topGapPct: number;
   skillCount: number;
+  // skill counts by severity bucket
+  skillsGood: number;
+  skillsDeveloping: number;
+  skillsRisk: number;
+  skillsCritical: number;
 }
 
 function medianOf(values: number[]): number {
@@ -133,10 +138,10 @@ function getSeverity(pct: number): 'critical' | 'risk' | 'developing' | 'good' {
 }
 
 const SEVERITY_CONFIG = {
-  critical: { label: 'Critical', bg: 'bg-red-50', border: 'border-red-200', badge: 'bg-red-100 text-red-700', bar: 'bg-red-500' },
-  risk: { label: 'At Risk', bg: 'bg-orange-50', border: 'border-orange-200', badge: 'bg-orange-100 text-orange-700', bar: 'bg-orange-400' },
-  developing: { label: 'Developing', bg: 'bg-amber-50', border: 'border-amber-200', badge: 'bg-amber-100 text-amber-700', bar: 'bg-amber-400' },
-  good: { label: 'On Track', bg: 'bg-emerald-50', border: 'border-emerald-200', badge: 'bg-emerald-100 text-emerald-700', bar: 'bg-emerald-400' },
+  critical:   { label: 'Critical',   badge: 'bg-red-100 text-red-700',     bar: 'bg-red-500',    tile: 'bg-red-50',     tileColor: 'text-red-600'    },
+  risk:       { label: 'At Risk',    badge: 'bg-orange-100 text-orange-700', bar: 'bg-orange-400', tile: 'bg-orange-50',  tileColor: 'text-orange-600' },
+  developing: { label: 'Developing', badge: 'bg-amber-100 text-amber-700',  bar: 'bg-amber-400',  tile: 'bg-amber-50',   tileColor: 'text-amber-700'  },
+  good:       { label: 'On Track',   badge: 'bg-emerald-100 text-emerald-700', bar: 'bg-emerald-400', tile: 'bg-emerald-50', tileColor: 'text-emerald-600' },
 };
 
 interface Props {
@@ -192,16 +197,21 @@ export function DepartmentOverview({ onSelectDepartment }: Props) {
       }
       const medianGap = Math.round(medianOf(gapValues) * 10) / 10;
 
-      // Critical skills = skills where >60% below target
+      // Per-skill severity buckets
       let criticalSkills = 0;
       let topGapSkill = '';
       let topGapPct = 0;
+      let skillsGood = 0, skillsDeveloping = 0, skillsRisk = 0, skillsCritical = 0;
       for (const skill of skills) {
         const skillEntries = entries.filter(e => e.skill === skill);
         const sh = skillEntries.reduce((s, e) => s + e.headcount, 0);
         const sb = skillEntries.reduce((s, e) => s + e.belowTarget, 0);
         const pct = sh > 0 ? Math.round((sb / sh) * 100) : 0;
-        if (pct >= 60) criticalSkills++;
+        const sev = getSeverity(pct);
+        if (sev === 'critical') { criticalSkills++; skillsCritical++; }
+        else if (sev === 'risk') skillsRisk++;
+        else if (sev === 'developing') skillsDeveloping++;
+        else skillsGood++;
         if (pct > topGapPct) { topGapPct = pct; topGapSkill = skill; }
       }
 
@@ -216,6 +226,10 @@ export function DepartmentOverview({ onSelectDepartment }: Props) {
         topGapSkill,
         topGapPct,
         skillCount: skills.length,
+        skillsGood,
+        skillsDeveloping,
+        skillsRisk,
+        skillsCritical,
       };
     });
   }, []);
@@ -288,15 +302,16 @@ export function DepartmentOverview({ onSelectDepartment }: Props) {
           {summaries.map((dept) => {
             const severity = getSeverity(dept.belowTargetPct);
             const cfg = SEVERITY_CONFIG[severity];
+            const total = dept.skillCount;
 
             return (
               <button
                 key={dept.department}
                 onClick={() => onSelectDepartment(dept.department)}
-                className={`text-left rounded-2xl border ${cfg.border} ${cfg.bg} p-6 group transition-all duration-200 hover:shadow-lg hover:-translate-y-0.5 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-400`}
+                className="text-left rounded-2xl border border-gray-200 bg-white p-6 group transition-all duration-200 hover:shadow-lg hover:-translate-y-0.5 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-400"
               >
                 {/* Dept header */}
-                <div className="flex items-start justify-between mb-4">
+                <div className="flex items-start justify-between mb-5">
                   <div className="flex items-center gap-3">
                     <div
                       className="w-10 h-10 rounded-xl flex items-center justify-center text-white text-sm font-bold flex-shrink-0"
@@ -315,41 +330,51 @@ export function DepartmentOverview({ onSelectDepartment }: Props) {
                   </div>
                 </div>
 
-                {/* Main metric */}
+                {/* Segmented skill breakdown bar */}
                 <div className="mb-4">
-                  <div className="flex items-end justify-between mb-1.5">
+                  <div className="flex items-center justify-between mb-1.5">
                     <span className="text-xs text-gray-500 font-medium">Staff below target</span>
                     <span className="text-2xl font-bold text-gray-900">{dept.belowTargetPct}%</span>
                   </div>
-                  <div className="w-full bg-white/70 rounded-full h-2 overflow-hidden border border-black/5">
-                    <div
-                      className={`h-full rounded-full transition-all duration-700 ${cfg.bar}`}
-                      style={{ width: `${dept.belowTargetPct}%` }}
-                    />
+                  <div className="flex h-3 rounded-full overflow-hidden gap-px bg-gray-100">
+                    {dept.skillsCritical > 0 && (
+                      <div className="bg-red-500 transition-all" style={{ width: `${(dept.skillsCritical / total) * 100}%` }} title={`${dept.skillsCritical} critical`} />
+                    )}
+                    {dept.skillsRisk > 0 && (
+                      <div className="bg-orange-400 transition-all" style={{ width: `${(dept.skillsRisk / total) * 100}%` }} title={`${dept.skillsRisk} at risk`} />
+                    )}
+                    {dept.skillsDeveloping > 0 && (
+                      <div className="bg-amber-400 transition-all" style={{ width: `${(dept.skillsDeveloping / total) * 100}%` }} title={`${dept.skillsDeveloping} developing`} />
+                    )}
+                    {dept.skillsGood > 0 && (
+                      <div className="bg-gray-200 transition-all" style={{ width: `${(dept.skillsGood / total) * 100}%` }} title={`${dept.skillsGood} on track`} />
+                    )}
                   </div>
                 </div>
 
-                {/* Stats row */}
-                <div className="grid grid-cols-3 gap-3">
-                  <div className="bg-white/60 rounded-lg p-2.5 text-center">
-                    <p className="text-base font-bold text-gray-800">{dept.medianGap}</p>
-                    <p className="text-[10px] text-gray-400 mt-0.5">Median gap</p>
-                  </div>
-                  <div className="bg-white/60 rounded-lg p-2.5 text-center">
-                    <p className={`text-base font-bold ${dept.criticalSkills > 0 ? 'text-red-600' : 'text-emerald-600'}`}>{dept.criticalSkills}</p>
-                    <p className="text-[10px] text-gray-400 mt-0.5">Below target</p>
-                  </div>
-                  <div className="bg-white/60 rounded-lg p-2.5 text-center">
-                    <p className="text-base font-bold text-gray-800">{dept.belowTarget}</p>
-                    <p className="text-[10px] text-gray-400 mt-0.5">People at risk</p>
-                  </div>
+                {/* Stat tiles — 4 buckets */}
+                <div className="grid grid-cols-4 gap-2 mb-4">
+                  {([
+                    { key: 'critical',   count: dept.skillsCritical,  label: 'Critical'    },
+                    { key: 'risk',       count: dept.skillsRisk,       label: 'At Risk'     },
+                    { key: 'developing', count: dept.skillsDeveloping, label: 'Developing'  },
+                    { key: 'good',       count: dept.skillsGood,       label: 'On Track'    },
+                  ] as const).map(({ key, count, label }) => {
+                    const tileCfg = SEVERITY_CONFIG[key];
+                    return (
+                      <div key={key} className={`rounded-lg p-2 text-center ${tileCfg.tile}`}>
+                        <p className={`text-lg font-black leading-none ${tileCfg.tileColor}`}>{count}</p>
+                        <p className="text-[10px] text-gray-400 mt-0.5">{label}</p>
+                      </div>
+                    );
+                  })}
                 </div>
 
-                {/* Top gap callout */}
+                {/* Biggest gap callout */}
                 {dept.topGapSkill && (
-                  <div className="mt-3 flex items-center gap-1.5 text-xs text-gray-600">
+                  <div className="flex items-center gap-2 text-xs text-gray-600 bg-gray-50 rounded-lg px-3 py-2 border border-gray-100">
                     <TrendingDown size={11} className="text-gray-400 flex-shrink-0" />
-                    <span>Biggest gap: <span className="font-semibold text-gray-800">{dept.topGapSkill}</span> ({dept.topGapPct}% below)</span>
+                    <span>Biggest gap: <strong className="text-gray-800">{dept.topGapSkill}</strong> ({dept.topGapPct}% below)</span>
                   </div>
                 )}
               </button>
