@@ -12,7 +12,7 @@ import {
 interface DrilldownPanelProps {
   skill: string;
   entries: SkillGapEntry[];
-  groupBy: 'department' | 'location';
+  groupBy: 'department' | 'location' | 'manager';
   department?: string; // present when viewing a specific dept heatmap
   onClose: () => void;
   onNavigateToPipeline?: () => void;
@@ -87,7 +87,7 @@ export function DrilldownPanel({ skill, entries, groupBy, department, onClose, o
         <div>
           <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">Skill drill-down</p>
           <h2 className="text-xl font-bold text-gray-900">{skill}</h2>
-          <p className="text-sm text-gray-500 mt-0.5">Across {entries.length} {groupBy === 'department' ? 'departments' : 'locations'}</p>
+          <p className="text-sm text-gray-500 mt-0.5">Across {entries.length} {groupBy === 'department' ? 'departments' : groupBy === 'manager' ? 'teams' : 'locations'}</p>
         </div>
         <button
           onClick={onClose}
@@ -137,7 +137,7 @@ export function DrilldownPanel({ skill, entries, groupBy, department, onClose, o
             <span className="text-[10px] text-amber-600 font-medium">Worst area</span>
           </div>
           <p className="text-xs font-bold text-amber-700 leading-tight">
-            {worstEntry ? (groupBy === 'department' ? worstEntry.department : worstEntry.location) : '—'}
+            {worstEntry ? (groupBy === 'department' ? worstEntry.department : groupBy === 'manager' ? worstEntry.team : worstEntry.location) : '—'}
           </p>
         </div>
       </div>
@@ -208,11 +208,11 @@ export function DrilldownPanel({ skill, entries, groupBy, department, onClose, o
         {/* Breakdown bars */}
         <div className="p-6" data-tour="drilldown-breakdown">
           <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-4">
-            Breakdown by {groupBy}
+            Breakdown by {groupBy === 'manager' ? 'team' : groupBy}
           </p>
           <div className="space-y-4">
             {sorted.map((entry, i) => {
-              const label = groupBy === 'department' ? entry.department : entry.location;
+              const label = groupBy === 'department' ? entry.department : groupBy === 'manager' ? entry.team : entry.location;
               const pct = Math.round((entry.belowTarget / entry.headcount) * 100);
               const entryExceeding = entry.averageActual > entry.expectedLevel;
               return (

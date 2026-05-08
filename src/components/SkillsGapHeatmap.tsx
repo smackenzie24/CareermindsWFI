@@ -12,6 +12,7 @@ import {
   type SkillGapEntry,
 } from '../data/mockData';
 import { PEOPLE } from '../data/promotionData';
+import { MANAGERS, type Manager } from '../data/managerData';
 import { HeatmapCell } from './HeatmapCell';
 import { DrilldownPanel } from './DrilldownPanel';
 import { DepartmentOverview } from './DepartmentOverview';
@@ -159,7 +160,7 @@ function CheckInPanel({ department }: { department: Department }) {
   );
 }
 
-type GroupBy = 'department' | 'location';
+type GroupBy = 'department' | 'location' | 'manager';
 
 function FilterPill({
   label,
@@ -201,7 +202,7 @@ function LegendItem({ label, colorClass }: { label: string; colorClass: string }
 interface DrilldownPanelWrapperProps {
   skill: string;
   entries: SkillGapEntry[];
-  groupBy: 'department' | 'location';
+  groupBy: 'department' | 'location' | 'manager';
   department?: Department;
   onClose: () => void;
   collapsed: boolean;
@@ -328,15 +329,22 @@ function DeptHeatmap({ department, onBack, onNavigateToPipeline, tourActive }: D
     }
   }, [tourActive, skills, selectedSkill]);
 
+  const deptManagers = useMemo(
+    () => MANAGERS.filter((m) => m.department === department),
+    [department]
+  );
+
   const groupKeys = useMemo((): string[] => {
     if (groupBy === 'location') {
       return filterLocation
         ? [filterLocation]
         : LOCATIONS.filter((l) => filtered.some((e) => e.location === l));
+    } else if (groupBy === 'manager') {
+      return deptManagers.map((m) => m.name);
     } else {
       return [department];
     }
-  }, [groupBy, filtered, filterLocation, department]);
+  }, [groupBy, filtered, filterLocation, department, deptManagers]);
 
   const cellData = useMemo(() => {
     const map: Record<string, Record<string, SkillGapEntry[]>> = {};
@@ -344,13 +352,18 @@ function DeptHeatmap({ department, onBack, onNavigateToPipeline, tourActive }: D
       map[skill] = {};
       for (const key of groupKeys) {
         map[skill][key] = filtered.filter((d) => {
-          const groupMatch = groupBy === 'location' ? d.location === key : d.department === key;
-          return d.skill === skill && groupMatch;
+          if (d.skill !== skill) return false;
+          if (groupBy === 'location') return d.location === key;
+          if (groupBy === 'manager') {
+            const mgr = deptManagers.find((m) => m.name === key);
+            return mgr ? mgr.teams.includes(d.team) : false;
+          }
+          return d.department === key;
         });
       }
     }
     return map;
-  }, [skills, groupKeys, filtered, groupBy]);
+  }, [skills, groupKeys, filtered, groupBy, deptManagers]);
 
   function aggregateCell(entries: SkillGapEntry[]): {
     skill: string;
@@ -508,6 +521,15 @@ function DeptHeatmap({ department, onBack, onNavigateToPipeline, tourActive }: D
                 By Location
               </button>
               <button
+                onClick={() => setGroupBy('manager')}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-all ${
+                  groupBy === 'manager' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'
+                }`}
+              >
+                <Users size={13} />
+                By Manager
+              </button>
+              <button
                 onClick={() => setGroupBy('department')}
                 className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-all ${
                   groupBy === 'department' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'
@@ -563,11 +585,15 @@ function DeptHeatmap({ department, onBack, onNavigateToPipeline, tourActive }: D
                 <div className="px-4 py-3 flex items-center">
                   <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Skill</span>
                 </div>
-                {groupKeys.map((key) => (
-                  <div key={key} className="px-3 py-3 text-center border-l border-gray-50">
-                    <span className="text-xs font-semibold text-gray-600">{key}</span>
-                  </div>
-                ))}
+                {groupKeys.map((key) => {
+                  const mgr = groupBy === 'manager' ? deptManagers.find((m) => m.name === key) : undefined;
+                  return (
+                    <div key={key} className="px-3 py-3 text-center border-l border-gray-50 flex flex-col items-center justify-center gap-0.5">
+                      <span className="text-xs font-semibold text-gray-700 leading-tight break-words">{key}</span>
+                      {mgr && <span className="text-[10px] text-gray-400 leading-tight">{mgr.teams.join(', ')}</span>}
+                    </div>
+                  );
+                })}
               </div>
 
               {/* Rows */}
@@ -640,7 +666,7 @@ function DeptHeatmap({ department, onBack, onNavigateToPipeline, tourActive }: D
         <DrilldownPanelWrapper
           skill={selectedSkill}
           entries={drilldownEntries}
-          groupBy={groupBy === 'location' ? 'location' : 'department'}
+          groupBy={groupBy}
           department={department}
           onClose={() => { setSelectedSkill(null); setPanelCollapsed(false); }}
           collapsed={panelCollapsed}
