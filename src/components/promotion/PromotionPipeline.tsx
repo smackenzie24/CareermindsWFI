@@ -148,13 +148,14 @@ function OrgExpandedCards() {
 
 interface Props {
   initialDepartment?: Department;
+  initialTab?: 'pipeline' | 'hidden-talent' | 'flight-risk';
   selectedDept?: Department | null;
   onSelectDept?: (dept: Department | null) => void;
   onNavigateToGapReport?: (dept: Department) => void;
   onNavigateToManagers?: (managerId?: string) => void;
 }
 
-export function PromotionPipeline({ initialDepartment, selectedDept: selectedDeptProp, onSelectDept, onNavigateToGapReport, onNavigateToManagers }: Props) {
+export function PromotionPipeline({ initialDepartment, initialTab, selectedDept: selectedDeptProp, onSelectDept, onNavigateToGapReport, onNavigateToManagers }: Props) {
   const [internalDept, setInternalDept] = useState<Department | null>(initialDepartment ?? null);
   const selectedDept = selectedDeptProp !== undefined ? selectedDeptProp : internalDept;
   const setSelectedDept = (dept: Department | null) => {
@@ -162,7 +163,7 @@ export function PromotionPipeline({ initialDepartment, selectedDept: selectedDep
     onSelectDept?.(dept);
   };
   const [orgExpanded, setOrgExpanded] = useState(true);
-  const [activeTab, setActiveTab] = useState<'pipeline' | 'hidden-talent' | 'flight-risk'>('pipeline');
+  const [activeTab, setActiveTab] = useState<'pipeline' | 'hidden-talent' | 'flight-risk'>(initialTab ?? 'pipeline');
   const hiddenTalentCount = useMemo(() => getCrossDeptFitCandidates().length, []);
   const flightRiskHighCount = useMemo(() => getFlightRiskPeople('high').length, []);
 

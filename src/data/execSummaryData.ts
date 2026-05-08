@@ -4,7 +4,7 @@
  */
 
 import { SKILLS_DATA, DEPT_COLORS, type Department } from './mockData';
-import { getAllReadiness, PEOPLE, LEVEL_DEFINITIONS } from './promotionData';
+import { getAllReadiness, PEOPLE, LEVEL_DEFINITIONS, getFlightRiskPeople } from './promotionData';
 import { getAllManagerMetrics } from './managerData';
 import {
   getDeptSkillBenchmarks,
@@ -44,6 +44,7 @@ export interface NavTarget {
   department?: Department;
   skill?: string;
   managerId?: string;
+  pipelineTab?: 'pipeline' | 'hidden-talent' | 'flight-risk';
 }
 
 export interface DeptHealthSnapshot {
@@ -303,6 +304,25 @@ export function computeExecSummary(): ExecSummary {
       action: { view: 'benchmark' },
       actionLabel: 'Compensation benchmarks',
       source: 'benchmark',
+    });
+  }
+
+  // Flight risk signal (Revelio Labs)
+  const highFlightRisk = getFlightRiskPeople('high');
+  if (highFlightRisk.length > 0) {
+    const withOpportunity = highFlightRisk.filter(e => e.hasInternalOpportunity);
+    const topPerson = highFlightRisk[0];
+    risks.push({
+      id: 'flight-risk',
+      level: highFlightRisk.length >= 3 ? 'critical' : 'warning',
+      title: `${highFlightRisk.length} employee${highFlightRisk.length > 1 ? 's' : ''} flagged high flight risk by Revelio Labs`,
+      detail: `${topPerson.person.name} (${topPerson.person.department}) has the strongest signal — ${topPerson.flightRiskDrivers[0] ?? 'multiple risk factors detected'}.${withOpportunity.length > 0 ? ` ${withOpportunity.length} also match an internal mobility opportunity.` : ''}`,
+      metric: `${highFlightRisk.length} high risk · ${withOpportunity.length} internal match`,
+      action: { view: 'pipeline', pipelineTab: 'flight-risk' },
+      actionLabel: 'View flight risk',
+      secondaryAction: withOpportunity.length > 0 ? { view: 'pipeline', pipelineTab: 'hidden-talent' } : undefined,
+      secondaryLabel: withOpportunity.length > 0 ? 'Internal opportunities' : undefined,
+      source: 'pipeline',
     });
   }
 

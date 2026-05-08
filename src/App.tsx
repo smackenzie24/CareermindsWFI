@@ -57,6 +57,7 @@ interface NavState {
   department?: Department;
   managerId?: string;
   aiQuestion?: string;
+  pipelineTab?: 'pipeline' | 'hidden-talent' | 'flight-risk';
 }
 
 export default function App() {
@@ -82,6 +83,7 @@ export default function App() {
       view: target.view as ActiveView,
       department: target.department,
       managerId: target.managerId,
+      pipelineTab: target.pipelineTab,
     });
   }
 
@@ -205,6 +207,7 @@ export default function App() {
         {nav.view === 'pipeline' && (
           <PromotionPipeline
             initialDepartment={nav.department}
+            initialTab={nav.pipelineTab}
             onSelectDept={setPipelineDept}
             onNavigateToManagers={(managerId) => setNav({ view: 'managers', managerId })}
           />
