@@ -1,6 +1,6 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useCallback } from 'react';
 import { ChevronDown, ChevronUp } from 'lucide-react';
-import { AlertTriangle, CheckCircle2, TrendingUp, Users, BarChart3, Globe, Star, ArrowRight, Zap, Shield, Clock, CalendarX, Sparkles, SendHorizontal as SendHorizonal } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, TrendingUp, Users, BarChart3, Globe, Star, ArrowRight, Zap, Shield, Clock, CalendarX, Sparkles, SendHorizontal as SendHorizonal, RefreshCw } from 'lucide-react';
 import {
   computeExecSummary,
   type ExecSummary,
@@ -407,9 +407,41 @@ function DeptRow({ snap, onNavigate }: { snap: DeptHealthSnapshot; onNavigate: (
   );
 }
 
+function formatTimestamp(date: Date): string {
+  return date.toLocaleString([], {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+}
+
+function nextScheduledRun(): string {
+  const now = new Date();
+  const next = new Date(now);
+  next.setHours(23, 59, 0, 0);
+  if (next <= now) next.setDate(next.getDate() + 1);
+  return next.toLocaleString([], { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+}
+
 export function ExecutiveSummary({ onNavigate, onAskAI }: Props) {
-  const summary = useMemo(() => computeExecSummary(), []);
+  const [refreshKey, setRefreshKey] = useState(0);
+  const [lastRefreshed, setLastRefreshed] = useState<Date>(() => new Date());
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
+  const summary = useMemo(() => computeExecSummary(), [refreshKey]);
   const [kpiExpanded, setKpiExpanded] = useState(false);
+
+  const handleRefresh = useCallback(() => {
+    setIsRefreshing(true);
+    // Small delay so the spinner is visible and user feels the refresh
+    setTimeout(() => {
+      setRefreshKey(k => k + 1);
+      setLastRefreshed(new Date());
+      setIsRefreshing(false);
+    }, 600);
+  }, []);
 
   function buildExportContent() {
     const lines = [
@@ -460,7 +492,7 @@ export function ExecutiveSummary({ onNavigate, onAskAI }: Props) {
             <p className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-1">Chief People Officer · Executive View</p>
             <h1 className="text-2xl font-bold text-gray-900">Workforce Health Dashboard</h1>
             <p className="text-sm text-gray-500 mt-1">
-              Organisation-wide signal digest — {summary.asOf} · Click any insight to investigate further
+              Organisation-wide signal digest · Click any insight to investigate further
             </p>
           </div>
           <div className="flex items-center gap-3">
@@ -471,6 +503,30 @@ export function ExecutiveSummary({ onNavigate, onAskAI }: Props) {
             </div>
             <ExportButtons title="Workforce Health Dashboard" buildContent={buildExportContent} />
           </div>
+        </div>
+
+        {/* Data freshness bar */}
+        <div className="mt-4 flex items-center justify-between px-4 py-2.5 bg-gray-50 border border-gray-100 rounded-xl">
+          <div className="flex items-center gap-4 text-xs text-gray-500">
+            <div className="flex items-center gap-1.5">
+              <Clock size={11} className="text-gray-400" />
+              <span>Last updated:</span>
+              <span className="font-semibold text-gray-700">{formatTimestamp(lastRefreshed)}</span>
+            </div>
+            <span className="text-gray-300">·</span>
+            <div className="flex items-center gap-1.5 text-gray-400">
+              <RefreshCw size={10} />
+              <span>Next auto-refresh: <span className="font-medium text-gray-500">{nextScheduledRun()}</span> (nightly at 23:59)</span>
+            </div>
+          </div>
+          <button
+            onClick={handleRefresh}
+            disabled={isRefreshing}
+            className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg border border-gray-200 bg-white text-gray-600 hover:border-gray-300 hover:text-gray-800 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+          >
+            <RefreshCw size={11} className={isRefreshing ? 'animate-spin' : ''} />
+            {isRefreshing ? 'Refreshing…' : 'Refresh now'}
+          </button>
         </div>
       </header>
 
