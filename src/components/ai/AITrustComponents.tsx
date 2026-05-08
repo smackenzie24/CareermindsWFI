@@ -204,15 +204,16 @@ export function EthicsBadge() {
 // ── 4. ReasoningAccordion ─────────────────────────────────────────────────────
 
 interface ReasoningAccordionProps {
+  reasoning: string[];
   sources: string[];
   assumptions: string[];
   ethicsNote?: string | null;
 }
 
-export function ReasoningAccordion({ sources, assumptions, ethicsNote }: ReasoningAccordionProps) {
+export function ReasoningAccordion({ reasoning, sources, assumptions, ethicsNote }: ReasoningAccordionProps) {
   const [open, setOpen] = useState(false);
 
-  const hasContent = sources.length > 0 || assumptions.length > 0 || ethicsNote;
+  const hasContent = reasoning.length > 0 || sources.length > 0 || assumptions.length > 0 || ethicsNote;
   if (!hasContent) return null;
 
   return (
@@ -233,9 +234,30 @@ export function ReasoningAccordion({ sources, assumptions, ethicsNote }: Reasoni
       </button>
 
       {open && (
-        <div className="px-4 pb-4 space-y-3 border-t border-gray-100">
+        <div className="px-4 pb-4 space-y-4 border-t border-gray-100 pt-3">
+
+          {/* Step-by-step reasoning chain */}
+          {reasoning.length > 0 && (
+            <div>
+              <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-2">
+                Reasoning steps
+              </p>
+              <ol className="space-y-2">
+                {reasoning.map((step, i) => (
+                  <li key={i} className="flex items-start gap-2.5 text-[11px] text-gray-600 leading-relaxed">
+                    <span className="flex-shrink-0 w-4 h-4 rounded-full bg-sky-100 text-sky-600 text-[9px] font-bold flex items-center justify-center mt-0.5">
+                      {i + 1}
+                    </span>
+                    {step}
+                  </li>
+                ))}
+              </ol>
+            </div>
+          )}
+
+          {/* Data sources */}
           {sources.length > 0 && (
-            <div className="pt-3">
+            <div>
               <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-1.5">
                 Sources
               </p>
@@ -250,6 +272,7 @@ export function ReasoningAccordion({ sources, assumptions, ethicsNote }: Reasoni
             </div>
           )}
 
+          {/* Assumptions */}
           {assumptions.length > 0 && (
             <div>
               <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-1.5">
@@ -266,6 +289,7 @@ export function ReasoningAccordion({ sources, assumptions, ethicsNote }: Reasoni
             </div>
           )}
 
+          {/* Ethics note */}
           {ethicsNote && (
             <div className="rounded-lg bg-teal-50 border border-teal-100 px-3 py-2">
               <p className="text-[11px] text-teal-700">{ethicsNote}</p>

@@ -86,6 +86,15 @@ Structure every response as valid JSON with this shape:
 {
   "confidence": "high" | "medium" | "low",
   "text": "Your main answer in 2–5 short paragraphs. Plain language, no jargon.",
+  "reasoning": [
+    "Step-by-step explanation of HOW you reached this answer. Each item is one reasoning step.",
+    "Example: 'I looked at promotion readiness scores for all 42 employees. 8 scored ≥90% — the Near-Ready threshold.'",
+    "Example: 'Of those 8, I filtered for tenure > 12 months to avoid recommending very recent hires.'",
+    "Example: 'The remaining 6 are listed. I ranked them by readiness % descending.'",
+    "Be specific: reference actual numbers, thresholds, and rules you applied.",
+    "If you made a judgment call (e.g. 'I treated X as more important than Y'), explain why.",
+    "3–6 steps is typical. More if the question is complex."
+  ],
   "sources": ["list of data sources used, e.g. 'Promotion readiness: 42 employees'"],
   "assumptions": ["any assumptions made, or empty array"],
   "needsMoreContext": true | false,
@@ -98,6 +107,9 @@ Structure every response as valid JSON with this shape:
 }
 
 Keep "text" focused. Do not pad. Do not repeat the question back.
+The "reasoning" array is always required and must be honest and specific — it is shown to the user
+so they can understand and challenge your logic. Vague reasoning like "I analysed the data" is
+not acceptable. Each step must reference concrete data points or thresholds.
 If confidence is low and needsMoreContext is true, keep "text" brief — just acknowledge what
 you can see and ask for what you need.`;
 
@@ -136,6 +148,7 @@ Deno.serve(async (req: Request) => {
     let parsed: {
       confidence: string;
       text: string;
+      reasoning: string[];
       sources: string[];
       assumptions: string[];
       needsMoreContext: boolean;

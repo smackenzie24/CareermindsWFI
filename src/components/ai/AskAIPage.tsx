@@ -103,6 +103,7 @@ function detectsMissingContext(text: string): boolean {
 export interface AIResponse {
   confidence: 'high' | 'medium' | 'low';
   text: string;
+  reasoning: string[];
   sources: string[];
   assumptions: string[];
   needsMoreContext: boolean;
@@ -136,6 +137,7 @@ async function callWorkforceAI(question: string, docContext?: string): Promise<A
     return {
       confidence: data.confidence ?? 'medium',
       text: data.text ?? 'No response received.',
+      reasoning: data.reasoning ?? [],
       sources: data.sources ?? [],
       assumptions: data.assumptions ?? [],
       needsMoreContext: data.needsMoreContext ?? false,
@@ -150,6 +152,7 @@ async function callWorkforceAI(question: string, docContext?: string): Promise<A
   return {
     confidence: 'medium',
     text,
+    reasoning: [],
     sources: ['Workforce context snapshot'],
     assumptions: [],
     needsMoreContext: !docContext && detectsMissingContext(text),
@@ -170,6 +173,7 @@ interface OutputEntry {
   needsMoreContext?: boolean;
   contextQuestion?: string;
   confidence?: 'high' | 'medium' | 'low';
+  reasoning?: string[];
   sources?: string[];
   assumptions?: string[];
   ethicsNote?: string | null;
@@ -641,6 +645,7 @@ function OutputPanel({
           {/* Trust & transparency section */}
           <div className="mt-8 space-y-3">
             <ReasoningAccordion
+              reasoning={entry.reasoning ?? []}
               sources={sources}
               assumptions={assumptions}
               ethicsNote={entry.ethicsNote}
@@ -769,6 +774,7 @@ export function AskAIPage({ initialQuestion, onNavigate }: Props) {
           needsMoreContext: aiResp.needsMoreContext,
           contextQuestion: aiResp.contextQuestion,
           confidence: aiResp.confidence,
+          reasoning: aiResp.reasoning,
           sources: aiResp.sources,
           assumptions: aiResp.assumptions,
           ethicsNote: aiResp.ethicsNote,
