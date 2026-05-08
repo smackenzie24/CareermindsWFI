@@ -621,7 +621,7 @@ function DeptHeatmap({ department, onBack, onNavigateToPipeline, tourActive }: D
           {/* Legend */}
           <div className="mt-4 flex items-center gap-1.5 flex-wrap" data-tour="heatmap-legend">
             <span className="text-xs text-gray-400 mr-2">Gap severity:</span>
-            <LegendItem label="Exceeding target" colorClass="bg-sky-500 border-sky-600" />
+            <LegendItem label="Exceeding target" colorClass="bg-emerald-600 border-emerald-700" />
             <LegendItem label="On track (<30%)" colorClass="bg-emerald-100 border-emerald-200" />
             <LegendItem label="Mild (30–49%)" colorClass="bg-amber-100 border-amber-200" />
             <LegendItem label="Moderate (50–69%)" colorClass="bg-orange-200 border-orange-300" />

@@ -29,7 +29,7 @@ function isExceeding(actual: number, expected: number): boolean {
 
 function getGapColor(gap: number, headcount: number, exceeding: boolean): string {
   if (headcount === 0) return 'bg-gray-100 border-gray-200';
-  if (exceeding) return 'bg-sky-500 border-sky-600';
+  if (exceeding) return 'bg-emerald-600 border-emerald-700';
   if (gap < 0.3) return 'bg-emerald-100 border-emerald-200';
   if (gap < 0.8) return 'bg-amber-100 border-amber-200';
   if (gap < 1.4) return 'bg-orange-200 border-orange-300';
@@ -87,7 +87,7 @@ export function HeatmapCell({ data, onClick, selected }: HeatmapCellProps) {
       {exceeding ? (
         <div className="flex justify-between gap-4">
           <span className="text-gray-400">Surplus</span>
-          <span className="text-sky-200 font-medium">+{surplus} above target</span>
+          <span className="text-emerald-200 font-medium">+{surplus} above target</span>
         </div>
       ) : (
         <div className="flex justify-between gap-4">
@@ -122,10 +122,10 @@ export function HeatmapCell({ data, onClick, selected }: HeatmapCellProps) {
         {exceeding ? (
           <>
             <div className="flex items-center gap-1">
-              <ArrowUp size={11} className="text-sky-100 flex-shrink-0" />
+              <ArrowUp size={11} className="text-emerald-100 flex-shrink-0" />
               <span className="text-sm font-bold text-white">+{surplus}</span>
             </div>
-            <span className="text-[10px] font-medium text-sky-100">{label}</span>
+            <span className="text-[10px] font-medium text-emerald-100">{label}</span>
           </>
         ) : (
           <>
