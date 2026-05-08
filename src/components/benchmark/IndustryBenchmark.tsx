@@ -2,12 +2,22 @@ import { useMemo, useState } from 'react';
 import {
   TrendingUp, TrendingDown, Minus, Users, DollarSign,
   BarChart3, Globe, Star, AlertTriangle, ChevronDown, ChevronUp, Info,
-  LogOut, Calendar, Building2,
+  LogOut, Calendar, Building2, Lightbulb, Clock, ChevronRight,
 } from 'lucide-react';
 
 import { ExportButtons } from '../ExportButtons';
 import { UpsellBanner } from '../UpsellBanner';
 import { FeedbackBanner } from '../feedback/FeedbackBanner';
+import {
+  getOverviewRecommendations,
+  getSkillsRecommendations,
+  getCompRecommendations,
+  getCompositionRecommendations,
+  getTalentFlowRecommendations,
+  CATEGORY_LABEL,
+  type Recommendation,
+  type RecommendationPriority,
+} from '../../data/benchmarkRecommendations';
 import {
   getOverallBenchmarkSummary,
   getDeptSkillBenchmarks,
@@ -126,6 +136,119 @@ function DeptBenchmarkRow({
   );
 }
 
+// ── Recommendations panel ───────────────────────────────────────────────
+
+const PRIORITY_CONFIG: Record<RecommendationPriority, { label: string; color: string; bg: string; border: string; dot: string }> = {
+  critical: { label: 'Critical', color: 'text-red-700',    bg: 'bg-red-50',    border: 'border-red-200',    dot: 'bg-red-500'    },
+  high:     { label: 'High',     color: 'text-amber-700',  bg: 'bg-amber-50',  border: 'border-amber-200',  dot: 'bg-amber-400'  },
+  medium:   { label: 'Medium',   color: 'text-sky-700',    bg: 'bg-sky-50',    border: 'border-sky-200',    dot: 'bg-sky-500'    },
+};
+
+const CATEGORY_COLOR: Record<string, string> = {
+  upskilling:   'text-emerald-700 bg-emerald-50 border-emerald-200',
+  retention:    'text-red-700 bg-red-50 border-red-200',
+  compensation: 'text-amber-700 bg-amber-50 border-amber-200',
+  hiring:       'text-sky-700 bg-sky-50 border-sky-200',
+  'org-design': 'text-gray-700 bg-gray-100 border-gray-200',
+  process:      'text-gray-700 bg-gray-100 border-gray-200',
+};
+
+function RecommendationCard({ rec }: { rec: Recommendation }) {
+  const [expanded, setExpanded] = useState(false);
+  const pc = PRIORITY_CONFIG[rec.priority];
+  const catCls = CATEGORY_COLOR[rec.category] ?? 'text-gray-600 bg-gray-50 border-gray-200';
+
+  return (
+    <div className={`rounded-xl border bg-white overflow-hidden transition-shadow hover:shadow-sm ${pc.border}`}>
+      <button
+        className="w-full text-left px-5 py-4 flex items-start gap-4"
+        onClick={() => setExpanded(e => !e)}
+      >
+        <div className={`mt-0.5 w-2 h-2 rounded-full flex-shrink-0 ${pc.dot}`} />
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 flex-wrap mb-1">
+            <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${pc.bg} ${pc.border} ${pc.color}`}>
+              {pc.label}
+            </span>
+            <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border ${catCls}`}>
+              {CATEGORY_LABEL[rec.category]}
+            </span>
+            {rec.department && (
+              <span className="text-[10px] text-gray-400 font-medium">{rec.department}</span>
+            )}
+          </div>
+          <p className="text-sm font-semibold text-gray-800 leading-snug">{rec.title}</p>
+          <p className="text-xs text-gray-500 mt-1 leading-relaxed">{rec.rationale}</p>
+        </div>
+        <div className="flex items-center gap-2 flex-shrink-0 mt-0.5">
+          <span className="text-[10px] text-gray-400 flex items-center gap-1 whitespace-nowrap">
+            <Clock size={10} />{rec.timeframe}
+          </span>
+          <ChevronRight
+            size={14}
+            className={`text-gray-300 transition-transform flex-shrink-0 ${expanded ? 'rotate-90' : ''}`}
+          />
+        </div>
+      </button>
+      {expanded && (
+        <div className="px-5 pb-4 pt-0 border-t border-gray-50">
+          <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400 mt-3 mb-2">Action plan</p>
+          <ol className="space-y-2">
+            {rec.actions.map((action, i) => (
+              <li key={i} className="flex items-start gap-2.5">
+                <span className="w-4 h-4 rounded-full bg-gray-100 text-gray-500 text-[10px] font-bold flex items-center justify-center flex-shrink-0 mt-0.5">{i + 1}</span>
+                <span className="text-xs text-gray-600 leading-relaxed">{action}</span>
+              </li>
+            ))}
+          </ol>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function RecommendationsPanel({ recs, defaultOpen = false }: { recs: Recommendation[]; defaultOpen?: boolean }) {
+  const [open, setOpen] = useState(defaultOpen);
+  if (recs.length === 0) return null;
+  const criticalCount = recs.filter(r => r.priority === 'critical').length;
+  const highCount     = recs.filter(r => r.priority === 'high').length;
+
+  return (
+    <div className="rounded-2xl border border-gray-200 overflow-hidden">
+      <button
+        onClick={() => setOpen(o => !o)}
+        className="w-full flex items-center justify-between px-6 py-4 bg-white hover:bg-gray-50 transition-colors"
+      >
+        <div className="flex items-center gap-3">
+          <Lightbulb size={15} className="text-amber-400" />
+          <span className="text-sm font-bold text-gray-900">Recommendations</span>
+          <div className="flex items-center gap-1.5">
+            {criticalCount > 0 && (
+              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-red-50 border border-red-200 text-red-700">
+                {criticalCount} critical
+              </span>
+            )}
+            {highCount > 0 && (
+              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-50 border border-amber-200 text-amber-700">
+                {highCount} high priority
+              </span>
+            )}
+            {criticalCount === 0 && highCount === 0 && (
+              <span className="text-[10px] text-gray-400">{recs.length} suggestions</span>
+            )}
+          </div>
+        </div>
+        <ChevronDown size={15} className={`text-gray-400 transition-transform ${open ? 'rotate-180' : ''}`} />
+      </button>
+      {open && (
+        <div className="px-6 pb-6 pt-2 bg-white border-t border-gray-100 space-y-3">
+          {recs.map(rec => <RecommendationCard key={rec.id} rec={rec} />)}
+        </div>
+      )}
+    </div>
+  );
+}
+
 const DESTINATION_TYPE_CONFIG: Record<AttritionRecord['destinationType'], { color: string; bg: string; border: string; dot: string }> = {
   'Big Tech':   { color: 'text-sky-700',     bg: 'bg-sky-50',     border: 'border-sky-200',    dot: 'bg-sky-500'    },
   'Scaleup':    { color: 'text-emerald-700', bg: 'bg-emerald-50', border: 'border-emerald-200', dot: 'bg-emerald-500' },
@@ -193,6 +316,17 @@ export function IndustryBenchmark({ onNavigateToGapReport }: Props) {
   const deptFormatValue = deptMetric === 'skills' ? (v: number) => v.toFixed(1)
     : deptMetric === 'compensation' ? (v: number) => fmtK(v)
     : (v: number) => `${v.toFixed(1)}%`;
+
+  // Recommendations
+  const overviewRecs     = useMemo(() => getOverviewRecommendations(peers),     [peers]);
+  const skillsRecs       = useMemo(() => getSkillsRecommendations(peers),       [peers]);
+  const compRecs         = useMemo(() => getCompRecommendations(peers),         [peers]);
+  const compositionRecs  = useMemo(() => getCompositionRecommendations(peers),  [peers]);
+  const talentFlowRecs   = useMemo(() => getTalentFlowRecommendations(),        []);
+
+  const deptMetricRecs = deptMetric === 'skills' ? skillsRecs
+    : deptMetric === 'compensation' ? compRecs
+    : compositionRecs;
 
   // Talent flow data
   const attritionDepts = useMemo(
@@ -414,6 +548,8 @@ export function IndustryBenchmark({ onNavigateToGapReport }: Props) {
                 ))}
               </div>
             </div>
+
+            <RecommendationsPanel recs={overviewRecs} />
           </section>
 
           {/* Divider */}
@@ -492,6 +628,8 @@ export function IndustryBenchmark({ onNavigateToGapReport }: Props) {
                 />
               ))}
             </div>
+
+            <RecommendationsPanel recs={deptMetricRecs} />
           </section>
 
           {/* Divider */}
@@ -682,6 +820,8 @@ export function IndustryBenchmark({ onNavigateToGapReport }: Props) {
                 </div>
               )}
             </div>
+
+            <RecommendationsPanel recs={talentFlowRecs} />
           </section>
 
           <UpsellBanner variant="talent-development" className="mt-4" />
