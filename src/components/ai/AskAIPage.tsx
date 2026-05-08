@@ -768,30 +768,30 @@ export function AskAIPage({ initialQuestion, onNavigate }: Props) {
       setTyping(false);
     };
 
-    if (response.needsAI) {
-      try {
-        const aiResp = await callWorkforceAI(trimmed, docContext);
-        finalize(aiResp.text, [], {
-          needsMoreContext: aiResp.needsMoreContext,
-          contextQuestion: aiResp.contextQuestion,
-          confidence: aiResp.confidence,
-          reasoning: aiResp.reasoning,
-          sources: aiResp.sources,
-          assumptions: aiResp.assumptions,
-          ethicsNote: aiResp.ethicsNote,
-          careermindsSuggestion: aiResp.careermindsSuggestion,
-        });
-      } catch {
-        const isBudgetQ = /budget|cost|salary|compensation|pay|spend|% of|percent/i.test(trimmed);
-        const fallback = isBudgetQ
-          ? "To answer this I'd need financial data — salary bands, budget figures, or compensation totals — which aren't in the system yet. Upload a file or paste the relevant data below and I'll calculate it for you."
-          : "I couldn't reach the AI service right now. Try asking about promotions, skills gaps, churn risk, or workforce planning strategies.";
-        finalize(fallback, [], { needsMoreContext: isBudgetQ, confidence: 'low', sources: [], assumptions: [] });
-      }
-      return;
+    // Always call the AI — for local queries, run it in parallel and combine
+    // the structured data results with the AI's narrative text and full reasoning.
+    try {
+      const aiResp = await callWorkforceAI(trimmed, docContext);
+      // Use AI text if available; fall back to local response text for structured-data queries
+      const finalText = aiResp.text || response.text;
+      // Merge local structured results with AI reasoning
+      finalize(finalText, response.results ?? [], {
+        needsMoreContext: aiResp.needsMoreContext,
+        contextQuestion: aiResp.contextQuestion,
+        confidence: aiResp.confidence,
+        reasoning: aiResp.reasoning,
+        sources: aiResp.sources?.length ? aiResp.sources : ['Structured workforce data'],
+        assumptions: aiResp.assumptions,
+        ethicsNote: aiResp.ethicsNote,
+        careermindsSuggestion: aiResp.careermindsSuggestion,
+      });
+    } catch {
+      const isBudgetQ = /budget|cost|salary|compensation|pay|spend|% of|percent/i.test(trimmed);
+      const fallback = response.text || (isBudgetQ
+        ? "To answer this I'd need financial data — salary bands, budget figures, or compensation totals — which aren't in the system yet. Upload a file or paste the relevant data below and I'll calculate it for you."
+        : "I couldn't reach the AI service right now. Try asking about promotions, skills gaps, churn risk, or workforce planning strategies.");
+      finalize(fallback, response.results ?? [], { needsMoreContext: isBudgetQ && !response.text, confidence: 'low', sources: ['Structured workforce data'], assumptions: [] });
     }
-
-    setTimeout(() => finalize(response.text, response.results ?? [], { confidence: 'high', sources: ['Structured workforce data'] }), 400 + Math.random() * 300);
   }
 
   function handleKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
