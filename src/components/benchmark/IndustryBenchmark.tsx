@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import {
   TrendingUp, TrendingDown, Minus, Users, DollarSign,
   BarChart3, Globe, Star, AlertTriangle, ChevronDown, ChevronUp, Info,
+  LogOut, Calendar, Building2, Briefcase,
 } from 'lucide-react';
 import { ExportButtons } from '../ExportButtons';
 import { UpsellBanner } from '../UpsellBanner';
@@ -13,6 +14,9 @@ import {
   getDeptSizeBenchmarks,
   getCategoryBenchmarks,
   getOrgBenchmarks,
+  getTopDestinations,
+  getAttritionTrend,
+  ATTRITION_RECORDS,
   QUARTILE_CONFIG,
   PEER_COMPANIES,
   SIMILAR_PEERS,
@@ -24,10 +28,11 @@ import {
   type CategoryBenchmark,
   type QuartilePosition,
   type PeerCompany,
+  type AttritionRecord,
 } from '../../data/benchmarkData';
 import { DEPT_COLORS, type Department } from '../../data/mockData';
 
-type TabId = 'overview' | 'skills' | 'compensation' | 'team-size' | 'categories';
+type TabId = 'overview' | 'skills' | 'compensation' | 'team-size' | 'categories' | 'talent-flow';
 
 const TABS: { id: TabId; label: string; icon: React.ReactNode }[] = [
   { id: 'overview',     label: 'Overview',          icon: <Globe size={13} /> },
@@ -35,6 +40,7 @@ const TABS: { id: TabId; label: string; icon: React.ReactNode }[] = [
   { id: 'compensation', label: 'Compensation',       icon: <DollarSign size={13} /> },
   { id: 'team-size',    label: 'Team Composition',   icon: <Users size={13} /> },
   { id: 'categories',   label: 'Skill Categories',  icon: <Star size={13} /> },
+  { id: 'talent-flow',  label: 'Talent Flow',        icon: <LogOut size={13} /> },
 ];
 
 function fmtK(n: number) {
@@ -450,6 +456,298 @@ function CategoriesTab({ peers }: { peers: PeerCompany[] }) {
   );
 }
 
+// ── Talent Flow tab ─────────────────────────────────────────────────────
+
+const DESTINATION_TYPE_CONFIG: Record<AttritionRecord['destinationType'], { color: string; bg: string; border: string; dot: string }> = {
+  'Big Tech':   { color: 'text-sky-700',     bg: 'bg-sky-50',     border: 'border-sky-200',    dot: 'bg-sky-500'    },
+  'Scaleup':    { color: 'text-emerald-700', bg: 'bg-emerald-50', border: 'border-emerald-200', dot: 'bg-emerald-500' },
+  'Startup':    { color: 'text-amber-700',   bg: 'bg-amber-50',   border: 'border-amber-200',  dot: 'bg-amber-400'  },
+  'Enterprise': { color: 'text-gray-700',    bg: 'bg-gray-100',   border: 'border-gray-200',   dot: 'bg-gray-500'   },
+  'Competitor': { color: 'text-red-700',     bg: 'bg-red-50',     border: 'border-red-200',    dot: 'bg-red-500'    },
+  'Unknown':    { color: 'text-gray-400',    bg: 'bg-gray-50',    border: 'border-gray-200',   dot: 'bg-gray-300'   },
+};
+
+const REASON_LABELS: Record<AttritionRecord['reason'], string> = {
+  'compensation':  'Compensation',
+  'career-growth': 'Career growth',
+  'culture':       'Culture fit',
+  'location':      'Location / remote',
+  'unknown':       'Unknown',
+};
+
+const REASON_COLORS: Record<AttritionRecord['reason'], string> = {
+  'compensation':  'text-red-600 bg-red-50 border-red-200',
+  'career-growth': 'text-amber-700 bg-amber-50 border-amber-200',
+  'culture':       'text-sky-700 bg-sky-50 border-sky-200',
+  'location':      'text-gray-600 bg-gray-100 border-gray-200',
+  'unknown':       'text-gray-400 bg-gray-50 border-gray-200',
+};
+
+function fmtDate(iso: string): string {
+  return new Date(iso).toLocaleDateString([], { day: 'numeric', month: 'short', year: 'numeric' });
+}
+
+function TalentFlowTab() {
+  const [deptFilter, setDeptFilter] = useState<string>('All');
+  const [reasonFilter, setReasonFilter] = useState<string>('All');
+  const [showAllRecords, setShowAllRecords] = useState(false);
+
+  const departments = useMemo(
+    () => ['All', ...Array.from(new Set(ATTRITION_RECORDS.map(r => r.department))).sort()],
+    [],
+  );
+  const reasons = useMemo(
+    () => ['All', ...Array.from(new Set(ATTRITION_RECORDS.map(r => r.reason)))],
+    [],
+  );
+
+  const filtered = useMemo(() => {
+    return ATTRITION_RECORDS.filter(r =>
+      (deptFilter === 'All' || r.department === deptFilter) &&
+      (reasonFilter === 'All' || r.reason === reasonFilter),
+    ).sort((a, b) => b.date.localeCompare(a.date));
+  }, [deptFilter, reasonFilter]);
+
+  const topDestinations = useMemo(() => getTopDestinations(filtered), [filtered]);
+  const trend = useMemo(() => getAttritionTrend(filtered), [filtered]);
+  const maxTrend = Math.max(...trend.map(t => t.count), 1);
+  const visibleRecords = showAllRecords ? filtered : filtered.slice(0, 8);
+
+  // Summary stats
+  const totalLeavers = filtered.length;
+  const avgTenure = totalLeavers > 0
+    ? Math.round(filtered.reduce((s, r) => s + r.tenureMonths, 0) / totalLeavers)
+    : 0;
+  const topReason = useMemo(() => {
+    if (filtered.length === 0) return null;
+    const counts: Record<string, number> = {};
+    for (const r of filtered) counts[r.reason] = (counts[r.reason] ?? 0) + 1;
+    return Object.entries(counts).sort((a, b) => b[1] - a[1])[0][0] as AttritionRecord['reason'];
+  }, [filtered]);
+  const competitorCount = filtered.filter(r => r.destinationType === 'Competitor').length;
+
+  return (
+    <div className="space-y-6">
+      {/* Info banner */}
+      <div className="flex items-start gap-2 bg-sky-50 border border-sky-100 rounded-xl p-4">
+        <Info size={14} className="text-sky-500 mt-0.5 flex-shrink-0" />
+        <p className="text-xs text-sky-700">
+          Shows employees who left Acme Corp in the last 12 months and the companies they joined.
+          Data sourced from exit interviews and publicly available LinkedIn signals. Use this to understand where your talent pipeline is leaking and to whom.
+        </p>
+      </div>
+
+      {/* Filters */}
+      <div className="flex items-center gap-4 flex-wrap">
+        <div className="flex items-center gap-2">
+          <span className="text-xs font-medium text-gray-500">Department:</span>
+          <div className="flex flex-wrap gap-1">
+            {departments.map(d => (
+              <button
+                key={d}
+                onClick={() => setDeptFilter(d)}
+                className={`text-xs px-2.5 py-1 rounded-lg font-medium transition-colors ${deptFilter === d ? 'bg-gray-900 text-white' : 'text-gray-500 hover:bg-gray-100'}`}
+              >
+                {d}
+              </button>
+            ))}
+          </div>
+        </div>
+        <div className="flex items-center gap-2">
+          <span className="text-xs font-medium text-gray-500">Reason:</span>
+          <div className="flex flex-wrap gap-1">
+            {reasons.map(r => (
+              <button
+                key={r}
+                onClick={() => setReasonFilter(r)}
+                className={`text-xs px-2.5 py-1 rounded-lg font-medium transition-colors ${reasonFilter === r ? 'bg-gray-900 text-white' : 'text-gray-500 hover:bg-gray-100'}`}
+              >
+                {r === 'All' ? 'All' : REASON_LABELS[r as AttritionRecord['reason']]}
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* Summary KPI strip */}
+      <div className="grid grid-cols-4 gap-4">
+        {[
+          { label: 'Total leavers', value: String(totalLeavers), sub: 'last 12 months', icon: <LogOut size={16} />, color: 'text-gray-700', iconColor: 'text-gray-400' },
+          { label: 'Avg tenure at exit', value: `${avgTenure}m`, sub: 'months in role', icon: <Calendar size={16} />, color: 'text-amber-600', iconColor: 'text-amber-400' },
+          { label: 'Primary exit reason', value: topReason ? REASON_LABELS[topReason] : '—', sub: 'most cited factor', icon: <Briefcase size={16} />, color: 'text-red-600', iconColor: 'text-red-400' },
+          { label: 'Went to competitors', value: String(competitorCount), sub: `${totalLeavers > 0 ? Math.round((competitorCount / totalLeavers) * 100) : 0}% of leavers`, icon: <Building2 size={16} />, color: competitorCount > 3 ? 'text-red-600' : 'text-gray-700', iconColor: competitorCount > 3 ? 'text-red-400' : 'text-gray-400' },
+        ].map(kpi => (
+          <div key={kpi.label} className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+            <div className={`mb-2 ${kpi.iconColor}`}>{kpi.icon}</div>
+            <p className={`text-2xl font-black leading-none ${kpi.color}`}>{kpi.value}</p>
+            <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mt-2">{kpi.label}</p>
+            <p className="text-[10px] text-gray-400 mt-0.5">{kpi.sub}</p>
+          </div>
+        ))}
+      </div>
+
+      <div className="grid grid-cols-[1fr_320px] gap-6">
+        {/* Top destinations list */}
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+          <div className="px-6 py-4 border-b border-gray-100">
+            <h3 className="text-sm font-bold text-gray-900">Top destinations</h3>
+            <p className="text-xs text-gray-400 mt-0.5">Companies that received the most Acme alumni</p>
+          </div>
+          <div>
+            {topDestinations.length === 0 ? (
+              <div className="px-6 py-10 text-center text-xs text-gray-400">No departures match the current filters.</div>
+            ) : topDestinations.map((dest, i) => {
+              const cfg = DESTINATION_TYPE_CONFIG[dest.type];
+              const barWidth = Math.round((dest.count / topDestinations[0].count) * 100);
+              return (
+                <div key={dest.company} className={`flex items-center gap-4 px-6 py-4 ${i % 2 === 0 ? 'bg-white' : 'bg-gray-50/50'}`}>
+                  {/* Rank */}
+                  <div className="w-6 flex-shrink-0 text-center">
+                    <span className={`text-sm font-black ${i === 0 ? 'text-gray-800' : 'text-gray-400'}`}>{i + 1}</span>
+                  </div>
+
+                  {/* Company info */}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="text-sm font-bold text-gray-800 truncate">{dest.company}</span>
+                      <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full border flex-shrink-0 ${cfg.bg} ${cfg.border} ${cfg.color}`}>
+                        <span className={`inline-block w-1.5 h-1.5 rounded-full mr-1 ${cfg.dot}`} />
+                        {dest.type}
+                      </span>
+                    </div>
+                    {/* Departments */}
+                    <div className="flex flex-wrap gap-1 mb-2">
+                      {dest.departments.map(d => (
+                        <span key={d} className="text-[10px] px-1.5 py-0.5 rounded bg-gray-100 text-gray-500">{d}</span>
+                      ))}
+                    </div>
+                    {/* Bar */}
+                    <div className="flex items-center gap-2">
+                      <div className="flex-1 bg-gray-100 rounded-full h-1.5 overflow-hidden">
+                        <div
+                          className={`h-full rounded-full transition-all ${cfg.dot}`}
+                          style={{ width: `${barWidth}%` }}
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Right stats */}
+                  <div className="text-right flex-shrink-0">
+                    <p className="text-xl font-black text-gray-800">{dest.count}</p>
+                    <p className="text-[10px] text-gray-400">{dest.count === 1 ? 'person' : 'people'}</p>
+                    <p className="text-[10px] text-gray-400 mt-1">Avg tenure: <span className="font-semibold text-gray-600">{dest.avgTenureMonths}m</span></p>
+                    <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded border mt-1 inline-block ${REASON_COLORS[dest.primaryReason]}`}>
+                      {REASON_LABELS[dest.primaryReason]}
+                    </span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Monthly trend */}
+        <div className="space-y-4">
+          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+            <h3 className="text-sm font-bold text-gray-900 mb-1">Monthly departures</h3>
+            <p className="text-xs text-gray-400 mb-4">Last 12 months</p>
+            <div className="flex items-end gap-1.5 h-28">
+              {trend.map(t => {
+                const h = Math.round((t.count / maxTrend) * 100);
+                return (
+                  <div key={t.month} className="flex-1 flex flex-col items-center justify-end gap-1 group">
+                    <span className="text-[9px] font-semibold text-gray-400 opacity-0 group-hover:opacity-100 transition-opacity">{t.count}</span>
+                    <div
+                      className="w-full rounded-t-sm bg-gray-200 group-hover:bg-sky-400 transition-colors"
+                      style={{ height: `${Math.max(h, 4)}%` }}
+                    />
+                    <span className="text-[8px] text-gray-400 rotate-45 origin-left w-4 block mt-0.5 truncate">{t.month.split(' ')[0]}</span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Destination type breakdown */}
+          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+            <h3 className="text-sm font-bold text-gray-900 mb-4">By destination type</h3>
+            <div className="space-y-2.5">
+              {(Object.keys(DESTINATION_TYPE_CONFIG) as AttritionRecord['destinationType'][]).map(type => {
+                const count = filtered.filter(r => r.destinationType === type).length;
+                if (count === 0) return null;
+                const cfg = DESTINATION_TYPE_CONFIG[type];
+                const pct = Math.round((count / totalLeavers) * 100);
+                return (
+                  <div key={type}>
+                    <div className="flex items-center justify-between mb-1">
+                      <span className={`text-xs font-semibold flex items-center gap-1.5 ${cfg.color}`}>
+                        <span className={`w-2 h-2 rounded-full ${cfg.dot}`} />
+                        {type}
+                      </span>
+                      <span className="text-xs font-bold text-gray-700">{count} <span className="text-gray-400 font-normal">({pct}%)</span></span>
+                    </div>
+                    <div className="w-full bg-gray-100 rounded-full h-1.5 overflow-hidden">
+                      <div className={`h-full rounded-full ${cfg.dot}`} style={{ width: `${pct}%` }} />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Individual departure log */}
+      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+        <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
+          <div>
+            <h3 className="text-sm font-bold text-gray-900">Departure log</h3>
+            <p className="text-xs text-gray-400 mt-0.5">{filtered.length} records · sorted by most recent</p>
+          </div>
+        </div>
+        <div className="grid grid-cols-[160px_1fr_120px_120px_110px_120px] gap-3 px-6 py-2.5 border-b border-gray-100 bg-gray-50">
+          {['Date', 'Person', 'Department', 'Destination', 'Tenure', 'Reason'].map(h => (
+            <span key={h} className="text-[10px] font-bold uppercase tracking-wider text-gray-400">{h}</span>
+          ))}
+        </div>
+        {visibleRecords.map((r, i) => {
+          const typeCfg = DESTINATION_TYPE_CONFIG[r.destinationType];
+          return (
+            <div
+              key={`${r.name}-${r.date}`}
+              className={`grid grid-cols-[160px_1fr_120px_120px_110px_120px] gap-3 px-6 py-3 items-center ${i % 2 === 0 ? 'bg-white' : 'bg-gray-50/40'}`}
+            >
+              <span className="text-xs text-gray-500">{fmtDate(r.date)}</span>
+              <span className="text-xs font-semibold text-gray-800">{r.name}</span>
+              <span className="text-xs text-gray-500">{r.department}</span>
+              <div className="flex items-center gap-1.5 min-w-0">
+                <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${typeCfg.dot}`} />
+                <span className="text-xs font-medium text-gray-700 truncate">{r.destination}</span>
+              </div>
+              <span className="text-xs text-gray-500">{r.tenureMonths}m</span>
+              <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded border ${REASON_COLORS[r.reason]}`}>
+                {REASON_LABELS[r.reason]}
+              </span>
+            </div>
+          );
+        })}
+        {filtered.length > 8 && (
+          <div className="px-6 py-3 border-t border-gray-100 flex justify-center">
+            <button
+              onClick={() => setShowAllRecords(s => !s)}
+              className="flex items-center gap-1.5 text-xs text-gray-400 hover:text-gray-700 transition-colors"
+            >
+              {showAllRecords ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
+              {showAllRecords ? 'Show fewer' : `Show all ${filtered.length} departures`}
+            </button>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // ── Main component ──────────────────────────────────────────────────────
 
 type PeerFilter = 'all' | 'similar' | 'saas' | 'scaleup';
@@ -565,6 +863,7 @@ export function IndustryBenchmark({ initialTab, onNavigateToGapReport }: Props) 
           {tab === 'compensation' && <CompensationTab peers={peers} onNavigateToGapReport={onNavigateToGapReport} />}
           {tab === 'team-size'    && <TeamSizeTab peers={peers} onNavigateToGapReport={onNavigateToGapReport} />}
           {tab === 'categories'   && <CategoriesTab peers={peers} />}
+          {tab === 'talent-flow'  && <TalentFlowTab />}
           {/* Careerminds upsell — contextual to compensation tab, general otherwise */}
           <UpsellBanner
             variant={tab === 'compensation' ? 'comp-review' : 'talent-development'}

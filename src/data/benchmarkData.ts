@@ -462,3 +462,109 @@ export function getOverallBenchmarkSummary(peers: PeerCompany[] = PEER_COMPANIES
     categoryBenchmarks,
   };
 }
+
+// ── Talent flow / attrition destination data ───────────────────────────
+
+export type AttritionReason = 'compensation' | 'career-growth' | 'culture' | 'location' | 'unknown';
+
+export interface AttritionRecord {
+  /** ISO date of departure */
+  date: string;
+  name: string;
+  department: Department;
+  level: string;
+  /** Company they moved to */
+  destination: string;
+  /** Broad category of destination */
+  destinationType: 'Big Tech' | 'Scaleup' | 'Startup' | 'Enterprise' | 'Competitor' | 'Unknown';
+  reason: AttritionReason;
+  tenureMonths: number;
+}
+
+export const ATTRITION_RECORDS: AttritionRecord[] = [
+  { date: '2026-04-15', name: 'Jordan Lee',       department: 'Engineering',  level: 'IC3', destination: 'Stripe',          destinationType: 'Big Tech',   reason: 'compensation',   tenureMonths: 28 },
+  { date: '2026-04-02', name: 'Sam Rivera',        department: 'Product',      level: 'IC2', destination: 'Notion',          destinationType: 'Scaleup',    reason: 'career-growth',  tenureMonths: 14 },
+  { date: '2026-03-20', name: 'Taylor Kim',        department: 'Engineering',  level: 'IC4', destination: 'Google',          destinationType: 'Big Tech',   reason: 'compensation',   tenureMonths: 36 },
+  { date: '2026-03-11', name: 'Alex Morgan',       department: 'Data',         level: 'IC2', destination: 'Snowflake',        destinationType: 'Enterprise', reason: 'career-growth',  tenureMonths: 19 },
+  { date: '2026-02-28', name: 'Casey Brown',       department: 'Marketing',    level: 'IC3', destination: 'HubSpot',          destinationType: 'Enterprise', reason: 'compensation',   tenureMonths: 22 },
+  { date: '2026-02-14', name: 'Riley Chen',        department: 'Engineering',  level: 'IC3', destination: 'Stripe',          destinationType: 'Big Tech',   reason: 'compensation',   tenureMonths: 31 },
+  { date: '2026-01-31', name: 'Morgan Davis',      department: 'Design',       level: 'IC2', destination: 'Figma',           destinationType: 'Scaleup',    reason: 'career-growth',  tenureMonths: 11 },
+  { date: '2026-01-20', name: 'Drew Wilson',       department: 'Sales',        level: 'IC2', destination: 'Ripple Analytics', destinationType: 'Competitor', reason: 'compensation',   tenureMonths: 16 },
+  { date: '2026-01-08', name: 'Quinn Martinez',    department: 'Engineering',  level: 'IC2', destination: 'Vercel',          destinationType: 'Scaleup',    reason: 'career-growth',  tenureMonths: 10 },
+  { date: '2025-12-19', name: 'Avery Johnson',     department: 'Product',      level: 'IC3', destination: 'Linear',          destinationType: 'Startup',    reason: 'culture',        tenureMonths: 24 },
+  { date: '2025-12-05', name: 'Blake Thompson',    department: 'Data',         level: 'IC3', destination: 'Databricks',      destinationType: 'Enterprise', reason: 'career-growth',  tenureMonths: 27 },
+  { date: '2025-11-22', name: 'Charlie White',     department: 'Engineering',  level: 'IC3', destination: 'Google',          destinationType: 'Big Tech',   reason: 'compensation',   tenureMonths: 33 },
+  { date: '2025-11-10', name: 'Dana Garcia',       department: 'People Ops',   level: 'IC2', destination: 'Workday',          destinationType: 'Enterprise', reason: 'career-growth',  tenureMonths: 18 },
+  { date: '2025-10-29', name: 'Elliot Harris',     department: 'Marketing',    level: 'IC2', destination: 'Mailchimp',       destinationType: 'Enterprise', reason: 'compensation',   tenureMonths: 13 },
+  { date: '2025-10-14', name: 'Finley Clark',      department: 'Engineering',  level: 'IC4', destination: 'Meta',            destinationType: 'Big Tech',   reason: 'compensation',   tenureMonths: 41 },
+  { date: '2025-09-30', name: 'Gray Lewis',        department: 'Design',       level: 'IC3', destination: 'Figma',           destinationType: 'Scaleup',    reason: 'career-growth',  tenureMonths: 20 },
+  { date: '2025-09-17', name: 'Harper Robinson',   department: 'Sales',        level: 'IC3', destination: 'Verity HQ',       destinationType: 'Competitor', reason: 'compensation',   tenureMonths: 25 },
+  { date: '2025-09-03', name: 'Indigo Walker',     department: 'Engineering',  level: 'IC2', destination: 'Vercel',          destinationType: 'Scaleup',    reason: 'career-growth',  tenureMonths: 9  },
+  { date: '2025-08-20', name: 'Jules Hall',        department: 'Data',         level: 'IC2', destination: 'Snowflake',        destinationType: 'Enterprise', reason: 'career-growth',  tenureMonths: 15 },
+  { date: '2025-08-07', name: 'Kit Young',         department: 'Product',      level: 'IC2', destination: 'Loom',            destinationType: 'Startup',    reason: 'culture',        tenureMonths: 12 },
+  { date: '2025-07-25', name: 'Lane Allen',        department: 'Engineering',  level: 'IC3', destination: 'Stripe',          destinationType: 'Big Tech',   reason: 'compensation',   tenureMonths: 29 },
+  { date: '2025-07-11', name: 'Marlowe Scott',     department: 'Marketing',    level: 'IC3', destination: 'HubSpot',          destinationType: 'Enterprise', reason: 'compensation',   tenureMonths: 21 },
+  { date: '2025-06-28', name: 'Nico King',         department: 'Engineering',  level: 'IC2', destination: 'Notion',          destinationType: 'Scaleup',    reason: 'culture',        tenureMonths: 8  },
+  { date: '2025-06-14', name: 'Onyx Wright',       department: 'Design',       level: 'IC2', destination: 'Unknown',          destinationType: 'Unknown',    reason: 'unknown',        tenureMonths: 14 },
+  { date: '2025-05-30', name: 'Parker Green',      department: 'Sales',        level: 'IC2', destination: 'Ripple Analytics', destinationType: 'Competitor', reason: 'compensation',   tenureMonths: 17 },
+  { date: '2025-05-16', name: 'Quinn Adams',       department: 'Engineering',  level: 'IC3', destination: 'Google',          destinationType: 'Big Tech',   reason: 'compensation',   tenureMonths: 34 },
+  { date: '2025-05-02', name: 'Remy Baker',        department: 'Data',         level: 'IC3', destination: 'Databricks',      destinationType: 'Enterprise', reason: 'career-growth',  tenureMonths: 30 },
+  { date: '2025-04-18', name: 'Sage Nelson',       department: 'Product',      level: 'IC3', destination: 'Linear',          destinationType: 'Startup',    reason: 'career-growth',  tenureMonths: 22 },
+  { date: '2025-04-04', name: 'Tatum Carter',      department: 'Engineering',  level: 'IC2', destination: 'Vercel',          destinationType: 'Scaleup',    reason: 'career-growth',  tenureMonths: 11 },
+  { date: '2025-03-21', name: 'Uma Mitchell',      department: 'People Ops',   level: 'IC3', destination: 'Workday',          destinationType: 'Enterprise', reason: 'compensation',   tenureMonths: 26 },
+];
+
+export interface DestinationSummary {
+  company: string;
+  type: AttritionRecord['destinationType'];
+  count: number;
+  departments: Department[];
+  mostRecentDate: string;
+  avgTenureMonths: number;
+  primaryReason: AttritionReason;
+}
+
+export function getTopDestinations(records: AttritionRecord[] = ATTRITION_RECORDS, limit = 10): DestinationSummary[] {
+  const map = new Map<string, AttritionRecord[]>();
+  for (const r of records) {
+    if (!map.has(r.destination)) map.set(r.destination, []);
+    map.get(r.destination)!.push(r);
+  }
+
+  return Array.from(map.entries())
+    .map(([company, recs]) => {
+      const reasonCounts = recs.reduce<Record<string, number>>((acc, r) => {
+        acc[r.reason] = (acc[r.reason] ?? 0) + 1;
+        return acc;
+      }, {});
+      const primaryReason = Object.entries(reasonCounts).sort((a, b) => b[1] - a[1])[0][0] as AttritionReason;
+      return {
+        company,
+        type: recs[0].destinationType,
+        count: recs.length,
+        departments: [...new Set(recs.map(r => r.department))],
+        mostRecentDate: recs.map(r => r.date).sort().reverse()[0],
+        avgTenureMonths: Math.round(recs.reduce((s, r) => s + r.tenureMonths, 0) / recs.length),
+        primaryReason,
+      };
+    })
+    .sort((a, b) => b.count - a.count)
+    .slice(0, limit);
+}
+
+export interface AttritionTrend {
+  month: string; // "Jan 2026"
+  count: number;
+}
+
+export function getAttritionTrend(records: AttritionRecord[] = ATTRITION_RECORDS): AttritionTrend[] {
+  const map = new Map<string, number>();
+  for (const r of records) {
+    const d = new Date(r.date);
+    const key = d.toLocaleString('default', { month: 'short', year: 'numeric' });
+    map.set(key, (map.get(key) ?? 0) + 1);
+  }
+  return Array.from(map.entries())
+    .map(([month, count]) => ({ month, count }))
+    .sort((a, b) => new Date(a.month).getTime() - new Date(b.month).getTime());
+}

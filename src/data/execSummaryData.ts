@@ -40,7 +40,7 @@ export interface NavTarget {
   department?: Department;
   skill?: string;
   managerId?: string;
-  benchmarkTab?: 'overview' | 'skills' | 'compensation' | 'team-size' | 'categories';
+  benchmarkTab?: 'overview' | 'skills' | 'compensation' | 'team-size' | 'categories' | 'talent-flow';
 }
 
 export interface DeptHealthSnapshot {
