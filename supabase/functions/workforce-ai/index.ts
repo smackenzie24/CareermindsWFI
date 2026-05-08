@@ -184,10 +184,25 @@ Deno.serve(async (req: Request) => {
     };
 
     try {
-      // Strip markdown code fences if present
-      const jsonStr = raw.replace(/^```(?:json)?\n?/, "").replace(/\n?```$/, "").trim();
+      // Try multiple extraction strategies in order
+      let jsonStr = raw.trim();
+
+      // Strategy 1: extract content inside ```json ... ``` or ``` ... ``` fences
+      const fenceMatch = raw.match(/```(?:json)?\s*\n?([\s\S]*?)\n?```/);
+      if (fenceMatch) {
+        jsonStr = fenceMatch[1].trim();
+      } else {
+        // Strategy 2: find the first { and last } and extract that range
+        const firstBrace = raw.indexOf('{');
+        const lastBrace = raw.lastIndexOf('}');
+        if (firstBrace !== -1 && lastBrace > firstBrace) {
+          jsonStr = raw.slice(firstBrace, lastBrace + 1);
+        }
+      }
+
       parsed = JSON.parse(jsonStr);
-    } catch {
+    } catch (parseErr) {
+      console.error("JSON parse failed. Raw response snippet:", raw.slice(0, 500), "Error:", parseErr);
       // Fallback: treat as plain text, medium confidence
       parsed = {
         confidence: "medium",
