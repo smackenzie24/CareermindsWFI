@@ -23,6 +23,14 @@ export interface LevelFramework {
   criteria: SkillCriterion[];
 }
 
+export type SkillSource = 'assessed' | 'inferred' | 'both';
+
+export interface InferredSkillNote {
+  skillId: string;
+  source: string; // e.g. "2 years as PM at Stripe"
+  confidence: 'high' | 'medium' | 'low';
+}
+
 export interface Person {
   id: string;
   name: string;
@@ -31,8 +39,11 @@ export interface Person {
   location: string;
   currentLevelId: string;
   skills: Record<string, number>; // skillId -> actual rating 1–5
+  inferredSkills?: Record<string, number>; // skillId -> inferred rating from LinkedIn history
+  inferredNotes?: InferredSkillNote[]; // provenance of inferred skills
   tenure: number; // months in current level
   lastCheckIn: string; // ISO date string of most recent check-in
+  linkedInSignals?: string[]; // previous roles / experiences that inform inferred skills
 }
 
 // ── Level definitions ──────────────────────────────────────────────────
@@ -211,11 +222,11 @@ export const PEOPLE: Person[] = [
   { id: 'e1', name: 'Priya Sharma', department: 'Engineering', team: 'Platform', location: 'London', currentLevelId: 'eng-ic3', tenure: 24, lastCheckIn: '2026-04-18', skills: { 'system-design': 4, 'code-review': 5, 'security': 3, 'cicd': 4, 'perf-opt': 4, 'api-design': 4, 'mentoring': 4, 'cross-team': 4, 'incident': 4, 'observability': 3 } },
   { id: 'e2', name: 'James Okafor', department: 'Engineering', team: 'Platform', location: 'London', currentLevelId: 'eng-ic3', tenure: 18, lastCheckIn: '2026-04-10', skills: { 'system-design': 4, 'code-review': 4, 'security': 3, 'cicd': 4, 'perf-opt': 3, 'api-design': 4, 'mentoring': 3, 'cross-team': 4, 'incident': 4, 'observability': 3 } },
   { id: 'e3', name: 'Lena Fischer', department: 'Engineering', team: 'Backend', location: 'New York', currentLevelId: 'eng-ic3', tenure: 30, lastCheckIn: '2026-04-22', skills: { 'system-design': 5, 'code-review': 5, 'security': 4, 'cicd': 4, 'perf-opt': 5, 'api-design': 5, 'mentoring': 4, 'cross-team': 4, 'incident': 5, 'observability': 4 } },
-  { id: 'e4', name: 'Marcus Thompson', department: 'Engineering', team: 'Backend', location: 'New York', currentLevelId: 'eng-ic3', tenure: 14, lastCheckIn: '2026-01-15', skills: { 'system-design': 3, 'code-review': 4, 'security': 2, 'cicd': 3, 'perf-opt': 3, 'api-design': 3, 'mentoring': 2, 'cross-team': 3, 'incident': 3, 'observability': 2 } },
+  { id: 'e4', name: 'Marcus Thompson', department: 'Engineering', team: 'Backend', location: 'New York', currentLevelId: 'eng-ic3', tenure: 14, lastCheckIn: '2026-01-15', skills: { 'system-design': 3, 'code-review': 4, 'security': 2, 'cicd': 3, 'perf-opt': 3, 'api-design': 3, 'mentoring': 2, 'cross-team': 3, 'incident': 3, 'observability': 2 }, inferredSkills: { 'stakeholder': 4, 'roadmap': 4, 'prioritisation': 4, 'user-research': 3, 'metrics': 4, 'okr': 3, 'data-analysis': 3 }, inferredNotes: [{ skillId: 'stakeholder', source: '2 yrs as Associate PM at Deliveroo before joining Eng', confidence: 'high' }, { skillId: 'roadmap', source: 'Led roadmap for internal tooling squad (18 months)', confidence: 'high' }, { skillId: 'metrics', source: 'Built OKR tracking system, worked with Data team on KPIs', confidence: 'medium' }], linkedInSignals: ['Associate PM · Deliveroo (2 yrs)', 'Technical PM · Internal Tools · Acme (18 months)', 'Backend Engineer · Acme (current)'] },
   { id: 'e5', name: 'Lars Eriksson', department: 'Engineering', team: 'Mobile', location: 'Berlin', currentLevelId: 'eng-ic3', tenure: 22, lastCheckIn: '2026-04-05', skills: { 'system-design': 4, 'code-review': 4, 'security': 3, 'cicd': 4, 'perf-opt': 4, 'api-design': 3, 'mentoring': 3, 'cross-team': 4, 'incident': 3, 'observability': 3 } },
-  { id: 'e6', name: 'Mei Chen', department: 'Engineering', team: 'Platform', location: 'Remote', currentLevelId: 'eng-ic3', tenure: 16, lastCheckIn: '2026-02-28', skills: { 'system-design': 3, 'code-review': 4, 'security': 2, 'cicd': 3, 'perf-opt': 3, 'api-design': 3, 'mentoring': 2, 'cross-team': 3, 'incident': 3, 'observability': 2 } },
+  { id: 'e6', name: 'Mei Chen', department: 'Engineering', team: 'Platform', location: 'Remote', currentLevelId: 'eng-ic3', tenure: 16, lastCheckIn: '2026-02-28', skills: { 'system-design': 3, 'code-review': 4, 'security': 2, 'cicd': 3, 'perf-opt': 3, 'api-design': 3, 'mentoring': 2, 'cross-team': 3, 'incident': 3, 'observability': 2 }, inferredSkills: { 'sql': 4, 'stats': 4, 'data-storytelling': 4, 'ml-deploy': 3, 'experiment': 4, 'feature-eng': 3, 'data-governance': 3 }, inferredNotes: [{ skillId: 'sql', source: 'Data Engineer at Tencent for 3 years prior to Acme', confidence: 'high' }, { skillId: 'stats', source: 'MSc Statistics, published ML research paper 2021', confidence: 'high' }, { skillId: 'experiment', source: 'Ran A/B experiments for Tencent recommendation system', confidence: 'high' }], linkedInSignals: ['MSc Statistics · Imperial College London', 'Data Engineer · Tencent (3 yrs)', 'Platform Engineer · Acme (current)'] },
   { id: 'e7', name: 'Aisha Banerjee', department: 'Engineering', team: 'Frontend', location: 'New York', currentLevelId: 'eng-ic3', tenure: 20, lastCheckIn: '2026-04-20', skills: { 'system-design': 4, 'code-review': 4, 'security': 3, 'cicd': 4, 'perf-opt': 3, 'api-design': 3, 'mentoring': 3, 'cross-team': 4, 'incident': 3, 'observability': 3 } },
-  { id: 'e8', name: 'Carlos Mendez', department: 'Engineering', team: 'Frontend', location: 'London', currentLevelId: 'eng-ic3', tenure: 12, lastCheckIn: '2026-03-10', skills: { 'system-design': 2, 'code-review': 3, 'security': 2, 'cicd': 3, 'perf-opt': 2, 'api-design': 2, 'mentoring': 2, 'cross-team': 3, 'incident': 2, 'observability': 2 } },
+  { id: 'e8', name: 'Carlos Mendez', department: 'Engineering', team: 'Frontend', location: 'London', currentLevelId: 'eng-ic3', tenure: 12, lastCheckIn: '2026-03-10', skills: { 'system-design': 2, 'code-review': 3, 'security': 2, 'cicd': 3, 'perf-opt': 2, 'api-design': 2, 'mentoring': 2, 'cross-team': 3, 'incident': 2, 'observability': 2 }, inferredSkills: { 'design-systems': 4, 'interaction': 4, 'visual-comms': 4, 'accessibility': 4, 'user-research': 3, 'design-critique': 3 }, inferredNotes: [{ skillId: 'design-systems', source: 'Founding designer at Cabify (2 yrs) before pivoting to eng', confidence: 'high' }, { skillId: 'interaction', source: 'UX/UI design degree, portfolio includes 3 shipped consumer apps', confidence: 'high' }, { skillId: 'accessibility', source: 'Led accessibility audit and remediation at Cabify', confidence: 'medium' }], linkedInSignals: ['BA Interaction Design · Elisava', 'Product Designer · Cabify (2 yrs)', 'Frontend Engineer · Acme (current)'] },
   // Engineering IC2 → IC3
   { id: 'e9', name: 'Arjun Patel', department: 'Engineering', team: 'Platform', location: 'Singapore', currentLevelId: 'eng-ic2', tenure: 18, lastCheckIn: '2026-04-14', skills: { 'system-design': 2, 'code-review': 3, 'security': 2, 'cicd': 3, 'perf-opt': 2, 'api-design': 3, 'mentoring': 2, 'cross-team': 3, 'incident': 3, 'observability': 2 } },
   { id: 'e10', name: 'Sofia Rossi', department: 'Engineering', team: 'Platform', location: 'London', currentLevelId: 'eng-ic2', tenure: 12, lastCheckIn: '2026-04-25', skills: { 'system-design': 3, 'code-review': 3, 'security': 2, 'cicd': 2, 'perf-opt': 2, 'api-design': 3, 'mentoring': 1, 'cross-team': 3, 'incident': 2, 'observability': 2 } },
@@ -226,7 +237,7 @@ export const PEOPLE: Person[] = [
   // ── Product IC2 → IC3 ──────────────────────────────────────────────
   { id: 'p1', name: 'Sarah Kim', department: 'Product', team: 'Growth', location: 'London', currentLevelId: 'prod-ic2', tenure: 22, lastCheckIn: '2026-04-21', skills: { 'stakeholder': 4, 'roadmap': 4, 'data-analysis': 4, 'prioritisation': 4, 'user-research': 3, 'metrics': 4, 'okr': 3, 'gtm': 3, 'written-comms': 4, 'competitive': 3 } },
   { id: 'p2', name: 'Ben Adeyemi', department: 'Product', team: 'Core', location: 'London', currentLevelId: 'prod-ic2', tenure: 18, lastCheckIn: '2026-02-14', skills: { 'stakeholder': 3, 'roadmap': 3, 'data-analysis': 3, 'prioritisation': 3, 'user-research': 3, 'metrics': 3, 'okr': 3, 'gtm': 2, 'written-comms': 4, 'competitive': 2 } },
-  { id: 'p3', name: 'David Park', department: 'Product', team: 'Growth', location: 'New York', currentLevelId: 'prod-ic2', tenure: 10, lastCheckIn: '2026-04-08', skills: { 'stakeholder': 2, 'roadmap': 2, 'data-analysis': 2, 'prioritisation': 2, 'user-research': 2, 'metrics': 2, 'okr': 2, 'gtm': 2, 'written-comms': 3, 'competitive': 2 } },
+  { id: 'p3', name: 'David Park', department: 'Product', team: 'Growth', location: 'New York', currentLevelId: 'prod-ic2', tenure: 10, lastCheckIn: '2026-04-08', skills: { 'stakeholder': 2, 'roadmap': 2, 'data-analysis': 2, 'prioritisation': 2, 'user-research': 2, 'metrics': 2, 'okr': 2, 'gtm': 2, 'written-comms': 3, 'competitive': 2 }, inferredSkills: { 'campaign-attr': 4, 'mkt-analytics': 4, 'conversion': 4, 'seo': 3, 'brand-strategy': 3 }, inferredNotes: [{ skillId: 'campaign-attr', source: 'Growth Marketing Manager at HubSpot for 3 years', confidence: 'high' }, { skillId: 'conversion', source: 'Led CRO programme reducing bounce rate by 34% at HubSpot', confidence: 'high' }, { skillId: 'mkt-analytics', source: 'Advanced Google Analytics certified, ran paid acquisition reporting', confidence: 'high' }], linkedInSignals: ['Growth Marketing Manager · HubSpot (3 yrs)', 'PM · Growth · Acme (current)'] },
   { id: 'p4', name: 'Fatima Hassan', department: 'Product', team: 'Core', location: 'Berlin', currentLevelId: 'prod-ic2', tenure: 14, lastCheckIn: '2026-04-23', skills: { 'stakeholder': 3, 'roadmap': 3, 'data-analysis': 3, 'prioritisation': 3, 'user-research': 2, 'metrics': 2, 'okr': 3, 'gtm': 2, 'written-comms': 3, 'competitive': 2 } },
   // Product IC3 → IC4
   { id: 'p5', name: 'Emma Clarke', department: 'Product', team: 'Growth', location: 'Remote', currentLevelId: 'prod-ic3', tenure: 28, lastCheckIn: '2026-01-30', skills: { 'stakeholder': 5, 'roadmap': 4, 'data-analysis': 4, 'prioritisation': 5, 'gtm': 4, 'written-comms': 4, 'competitive': 4 } },
@@ -241,20 +252,20 @@ export const PEOPLE: Person[] = [
   // ── Data IC2 → IC3 ──────────────────────────────────────────────
   { id: 'da1', name: 'Hana Johansson', department: 'Data', team: 'Analytics', location: 'London', currentLevelId: 'dat-ic2', tenure: 24, lastCheckIn: '2026-04-26', skills: { 'ml-deploy': 3, 'sql': 4, 'feature-eng': 3, 'stats': 4, 'data-storytelling': 3, 'experiment': 3, 'data-governance': 3 } },
   { id: 'da2', name: 'Raj Krishnamurthy', department: 'Data', team: 'ML & AI', location: 'Singapore', currentLevelId: 'dat-ic2', tenure: 18, lastCheckIn: '2026-03-15', skills: { 'ml-deploy': 3, 'sql': 3, 'feature-eng': 3, 'stats': 4, 'data-storytelling': 2, 'experiment': 3, 'data-governance': 2 } },
-  { id: 'da3', name: 'Ana Lima', department: 'Data', team: 'Analytics', location: 'New York', currentLevelId: 'dat-ic2', tenure: 12, lastCheckIn: '2026-04-27', skills: { 'ml-deploy': 2, 'sql': 4, 'feature-eng': 2, 'stats': 3, 'data-storytelling': 3, 'experiment': 2, 'data-governance': 2 } },
+  { id: 'da3', name: 'Ana Lima', department: 'Data', team: 'Analytics', location: 'New York', currentLevelId: 'dat-ic2', tenure: 12, lastCheckIn: '2026-04-27', skills: { 'ml-deploy': 2, 'sql': 4, 'feature-eng': 2, 'stats': 3, 'data-storytelling': 3, 'experiment': 2, 'data-governance': 2 }, inferredSkills: { 'stakeholder': 4, 'roadmap': 3, 'prioritisation': 4, 'metrics': 4, 'okr': 4, 'data-analysis': 4, 'user-research': 3, 'written-comms': 4 }, inferredNotes: [{ skillId: 'prioritisation', source: 'Scrum Product Owner certified, ran sprint planning at Nubank', confidence: 'high' }, { skillId: 'metrics', source: '18 months as Analytics PM at Nubank owning north-star KPIs', confidence: 'high' }, { skillId: 'okr', source: 'Facilitated quarterly OKR cycles across 3 product squads', confidence: 'high' }], linkedInSignals: ['Analytics PM · Nubank (18 months)', 'Data Analyst · Acme (current)', 'Certified Scrum Product Owner'] },
   { id: 'da4', name: 'Luis Garcia', department: 'Data', team: 'ML & AI', location: 'Remote', currentLevelId: 'dat-ic2', tenure: 20, lastCheckIn: '2026-01-20', skills: { 'ml-deploy': 4, 'sql': 4, 'feature-eng': 4, 'stats': 4, 'data-storytelling': 3, 'experiment': 3, 'data-governance': 3 } },
   { id: 'da5', name: 'Nina Volkov', department: 'Data', team: 'Analytics', location: 'Berlin', currentLevelId: 'dat-ic2', tenure: 8, lastCheckIn: '2026-04-03', skills: { 'ml-deploy': 1, 'sql': 3, 'feature-eng': 1, 'stats': 3, 'data-storytelling': 2, 'experiment': 2, 'data-governance': 1 } },
 
   // ── Marketing IC2 → IC3 ─────────────────────────────────────────
   { id: 'm1', name: 'Chloe Martin', department: 'Marketing', team: 'Performance', location: 'London', currentLevelId: 'mkt-ic2', tenure: 18, lastCheckIn: '2026-04-24', skills: { 'campaign-attr': 4, 'mkt-analytics': 3, 'brand-strategy': 3, 'conversion': 3, 'seo': 3 } },
   { id: 'm2', name: 'Tom Bradley', department: 'Marketing', team: 'Brand', location: 'New York', currentLevelId: 'mkt-ic2', tenure: 22, lastCheckIn: '2026-02-20', skills: { 'campaign-attr': 3, 'mkt-analytics': 3, 'brand-strategy': 4, 'conversion': 2, 'seo': 3 } },
-  { id: 'm3', name: 'Isabelle Dupont', department: 'Marketing', team: 'Content', location: 'Remote', currentLevelId: 'mkt-ic2', tenure: 10, lastCheckIn: '2026-04-12', skills: { 'campaign-attr': 2, 'mkt-analytics': 2, 'brand-strategy': 3, 'conversion': 2, 'seo': 4 } },
+  { id: 'm3', name: 'Isabelle Dupont', department: 'Marketing', team: 'Content', location: 'Remote', currentLevelId: 'mkt-ic2', tenure: 10, lastCheckIn: '2026-04-12', skills: { 'campaign-attr': 2, 'mkt-analytics': 2, 'brand-strategy': 3, 'conversion': 2, 'seo': 4 }, inferredSkills: { 'stakeholder': 3, 'roadmap': 4, 'prioritisation': 3, 'user-research': 4, 'metrics': 3, 'okr': 3, 'written-comms': 4, 'competitive': 3 }, inferredNotes: [{ skillId: 'user-research', source: 'UX Researcher at Doctolib for 2 years before moving into marketing', confidence: 'high' }, { skillId: 'roadmap', source: 'Transitioned to Content Strategist owning editorial roadmap', confidence: 'medium' }, { skillId: 'written-comms', source: 'Published author, content strategy portfolio at enterprise scale', confidence: 'high' }], linkedInSignals: ['UX Researcher · Doctolib (2 yrs)', 'Content Strategist · Freelance (1 yr)', 'Marketing Manager · Acme (current)'] },
 
   // ── Sales IC2 → IC3 ─────────────────────────────────────────────
   { id: 's1', name: 'Rachel Green', department: 'Sales', team: 'Enterprise', location: 'London', currentLevelId: 'sal-ic2', tenure: 20, lastCheckIn: '2026-04-28', skills: { 'negotiation': 4, 'demo': 4, 'account-mgmt': 4, 'forecasting': 3, 'executive': 3 } },
   { id: 's2', name: 'Dan Torres', department: 'Sales', team: 'SMB', location: 'New York', currentLevelId: 'sal-ic2', tenure: 14, lastCheckIn: '2026-03-30', skills: { 'negotiation': 3, 'demo': 3, 'account-mgmt': 3, 'forecasting': 3, 'executive': 2 } },
   { id: 's3', name: 'Sam Wilson', department: 'Sales', team: 'Enterprise', location: 'Singapore', currentLevelId: 'sal-ic2', tenure: 16, lastCheckIn: '2026-04-15', skills: { 'negotiation': 4, 'demo': 4, 'account-mgmt': 3, 'forecasting': 4, 'executive': 3 } },
-  { id: 's4', name: 'Lila Osei', department: 'Sales', team: 'SMB', location: 'Remote', currentLevelId: 'sal-ic2', tenure: 8, lastCheckIn: '2026-02-10', skills: { 'negotiation': 2, 'demo': 3, 'account-mgmt': 2, 'forecasting': 2, 'executive': 1 } },
+  { id: 's4', name: 'Lila Osei', department: 'Sales', team: 'SMB', location: 'Remote', currentLevelId: 'sal-ic2', tenure: 8, lastCheckIn: '2026-02-10', skills: { 'negotiation': 2, 'demo': 3, 'account-mgmt': 2, 'forecasting': 2, 'executive': 1 }, inferredSkills: { 'comp-bench': 4, 'org-design': 3, 'change-mgmt': 3, 'dei': 4, 'hr-analytics': 3, 'perf-frameworks': 3 }, inferredNotes: [{ skillId: 'comp-bench', source: 'HR Generalist at Goldman Sachs for 3 years before Sales', confidence: 'high' }, { skillId: 'dei', source: 'Co-founded DEI working group at Goldman; CIPD Level 5 qualified', confidence: 'high' }, { skillId: 'perf-frameworks', source: 'Designed performance calibration framework for 200-person team', confidence: 'medium' }], linkedInSignals: ['CIPD Level 5 qualified', 'HR Generalist · Goldman Sachs (3 yrs)', 'Account Executive · Acme (current)'] },
 
   // ── People Ops IC2 → M1 ─────────────────────────────────────────
   { id: 'hr1', name: 'Talia Moore', department: 'People Ops', team: 'HR Business Partners', location: 'London', currentLevelId: 'ppl-ic2', tenure: 26, lastCheckIn: '2026-04-29', skills: { 'comp-bench': 4, 'org-design': 3, 'change-mgmt': 3, 'dei': 4, 'hr-analytics': 3, 'perf-frameworks': 4 } },
@@ -399,6 +410,146 @@ export function getCandidatesForSkill(skillName: string, department?: string): S
   }
 
   return matches.sort((a, b) => b.readinessPct - a.readinessPct);
+}
+
+// ── Cross-department role fit ───────────────────────────────────────────
+
+export interface CrossDeptFitResult {
+  person: Person;
+  currentDept: Department;
+  currentReadinessPct: number;
+  suggestedDept: Department;
+  suggestedLevelId: string;
+  suggestedLevelLabel: string;
+  fitPct: number; // 0–100 — how well they meet the target framework using combined skills
+  delta: number; // fitPct - currentReadinessPct (positive = stronger fit in new dept)
+  matchedCriteria: number;
+  totalCriteria: number;
+  topInferredSignals: InferredSkillNote[]; // top 3 inferred skills driving the fit
+  linkedInSignals: string[];
+}
+
+/**
+ * Merge assessed and inferred skills, with inferred used only where assessed has no rating.
+ * Inferred skills are weighted at 80% of their value to reflect lower confidence.
+ */
+function mergedSkills(person: Person): Record<string, number> {
+  const merged: Record<string, number> = { ...person.skills };
+  if (person.inferredSkills) {
+    for (const [skillId, rating] of Object.entries(person.inferredSkills)) {
+      if (!merged[skillId]) {
+        // Not assessed — use inferred at 80% weight (round down to be conservative)
+        merged[skillId] = Math.floor(rating * 0.8);
+      }
+    }
+  }
+  return merged;
+}
+
+/**
+ * Score a person against a target framework using their combined skill set.
+ * Returns 0–100 readiness percentage.
+ */
+function scorePerson(person: Person, framework: LevelFramework): number {
+  const skills = mergedSkills(person);
+  let met = 0;
+  for (const criterion of framework.criteria) {
+    if ((skills[criterion.skillId] ?? 0) >= criterion.requiredRating) met++;
+  }
+  return Math.round((met / framework.criteria.length) * 100);
+}
+
+/**
+ * For each person with inferred skills, compute their fit score against every
+ * other department's entry-level framework. Flag those whose cross-dept fit
+ * exceeds their current-dept readiness by MIN_DELTA or more.
+ *
+ * Only considers IC-track frameworks (not manager levels) to avoid noise.
+ * Returns results sorted by delta descending.
+ */
+const ROLE_FIT_MIN_DELTA = 15; // minimum gap (in %) to surface as a candidate
+
+export function getCrossDeptFitCandidates(): CrossDeptFitResult[] {
+  const results: CrossDeptFitResult[] = [];
+  const allReadiness = getAllReadiness();
+
+  for (const person of PEOPLE) {
+    // Only flag people with inferred skills — without LinkedIn data we can't do cross-dept fit
+    if (!person.inferredSkills || Object.keys(person.inferredSkills).length === 0) continue;
+
+    // Current readiness
+    const currentReadinessResult = allReadiness.find(r => r.person.id === person.id);
+    const currentReadinessPct = currentReadinessResult?.readinessPct ?? 0;
+
+    // Try every framework that belongs to a DIFFERENT department on the IC track
+    for (const framework of LEVEL_FRAMEWORKS) {
+      const targetLevel = LEVEL_DEFINITIONS.find(l => l.id === framework.levelId);
+      if (!targetLevel) continue;
+      if (targetLevel.department === person.department) continue;
+      if (targetLevel.track !== 'IC') continue;
+
+      // Only look at equivalent or adjacent levels (IC1, IC2, IC3 equivalent)
+      // We check the first IC level in each dept to find baseline fit
+      const currentLevel = LEVEL_DEFINITIONS.find(l => l.id === person.currentLevelId);
+      if (!currentLevel) continue;
+      // Map IC track positions: IC1=1, IC2=2, IC3=3, IC4=4
+      const icRank = (id: string) => {
+        if (id.includes('ic1')) return 1;
+        if (id.includes('ic2')) return 2;
+        if (id.includes('ic3')) return 3;
+        if (id.includes('ic4')) return 4;
+        if (id.includes('m1')) return 3;
+        if (id.includes('m2')) return 4;
+        return 2;
+      };
+      // Only compare to same or adjacent IC level in target dept
+      const currentRank = icRank(person.currentLevelId);
+      const targetRank = icRank(framework.levelId);
+      if (Math.abs(targetRank - currentRank) > 1) continue;
+
+      const fitPct = scorePerson(person, framework);
+      const delta = fitPct - currentReadinessPct;
+
+      if (delta >= ROLE_FIT_MIN_DELTA) {
+        const matchedCount = framework.criteria.filter(c => {
+          const skills = mergedSkills(person);
+          return (skills[c.skillId] ?? 0) >= c.requiredRating;
+        }).length;
+
+        // Top inferred signals that overlap with this framework's criteria
+        const frameworkSkillIds = new Set(framework.criteria.map(c => c.skillId));
+        const topSignals = (person.inferredNotes ?? [])
+          .filter(n => frameworkSkillIds.has(n.skillId))
+          .slice(0, 3);
+
+        results.push({
+          person,
+          currentDept: person.department,
+          currentReadinessPct,
+          suggestedDept: targetLevel.department,
+          suggestedLevelId: framework.levelId,
+          suggestedLevelLabel: targetLevel.label,
+          fitPct,
+          delta,
+          matchedCriteria: matchedCount,
+          totalCriteria: framework.criteria.length,
+          topInferredSignals: topSignals,
+          linkedInSignals: person.linkedInSignals ?? [],
+        });
+      }
+    }
+  }
+
+  // Deduplicate: keep only the best-fitting suggested dept per person
+  const best = new Map<string, CrossDeptFitResult>();
+  for (const r of results) {
+    const existing = best.get(r.person.id);
+    if (!existing || r.delta > existing.delta) {
+      best.set(r.person.id, r);
+    }
+  }
+
+  return [...best.values()].sort((a, b) => b.delta - a.delta);
 }
 
 /**

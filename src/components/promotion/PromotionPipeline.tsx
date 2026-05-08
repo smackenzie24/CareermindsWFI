@@ -1,6 +1,8 @@
 import { useMemo, useState } from 'react';
-import { ChevronDown, ChevronRight, ChevronUp, Users, TrendingUp, Star, Clock, DollarSign, Building2, CalendarCheck } from 'lucide-react';
+import { ChevronDown, ChevronRight, ChevronUp, Users, TrendingUp, Star, Clock, DollarSign, Building2, CalendarCheck, Sparkles } from 'lucide-react';
 import { ExportButtons } from '../ExportButtons';
+import { HiddenTalent } from './HiddenTalent';
+import { getCrossDeptFitCandidates } from '../../data/promotionData';
 import {
   getAllReadiness,
   TIER_CONFIG,
@@ -159,6 +161,8 @@ export function PromotionPipeline({ initialDepartment, selectedDept: selectedDep
     onSelectDept?.(dept);
   };
   const [orgExpanded, setOrgExpanded] = useState(true);
+  const [activeTab, setActiveTab] = useState<'pipeline' | 'hidden-talent'>('pipeline');
+  const hiddenTalentCount = useMemo(() => getCrossDeptFitCandidates().length, []);
 
   const allResults = useMemo(() => getAllReadiness(), []);
 
@@ -305,6 +309,43 @@ export function PromotionPipeline({ initialDepartment, selectedDept: selectedDep
         </div>
       </header>
 
+      {/* Tabs */}
+      <div className="bg-white border-b border-gray-100 px-8 flex items-center gap-0">
+        <button
+          onClick={() => setActiveTab('pipeline')}
+          className={`flex items-center gap-2 px-4 py-3.5 text-sm font-semibold border-b-2 transition-all ${
+            activeTab === 'pipeline'
+              ? 'border-gray-900 text-gray-900'
+              : 'border-transparent text-gray-400 hover:text-gray-700'
+          }`}
+        >
+          <Users size={14} />
+          Pipeline
+        </button>
+        <button
+          onClick={() => setActiveTab('hidden-talent')}
+          className={`flex items-center gap-2 px-4 py-3.5 text-sm font-semibold border-b-2 transition-all ${
+            activeTab === 'hidden-talent'
+              ? 'border-sky-500 text-sky-700'
+              : 'border-transparent text-gray-400 hover:text-gray-700'
+          }`}
+        >
+          <Sparkles size={14} />
+          Hidden Talent
+          {hiddenTalentCount > 0 && (
+            <span className="text-[10px] font-bold bg-sky-100 text-sky-700 px-1.5 py-0.5 rounded-full">
+              {hiddenTalentCount}
+            </span>
+          )}
+        </button>
+      </div>
+
+      {activeTab === 'hidden-talent' ? (
+        <main className="flex-1 overflow-auto p-8">
+          <HiddenTalent />
+        </main>
+      ) : (
+      <>
       {/* Tier legend */}
       <div className="bg-white border-b border-gray-100 px-8 py-3 flex items-center gap-6" data-tour="pipeline-tier-legend">
         <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Readiness tiers:</span>
@@ -413,6 +454,8 @@ export function PromotionPipeline({ initialDepartment, selectedDept: selectedDep
         <UpsellBanner variant="leadership-dev" className="mt-6" />
         <FeedbackBanner context="Promotion Pipeline" className="mt-4" />
       </main>
+      </>
+      )}
     </div>
   );
 }

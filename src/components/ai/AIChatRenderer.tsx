@@ -3,7 +3,7 @@ import {
   Sparkles, ArrowRight, AlertTriangle, UserPlus, BookOpen,
   RefreshCw, Eye, Zap, Scale, AlertCircle, CheckCircle2,
   MinusCircle, ExternalLink, Users, TrendingUp, MoveRight,
-  CircleDot, Check, Pencil, ChevronRight, X,
+  CircleDot, Check, Pencil, ChevronRight, X, Linkedin, Info,
 } from 'lucide-react';
 import {
   type ChatMessage,
@@ -22,6 +22,7 @@ import {
   type CommitmentPrompt,
   type PartnerRecommendation,
 } from '../../data/chatEngine';
+import { type CrossDeptFitResult, DEPT_COLORS as PROMO_DEPT_COLORS } from '../../data/promotionData';
 import { DEPT_COLORS } from '../../data/mockData';
 import { supabase } from '../../lib/supabase';
 
@@ -737,6 +738,56 @@ function InlineUpsell({ variant }: { variant: InlineUpsellVariant }) {
   );
 }
 
+// ── Role fit card ──────────────────────────────────────────────────────
+
+function RoleFitCard({ result }: { result: CrossDeptFitResult }) {
+  const [expanded, setExpanded] = useState(false);
+  const currentColor = PROMO_DEPT_COLORS[result.currentDept] ?? '#6b7280';
+  const suggestedColor = PROMO_DEPT_COLORS[result.suggestedDept] ?? '#6b7280';
+  return (
+    <div className="bg-white border border-gray-100 rounded-xl overflow-hidden">
+      <div className="px-4 py-3">
+        <div className="flex items-start gap-3">
+          <div className="w-8 h-8 rounded-lg flex items-center justify-center text-white text-xs font-bold flex-shrink-0" style={{ background: currentColor }}>
+            {result.person.name.split(' ').map(n => n[0]).join('').slice(0, 2)}
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="text-sm font-bold text-gray-900">{result.person.name}</span>
+              <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded" style={{ color: currentColor, background: `${currentColor}18` }}>{result.currentDept}</span>
+              <ArrowRight size={10} className="text-gray-300" />
+              <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded" style={{ color: suggestedColor, background: `${suggestedColor}18` }}>{result.suggestedDept}</span>
+              <span className="ml-auto text-xs font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full">+{result.delta}%</span>
+            </div>
+            <p className="text-[11px] text-gray-500 mt-1 leading-relaxed">
+              {result.currentReadinessPct}% fit in {result.currentDept} → {result.fitPct}% fit in {result.suggestedDept} · {result.matchedCriteria}/{result.totalCriteria} criteria met
+            </p>
+            {result.topInferredSignals[0] && (
+              <div className="flex items-start gap-1.5 mt-1.5">
+                <Linkedin size={10} className="text-[#0A66C2] mt-0.5 flex-shrink-0" />
+                <p className="text-[10px] text-gray-400 leading-relaxed">{result.topInferredSignals[0].source}</p>
+              </div>
+            )}
+          </div>
+          <button onClick={() => setExpanded(e => !e)} className="text-gray-300 hover:text-gray-600 transition-colors flex-shrink-0">
+            <ChevronRight size={14} className={`transition-transform ${expanded ? 'rotate-90' : ''}`} />
+          </button>
+        </div>
+        {expanded && result.linkedInSignals.length > 0 && (
+          <div className="mt-3 pt-3 border-t border-gray-50 space-y-1">
+            {result.linkedInSignals.map((s, i) => (
+              <div key={i} className="flex items-center gap-2">
+                <div className="w-1 h-1 rounded-full bg-[#0A66C2] flex-shrink-0" />
+                <span className="text-[10px] text-gray-500">{s}</span>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // ── Results block — renders any QueryResult[] ─────────────────────────
 
 function pickUpsell(results: QueryResult[]): InlineUpsellVariant | null {
@@ -809,6 +860,21 @@ export function ResultsBlock({ results, onSend, onNavigate, wide }: { results: Q
         if (r.kind === 'decision') return <DecisionFrameCard key={i} frame={r.frame} onSend={onSend} />;
         if (r.kind === 'commitment-prompt') return <CommitmentCaptureCard key={i} data={r.data} />;
         if (r.kind === 'partner-recommendation') return <PartnerRecommendationCard key={i} data={r.data} />;
+        if (r.kind === 'role-fit-list') {
+          return (
+            <div key={i} className="space-y-2">
+              <div className="flex items-center gap-2 mb-1">
+                <Sparkles size={12} className="text-sky-500" />
+                <span className="text-xs font-semibold text-sky-700">Hidden Talent — LinkedIn-inferred</span>
+                <div className="flex items-center gap-1 bg-amber-50 border border-amber-100 rounded-lg px-2 py-1 ml-auto">
+                  <Info size={10} className="text-amber-500" />
+                  <span className="text-[10px] text-amber-700 font-medium">For managers only</span>
+                </div>
+              </div>
+              {r.items.map((item, j) => <RoleFitCard key={j} result={item} />)}
+            </div>
+          );
+        }
         if (r.kind === 'labeled-people') {
           return (
             <div key={i}>

@@ -6,7 +6,9 @@ import {
   LEVEL_DEFINITIONS,
   PEOPLE,
   LEVEL_FRAMEWORKS,
+  getCrossDeptFitCandidates,
   type ReadinessResult,
+  type CrossDeptFitResult,
 } from './promotionData';
 import { SKILLS_DATA, DEPARTMENTS, type Department } from './mockData';
 import { ACME_HEADCOUNT_BY_DEPT, ACME_TOTAL_HEADCOUNT, ACME_SKILL_COMPETENCY, PEER_COMPANIES } from './benchmarkData';
@@ -132,7 +134,8 @@ export type QueryResultKind =
   | 'clarification'
   | 'decision'
   | 'commitment-prompt'
-  | 'partner-recommendation';
+  | 'partner-recommendation'
+  | 'role-fit-list';
 
 export interface DecisionOption {
   id: string;
@@ -187,7 +190,8 @@ export type QueryResult =
   | { kind: 'labeled-people'; label: string; subLabel?: string; isChurn?: boolean; items: PersonResult[] }
   | { kind: 'decision'; frame: DecisionFrame }
   | { kind: 'commitment-prompt'; data: CommitmentPrompt }
-  | { kind: 'partner-recommendation'; data: PartnerRecommendation };
+  | { kind: 'partner-recommendation'; data: PartnerRecommendation }
+  | { kind: 'role-fit-list'; items: CrossDeptFitResult[] };
 
 // ── Suggest prompts shown when chat is empty ─────────────────────────
 export const SUGGESTED_PROMPTS = [
@@ -198,7 +202,7 @@ export const SUGGESTED_PROMPTS = [
   'Who needs the most development?',
   'Which skills are missing org-wide?',
   'How many people are near-ready in Product?',
-  'Show me everyone in Data',
+  'Who might be better suited to a different role?',
 ];
 
 export const PLANNING_PROMPTS = [
@@ -514,6 +518,30 @@ function handlePersonSearch(query: string): { text: string; results: QueryResult
   return {
     text: `Found ${matches.length} matching ${matches.length === 1 ? 'person' : 'people'}:`,
     results: [{ kind: 'person-list', items: matches.map(toPersonResult) }],
+  };
+}
+
+function handleRoleFit(query: string): { text: string; results: QueryResult[] } {
+  const dept = detectDept(query);
+  const all = getCrossDeptFitCandidates();
+  const filtered = dept
+    ? all.filter(r => r.currentDept === dept || r.suggestedDept === dept)
+    : all;
+
+  if (filtered.length === 0) {
+    return {
+      text: `No cross-department fit candidates detected${dept ? ` for ${dept}` : ''}. Upload LinkedIn data via Revelio Labs to surface hidden strengths across more employees.`,
+      results: [],
+    };
+  }
+
+  const scope = dept ? ` in or involving ${dept}` : '';
+  const topCandidate = filtered[0];
+  return {
+    text: `${filtered.length} employee${filtered.length === 1 ? '' : 's'}${scope} show stronger fit in a different department based on their inferred LinkedIn skills. Top signal: ${topCandidate.person.name} scores ${topCandidate.fitPct}% in ${topCandidate.suggestedDept} vs ${topCandidate.currentReadinessPct}% in their current ${topCandidate.currentDept} role — a +${topCandidate.delta}% delta.`,
+    results: [
+      { kind: 'role-fit-list', items: filtered },
+    ],
   };
 }
 
@@ -1511,6 +1539,11 @@ function _queryInner(q: string, _input: string): { text: string; results: QueryR
   // Budget / cost / financial questions — we never have this data locally
   if (/\b(budget|cost|salary|compensation|pay|spend|expenditure|total comp|% of|percent of|afford|expensive|cheap|save|saving)\b/.test(q)) {
     return { text: '', results: [], needsAI: true };
+  }
+
+  // ── Role fit / hidden talent ─────────────────────────────────────────
+  if (/\b(misplaced|wrong role|wrong department|wrong dept|better suited|hidden talent|hidden strength|role fit|career pivot|internal transfer|cross.dept|different function|different department|different role|misfit|underperform)\b/.test(q)) {
+    return handleRoleFit(q);
   }
 
   // ── Diagnostic intents ───────────────────────────────────────────────
