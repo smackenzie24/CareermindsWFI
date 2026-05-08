@@ -1,8 +1,9 @@
 import { useMemo, useState } from 'react';
-import { ChevronDown, ChevronRight, ChevronUp, Users, TrendingUp, Star, Clock, DollarSign, Building2, CalendarCheck, Sparkles } from 'lucide-react';
+import { ChevronDown, ChevronRight, ChevronUp, Users, TrendingUp, Star, Clock, DollarSign, Building2, CalendarCheck, Sparkles, AlertTriangle } from 'lucide-react';
 import { ExportButtons } from '../ExportButtons';
 import { HiddenTalent } from './HiddenTalent';
-import { getCrossDeptFitCandidates } from '../../data/promotionData';
+import { FlightRiskTab } from './FlightRiskTab';
+import { getCrossDeptFitCandidates, getFlightRiskPeople } from '../../data/promotionData';
 import {
   getAllReadiness,
   TIER_CONFIG,
@@ -161,8 +162,9 @@ export function PromotionPipeline({ initialDepartment, selectedDept: selectedDep
     onSelectDept?.(dept);
   };
   const [orgExpanded, setOrgExpanded] = useState(true);
-  const [activeTab, setActiveTab] = useState<'pipeline' | 'hidden-talent'>('pipeline');
+  const [activeTab, setActiveTab] = useState<'pipeline' | 'hidden-talent' | 'flight-risk'>('pipeline');
   const hiddenTalentCount = useMemo(() => getCrossDeptFitCandidates().length, []);
+  const flightRiskHighCount = useMemo(() => getFlightRiskPeople('high').length, []);
 
   const allResults = useMemo(() => getAllReadiness(), []);
 
@@ -338,9 +340,29 @@ export function PromotionPipeline({ initialDepartment, selectedDept: selectedDep
             </span>
           )}
         </button>
+        <button
+          onClick={() => setActiveTab('flight-risk')}
+          className={`flex items-center gap-2 px-4 py-3.5 text-sm font-semibold border-b-2 transition-all ${
+            activeTab === 'flight-risk'
+              ? 'border-red-500 text-red-700'
+              : 'border-transparent text-gray-400 hover:text-gray-700'
+          }`}
+        >
+          <AlertTriangle size={14} />
+          Flight Risk
+          {flightRiskHighCount > 0 && (
+            <span className="text-[10px] font-bold bg-red-100 text-red-700 px-1.5 py-0.5 rounded-full">
+              {flightRiskHighCount}
+            </span>
+          )}
+        </button>
       </div>
 
-      {activeTab === 'hidden-talent' ? (
+      {activeTab === 'flight-risk' ? (
+        <main className="flex-1 overflow-auto p-8">
+          <FlightRiskTab onSwitchToHiddenTalent={() => setActiveTab('hidden-talent')} />
+        </main>
+      ) : activeTab === 'hidden-talent' ? (
         <main className="flex-1 overflow-auto p-8">
           <HiddenTalent />
         </main>
