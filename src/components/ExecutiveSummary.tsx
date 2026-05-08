@@ -1,4 +1,4 @@
-import { useMemo, useState, useRef } from 'react';
+import { useMemo, useState } from 'react';
 import { ChevronDown, ChevronUp } from 'lucide-react';
 import { AlertTriangle, CheckCircle2, TrendingUp, Users, BarChart3, Globe, Star, ArrowRight, Zap, Shield, Clock, CalendarX, Sparkles, SendHorizontal as SendHorizonal } from 'lucide-react';
 import {
@@ -12,6 +12,7 @@ import {
 } from '../data/execSummaryData';
 import { QUARTILE_CONFIG } from '../data/benchmarkData';
 import { FeedbackBanner } from './feedback/FeedbackBanner';
+import { ExportButtons } from './ExportButtons';
 
 interface Props {
   onNavigate: (target: NavTarget) => void;
@@ -27,9 +28,8 @@ const AI_SUGGESTIONS = [
   'Who is ready for promotion?',
 ];
 
-function AIHero({ onAskAI }: { onAskAI: (q?: string) => void }) {
+function AIPromptBar({ onAskAI }: { onAskAI: (q?: string) => void }) {
   const [input, setInput] = useState('');
-  const inputRef = useRef<HTMLInputElement>(null);
 
   function submit(q?: string) {
     const text = (q ?? input).trim();
@@ -39,61 +39,40 @@ function AIHero({ onAskAI }: { onAskAI: (q?: string) => void }) {
   }
 
   return (
-    <div className="relative overflow-hidden rounded-2xl bg-gray-900 px-8 py-7">
-      {/* Subtle gradient orbs */}
-      <div className="absolute -top-16 -right-16 w-64 h-64 bg-sky-500/10 rounded-full blur-3xl pointer-events-none" />
-      <div className="absolute -bottom-12 -left-12 w-48 h-48 bg-blue-600/10 rounded-full blur-2xl pointer-events-none" />
-
-      <div className="relative">
-        {/* Label row */}
-        <div className="flex items-center gap-2 mb-4">
-          <div className="w-6 h-6 rounded-lg bg-sky-500 flex items-center justify-center">
-            <Sparkles size={12} className="text-white" />
-          </div>
-          <span className="text-xs font-bold text-sky-400 uppercase tracking-widest">Workforce AI</span>
+    <div className="bg-white border border-gray-100 rounded-2xl px-5 py-4 shadow-sm" data-tour="home-ai-hero">
+      <div className="flex items-center gap-3">
+        <div className="w-7 h-7 rounded-lg bg-sky-50 border border-sky-100 flex items-center justify-center flex-shrink-0">
+          <Sparkles size={13} className="text-sky-500" />
         </div>
-
-        {/* Headline */}
-        <h2 className="text-xl font-bold text-white mb-1 leading-snug">
-          Ask anything about your workforce
-        </h2>
-        <p className="text-sm text-gray-400 mb-5">
-          Get instant analysis on skills, retention, promotions, headcount, and strategy.
-        </p>
-
-        {/* Input */}
-        <div className="flex items-center gap-2 bg-white/8 border border-white/10 rounded-xl px-4 py-3 focus-within:border-sky-500/60 focus-within:bg-white/10 transition-all">
+        <div className="flex-1 flex items-center gap-2 bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 focus-within:border-sky-400 focus-within:bg-white transition-all">
           <input
-            ref={inputRef}
             type="text"
             value={input}
             onChange={e => setInput(e.target.value)}
             onKeyDown={e => e.key === 'Enter' && submit()}
-            placeholder="e.g. Which departments are at highest risk of losing key talent?"
-            className="flex-1 bg-transparent text-sm text-white placeholder-gray-500 outline-none"
+            placeholder="Ask a follow-up about these risks..."
+            className="flex-1 bg-transparent text-xs text-gray-800 placeholder-gray-400 outline-none"
           />
           <button
             onClick={() => submit()}
             disabled={!input.trim()}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-sky-500 hover:bg-sky-400 disabled:opacity-30 disabled:cursor-not-allowed text-white text-xs font-semibold transition-all flex-shrink-0"
+            className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-sky-500 hover:bg-sky-400 disabled:opacity-30 disabled:cursor-not-allowed text-white text-[11px] font-semibold transition-all flex-shrink-0"
           >
-            <SendHorizonal size={12} />
+            <SendHorizonal size={11} />
             Ask
           </button>
         </div>
-
-        {/* Suggestion chips */}
-        <div className="flex flex-wrap gap-2 mt-3">
-          {AI_SUGGESTIONS.map(q => (
-            <button
-              key={q}
-              onClick={() => submit(q)}
-              className="text-[11px] font-medium px-3 py-1.5 rounded-full bg-white/6 border border-white/10 text-gray-300 hover:bg-white/12 hover:text-white hover:border-white/20 transition-all"
-            >
-              {q}
-            </button>
-          ))}
-        </div>
+      </div>
+      <div className="flex flex-wrap gap-1.5 mt-3 pl-10">
+        {AI_SUGGESTIONS.slice(0, 4).map(q => (
+          <button
+            key={q}
+            onClick={() => submit(q)}
+            className="text-[11px] font-medium px-2.5 py-1 rounded-full bg-gray-50 border border-gray-200 text-gray-500 hover:bg-sky-50 hover:text-sky-700 hover:border-sky-200 transition-all"
+          >
+            {q}
+          </button>
+        ))}
       </div>
     </div>
   );
@@ -159,8 +138,8 @@ function buildKpiCards(
     summary.orgHealthScore >= 55 ? 'text-amber-500' :
     summary.orgHealthScore >= 35 ? 'text-orange-500' : 'text-red-600';
 
-  const gapColor = summary.criticalSkillGaps === 0 ? 'text-emerald-600' :
-    summary.criticalSkillGaps <= 5 ? 'text-amber-500' : 'text-red-600';
+  const gapColor = summary.peopleWithSkillGaps === 0 ? 'text-emerald-600' :
+    summary.peopleWithSkillGaps <= 10 ? 'text-amber-500' : 'text-red-600';
 
   const readyColor = summary.totalNearReady >= 5 ? 'text-emerald-600' :
     summary.totalNearReady >= 2 ? 'text-amber-500' : 'text-orange-500';
@@ -189,11 +168,11 @@ function buildKpiCards(
     {
       icon: <AlertTriangle size={20} />,
       iconColor: 'text-red-500',
-      value: String(summary.criticalSkillGaps),
-      valueNote: 'gaps',
+      value: String(summary.peopleWithSkillGaps),
+      valueNote: 'people',
       valueNoteColor: 'text-gray-500',
       valueColor: gapColor,
-      label: 'Critical Skills',
+      label: 'Below Expected Level',
       action: { view: 'heatmap' },
     },
     {
@@ -375,14 +354,17 @@ function DeptRow({ snap, onNavigate }: { snap: DeptHealthSnapshot; onNavigate: (
   const barColor = snap.overallScore >= 70 ? 'bg-emerald-500' : snap.overallScore >= 50 ? 'bg-amber-400' : 'bg-red-500';
 
   return (
-    <div className="flex items-center gap-4 py-3 border-b border-gray-100 last:border-0">
+    <button
+      onClick={() => onNavigate({ view: 'heatmap', department: snap.department as any })}
+      className="w-full flex items-center gap-4 py-3 border-b border-gray-100 last:border-0 hover:bg-gray-50 -mx-2 px-2 rounded-lg transition-colors group text-left"
+    >
       {/* Dept indicator */}
       <div
         className="w-2 h-8 rounded-full flex-shrink-0"
         style={{ background: snap.color }}
       />
       <div className="w-28 flex-shrink-0">
-        <p className="text-xs font-semibold text-gray-800">{snap.department}</p>
+        <p className="text-xs font-semibold text-gray-800 group-hover:text-gray-900">{snap.department}</p>
         <p className={`text-[10px] font-bold ${scoreColor}`}>{snap.scoreLabel}</p>
       </div>
 
@@ -419,34 +401,55 @@ function DeptRow({ snap, onNavigate }: { snap: DeptHealthSnapshot; onNavigate: (
         </div>
       </div>
 
-      {/* Action links */}
-      <div className="flex items-center gap-1 flex-shrink-0">
-        <button
-          onClick={() => onNavigate({ view: 'gap-report', department: snap.department as any })}
-          className="text-[10px] font-medium text-sky-600 hover:text-sky-800 px-2 py-1 rounded hover:bg-sky-50 transition-colors"
-        >
-          Gaps
-        </button>
-        <button
-          onClick={() => onNavigate({ view: 'pipeline', department: snap.department as any })}
-          className="text-[10px] font-medium text-sky-600 hover:text-sky-800 px-2 py-1 rounded hover:bg-sky-50 transition-colors"
-        >
-          Pipeline
-        </button>
-        <button
-          onClick={() => onNavigate({ view: 'benchmark', benchmarkTab: 'skills' })}
-          className="text-[10px] font-medium text-sky-600 hover:text-sky-800 px-2 py-1 rounded hover:bg-sky-50 transition-colors"
-        >
-          Benchmark
-        </button>
-      </div>
-    </div>
+      {/* Chevron affordance */}
+      <ArrowRight size={13} className="text-gray-300 group-hover:text-gray-400 flex-shrink-0 transition-colors" />
+    </button>
   );
 }
 
 export function ExecutiveSummary({ onNavigate, onAskAI }: Props) {
   const summary = useMemo(() => computeExecSummary(), []);
   const [kpiExpanded, setKpiExpanded] = useState(false);
+
+  function buildExportContent() {
+    const lines = [
+      'PROGRESSION — WORKFORCE HEALTH DASHBOARD',
+      `Generated: ${summary.asOf}`,
+      `Organisation: Acme Corp · ${summary.totalHeadcount} employees`,
+      '',
+      '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━',
+      '',
+      'KEY METRICS',
+      '─────────────────────────────────────',
+      `Org Health Score:       ${summary.orgHealthScore}/100`,
+      `Below Expected Level:   ${summary.peopleWithSkillGaps} people`,
+      `Promotable Now:         ${summary.totalNearReady} near-ready`,
+      `Stalled 24M+:           ${summary.totalStalled}`,
+      `Managers Needing Support: ${summary.managersNeedingSupport}`,
+      `Industry Rank:          ${ordinal(summary.benchmarkRank)} of ${summary.benchmarkTotal}`,
+      `Check-in Coverage:      ${summary.checkInCoverage}%`,
+      '',
+      'HIGHLIGHTS',
+      '─────────────────────────────────────',
+      ...summary.wins.map(w => `  • ${w.title}: ${w.detail}`),
+      '',
+      'PRIORITY RISKS',
+      '─────────────────────────────────────',
+      ...(summary.risks.length === 0
+        ? ['  No critical risks detected']
+        : summary.risks.map(r => `  [${r.level.toUpperCase()}] ${r.title} — ${r.detail}`)),
+      '',
+      'DEPARTMENT HEALTH',
+      '─────────────────────────────────────',
+      ...summary.deptSnapshots.map(d =>
+        `  ${d.department.padEnd(14)} Score: ${d.overallScore}  Near-ready: ${d.nearReadyCount}  Stalled: ${d.stalledCount}`
+      ),
+      '',
+      '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━',
+      'Generated by Progression Workforce Intelligence.',
+    ];
+    return lines.join('\n');
+  }
 
   return (
     <div className="flex flex-col min-h-screen bg-gray-50 font-sans">
@@ -460,12 +463,13 @@ export function ExecutiveSummary({ onNavigate, onAskAI }: Props) {
               Organisation-wide signal digest — {summary.asOf} · Click any insight to investigate further
             </p>
           </div>
-          <div className="flex items-center gap-3 text-xs text-gray-400">
-            <div className="flex items-center gap-1.5 bg-gray-50 border border-gray-200 rounded-xl px-3 py-2">
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-1.5 bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-xs text-gray-400">
               <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
               <span className="font-medium text-gray-600">Acme Corp</span>
               <span className="text-gray-400">{summary.totalHeadcount} employees</span>
             </div>
+            <ExportButtons title="Workforce Health Dashboard" buildContent={buildExportContent} />
           </div>
         </div>
       </header>
@@ -504,35 +508,10 @@ export function ExecutiveSummary({ onNavigate, onAskAI }: Props) {
             </div>
           </div>
 
-          {/* ── Main body: risks + wins ────────────────────────────────────── */}
-          <div className="grid grid-cols-[1fr_420px] gap-6">
+          {/* ── Main body: wins + risks ────────────────────────────────────── */}
+          <div className="space-y-6">
 
-            {/* Left: risks */}
-            <div className="space-y-4" data-tour="home-risks">
-              <div className="flex items-center justify-between">
-                <h2 className="text-sm font-bold text-gray-900 flex items-center gap-2">
-                  <Shield size={14} className="text-red-500" />
-                  Priority risks requiring attention
-                </h2>
-                <span className="text-xs text-gray-400">{summary.risks.length} active signal{summary.risks.length !== 1 ? 's' : ''}</span>
-              </div>
-
-              {summary.risks.length === 0 ? (
-                <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-8 text-center">
-                  <CheckCircle2 size={32} className="text-emerald-500 mx-auto mb-3" />
-                  <p className="text-sm font-bold text-emerald-800">No critical risks detected</p>
-                  <p className="text-xs text-emerald-600 mt-1">All org dimensions are performing at or above benchmark</p>
-                </div>
-              ) : (
-                <div className="space-y-3">
-                  {summary.risks.map(risk => (
-                    <RiskCard key={risk.id} risk={risk} onNavigate={onNavigate} />
-                  ))}
-                </div>
-              )}
-            </div>
-
-            {/* Right: wins + quick actions */}
+            {/* Wins + quick actions */}
             <div className="space-y-5" data-tour="home-highlights">
               {/* Wins */}
               <div className="bg-white rounded-2xl border border-gray-100 p-5 shadow-sm">
@@ -556,37 +535,34 @@ export function ExecutiveSummary({ onNavigate, onAskAI }: Props) {
                 </div>
               </div>
 
-              {/* Quick navigation */}
-              <div className="bg-white rounded-2xl border border-gray-100 p-5 shadow-sm">
-                <h3 className="text-sm font-bold text-gray-900 mb-4">Quick navigation</h3>
-                <div className="grid grid-cols-2 gap-2">
-                  {[
-                    { label: 'Skills heatmap', sub: 'Org-wide gaps', icon: <BarChart3 size={13} />, action: { view: 'heatmap' } as NavTarget, color: 'text-sky-600 bg-sky-50 border-sky-100 hover:bg-sky-100' },
-                    { label: 'Promotion pipeline', sub: 'Who\'s ready', icon: <TrendingUp size={13} />, action: { view: 'pipeline' } as NavTarget, color: 'text-emerald-600 bg-emerald-50 border-emerald-100 hover:bg-emerald-100' },
-                    { label: 'Areas to improve', sub: 'Dept deep dive', icon: <AlertTriangle size={13} />, action: { view: 'gap-report' } as NavTarget, color: 'text-amber-600 bg-amber-50 border-amber-100 hover:bg-amber-100' },
-                    { label: 'Manager effectiveness', sub: 'Team velocity', icon: <Users size={13} />, action: { view: 'managers' } as NavTarget, color: 'text-orange-600 bg-orange-50 border-orange-100 hover:bg-orange-100' },
-                    { label: 'Industry benchmarks', sub: 'Peer comparison', icon: <Globe size={13} />, action: { view: 'benchmark' } as NavTarget, color: 'text-gray-600 bg-gray-50 border-gray-100 hover:bg-gray-100' },
-                  ].map(({ label, sub, icon, action, color }) => (
-                    <button
-                      key={label}
-                      onClick={() => onNavigate(action)}
-                      className={`flex items-start gap-2 p-3 rounded-xl border text-left transition-colors ${color}`}
-                    >
-                      <span className="mt-0.5 flex-shrink-0">{icon}</span>
-                      <div>
-                        <p className="text-xs font-semibold">{label}</p>
-                        <p className="text-[10px] opacity-70 mt-0.5">{sub}</p>
-                      </div>
-                    </button>
+            </div>
+
+            {/* Risks */}
+            <div className="space-y-4" data-tour="home-risks">
+              <div className="flex items-center justify-between">
+                <h2 className="text-sm font-bold text-gray-900 flex items-center gap-2">
+                  <Shield size={14} className="text-red-500" />
+                  Priority risks requiring attention
+                </h2>
+                <span className="text-xs text-gray-400">{summary.risks.length} active signal{summary.risks.length !== 1 ? 's' : ''}</span>
+              </div>
+
+              {summary.risks.length === 0 ? (
+                <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-8 text-center">
+                  <CheckCircle2 size={32} className="text-emerald-500 mx-auto mb-3" />
+                  <p className="text-sm font-bold text-emerald-800">No critical risks detected</p>
+                  <p className="text-xs text-emerald-600 mt-1">All org dimensions are performing at or above benchmark</p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {summary.risks.map(risk => (
+                    <RiskCard key={risk.id} risk={risk} onNavigate={onNavigate} />
                   ))}
                 </div>
-              </div>
-            </div>
-          </div>
+              )}
 
-          {/* ── AI Hero ───────────────────────────────────────────────────── */}
-          <div data-tour="home-ai-hero">
-            <AIHero onAskAI={onAskAI} />
+              <AIPromptBar onAskAI={onAskAI} />
+            </div>
           </div>
 
           {/* ── Check-in coverage ────────────────────────────────────────── */}

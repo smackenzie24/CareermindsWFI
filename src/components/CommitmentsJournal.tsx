@@ -3,6 +3,7 @@ import {
   ClipboardList, CheckCircle2, X, TrendingUp,
   AlertTriangle, BookOpen, BarChart2, Sparkles, RefreshCw, ExternalLink,
 } from 'lucide-react';
+import { ExportButtons } from './ExportButtons';
 import { FeedbackBanner } from './feedback/FeedbackBanner';
 import { supabase, type Commitment } from '../lib/supabase';
 
@@ -172,13 +173,33 @@ export function CommitmentsJournal({ onReviewSource }: { onReviewSource?: (query
             Commitments you've made after AI insights. Your accountability layer.
           </p>
         </div>
-        <button
-          onClick={load}
-          className="flex items-center gap-1.5 text-xs text-gray-400 hover:text-gray-700 transition-colors px-3 py-1.5 rounded-lg hover:bg-gray-100"
-        >
-          <RefreshCw size={11} />
-          Refresh
-        </button>
+        <div className="flex items-center gap-2">
+          <ExportButtons title="Decisions Journal" buildContent={() => {
+            const lines: string[] = [
+              'DECISIONS JOURNAL — ACME CORP',
+              `Generated: ${new Date().toLocaleDateString()}`,
+              '='.repeat(50),
+              '',
+              `Open: ${openCount}  |  Completed: ${doneCount}  |  Total: ${commitments.filter(c => c.status !== 'dismissed').length}`,
+              '',
+            ];
+            for (const c of commitments.filter(c => c.status !== 'dismissed')) {
+              lines.push(`[${c.status.toUpperCase()}] ${c.text}`);
+              if (c.department) lines.push(`  Department: ${c.department}`);
+              if (c.context) lines.push(`  Context: ${c.context}`);
+              lines.push(`  Kind: ${c.insight_kind} | Date: ${new Date(c.created_at).toLocaleDateString()}`);
+              lines.push('');
+            }
+            return lines.join('\n');
+          }} />
+          <button
+            onClick={load}
+            className="flex items-center gap-1.5 text-xs text-gray-400 hover:text-gray-700 transition-colors px-3 py-1.5 rounded-lg hover:bg-gray-100"
+          >
+            <RefreshCw size={11} />
+            Refresh
+          </button>
+        </div>
       </div>
 
       {/* Stats */}

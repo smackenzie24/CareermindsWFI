@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import { ArrowLeft, ChevronRight, Clock, MapPin, ExternalLink } from 'lucide-react';
+import { ExportButtons } from '../ExportButtons';
 import {
   getAllReadiness,
   TIER_CONFIG,
@@ -75,6 +76,26 @@ interface Selection {
 export function DeptPipelineView({ department, onBack, onNavigateToGapReport, onNavigateToManagers }: Props) {
   const [selection, setSelection] = useState<Selection | null>(null);
 
+  function buildExportContent(): string {
+    const lines: string[] = [
+      `${department.toUpperCase()} — PROMOTION PIPELINE`,
+      `Generated: ${new Date().toLocaleDateString()}`,
+      '='.repeat(50),
+      '',
+      `People tracked: ${deptResults.length} across ${transitions.length} level transitions`,
+      '',
+    ];
+    for (const t of transitions) {
+      lines.push(`${t.currentLabel} → ${t.nextLabel.split('·')[1]?.trim() ?? t.nextLabel} (${t.results.length} people)`);
+      for (const r of t.results) {
+        const tier = r.readinessPct >= 90 ? 'Near Ready' : r.readinessPct >= 70 ? 'Progressing' : r.readinessPct >= 50 ? 'Developing' : 'Early';
+        lines.push(`  ${r.person.name} — ${r.readinessPct}% (${tier}) | ${r.criteriaMet}/${r.criteriaTotal} criteria`);
+      }
+      lines.push('');
+    }
+    return lines.join('\n');
+  }
+
   function openPerson(result: ReadinessResult, peers: ReadinessResult[]) {
     setSelection({ result, peers, index: peers.indexOf(result) });
   }
@@ -146,6 +167,7 @@ export function DeptPipelineView({ department, onBack, onNavigateToGapReport, on
           </div>
 
           <div className="flex items-center gap-3">
+            <ExportButtons title={`${department} — Promotion Pipeline`} buildContent={buildExportContent} />
             {/* Cross-links */}
             {onNavigateToGapReport && (
               <button

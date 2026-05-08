@@ -1,8 +1,9 @@
 import { useMemo, useState } from 'react';
-import { ChevronDown, ChevronRight, ChevronUp, Users, TrendingDown, AlertTriangle, CheckCircle, DollarSign, Building2 } from 'lucide-react';
+import { ChevronDown, ChevronRight, ChevronUp, Users, TrendingDown, AlertTriangle, CheckCircle, DollarSign, Building2, CalendarCheck } from 'lucide-react';
 import { SKILLS_DATA, DEPARTMENTS, DEPT_COLORS, type Department } from '../data/mockData';
 import { PEOPLE } from '../data/promotionData';
 import { FeedbackBanner } from './feedback/FeedbackBanner';
+import { ExportButtons } from './ExportButtons';
 
 const DEPT_SALARIES: Record<Department, number> = {
   Engineering: 128000,
@@ -14,6 +15,7 @@ const DEPT_SALARIES: Record<Department, number> = {
   'People Ops': 90000,
 };
 
+const CHECKIN_CUTOFF = new Date('2026-04-29');
 function computeOrgSummary() {
   const deptCounts = new Map<Department, number>();
   for (const dept of DEPARTMENTS) deptCounts.set(dept, 0);
@@ -28,7 +30,12 @@ function computeOrgSummary() {
     .map(d => ({ dept: d, count: deptCounts.get(d) ?? 0 }))
     .sort((a, b) => b.count - a.count);
 
-  return { headcount, totalCost, avgSalary, deptBreakdown };
+  const checkedIn = PEOPLE.filter(p =>
+    Math.floor((CHECKIN_CUTOFF.getTime() - new Date(p.lastCheckIn).getTime()) / (1000 * 60 * 60 * 24)) <= 30
+  ).length;
+  const checkInCoverage = Math.round((checkedIn / headcount) * 100);
+
+  return { headcount, totalCost, avgSalary, deptBreakdown, checkInCoverage };
 }
 
 const ORG_SUMMARY = computeOrgSummary();
@@ -45,11 +52,11 @@ function OrgExpandedCards() {
     <div className="grid grid-cols-4 gap-4 pt-4 border-t border-gray-100 mt-4">
       <div className="bg-gray-50 rounded-xl p-4 border border-gray-100">
         <div className="flex items-center gap-1.5 mb-2">
-          <Users size={14} className="text-gray-400" />
-          <span className="text-xs text-gray-500">Org Size</span>
+          <CalendarCheck size={14} className={ORG_SUMMARY.checkInCoverage >= 80 ? 'text-emerald-500' : 'text-amber-500'} />
+          <span className="text-xs text-gray-500">Check-in Coverage</span>
         </div>
-        <p className="text-2xl font-bold text-gray-900">{ORG_SUMMARY.headcount}</p>
-        <p className="text-[11px] text-gray-400 mt-0.5">total employees</p>
+        <p className={`text-2xl font-bold ${ORG_SUMMARY.checkInCoverage >= 80 ? 'text-emerald-600' : 'text-amber-600'}`}>{ORG_SUMMARY.checkInCoverage}%</p>
+        <p className="text-[11px] text-gray-400 mt-0.5">checked in (30d)</p>
       </div>
 
       <div className="bg-gray-50 rounded-xl p-4 border border-gray-100">
@@ -139,6 +146,32 @@ interface Props {
 export function DepartmentOverview({ onSelectDepartment }: Props) {
   const [orgExpanded, setOrgExpanded] = useState(false);
 
+  function buildExportContent(): string {
+    const lines: string[] = [
+      'SKILLS GAP HEATMAP — ACME CORP',
+      `Generated: ${new Date().toLocaleDateString()}`,
+      '='.repeat(50),
+      '',
+    ];
+    const totalHead = summaries.reduce((s, d) => s + d.headcount, 0);
+    const totalBelow = summaries.reduce((s, d) => s + d.belowTarget, 0);
+    const pct = totalHead > 0 ? Math.round((totalBelow / totalHead) * 100) : 0;
+    lines.push('ORG SUMMARY');
+    lines.push(`Total headcount: ${totalHead}`);
+    lines.push(`Below target: ${pct}% (${totalBelow} people)`);
+    lines.push('');
+    lines.push('DEPARTMENT BREAKDOWN');
+    lines.push('-'.repeat(50));
+    for (const d of summaries) {
+      lines.push(`${d.department}`);
+      lines.push(`  Headcount: ${d.headcount}  |  Below target: ${d.belowTargetPct}%`);
+      lines.push(`  Critical skills: ${d.criticalSkills}  |  Median gap: ${d.medianGap}`);
+      if (d.topGapSkill) lines.push(`  Biggest gap: ${d.topGapSkill} (${d.topGapPct}%)`);
+      lines.push('');
+    }
+    return lines.join('\n');
+  }
+
   const summaries = useMemo((): DeptSummary[] => {
     return DEPARTMENTS.map(dept => {
       const entries = SKILLS_DATA.filter(e => e.department === dept);
@@ -205,9 +238,12 @@ export function DepartmentOverview({ onSelectDepartment }: Props) {
             <p className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-1">Workforce Intelligence</p>
             <h1 className="text-2xl font-bold text-gray-900 leading-tight">Skills Gap Heatmap</h1>
           </div>
-          <div className="flex items-center gap-2 text-xs text-gray-400">
-            <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-            Acme Corp
+          <div className="flex items-center gap-3">
+            <ExportButtons title="Skills Gap Heatmap" buildContent={buildExportContent} />
+            <div className="flex items-center gap-2 text-xs text-gray-400">
+              <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+              Acme Corp
+            </div>
           </div>
         </div>
 
@@ -216,7 +252,7 @@ export function DepartmentOverview({ onSelectDepartment }: Props) {
           {[
             { label: 'Total headcount', value: orgStats.totalHead, sub: 'across all depts', color: 'text-gray-900', icon: <Users size={14} className="text-gray-400" /> },
             { label: 'Below target (org)', value: `${orgStats.pct}%`, sub: 'of workforce', color: 'text-red-600', icon: <TrendingDown size={14} className="text-red-400" /> },
-            { label: 'Critical skill gaps', value: orgStats.critical, sub: 'skills ≥60% below target', color: 'text-orange-600', icon: <AlertTriangle size={14} className="text-orange-400" /> },
+            { label: 'Skills below target', value: orgStats.critical, sub: '60%+ of team below expected', color: 'text-orange-600', icon: <AlertTriangle size={14} className="text-orange-400" /> },
             { label: 'Median gap score', value: orgStats.medGap, sub: 'across org (0–5)', color: 'text-gray-900', icon: <CheckCircle size={14} className="text-gray-400" /> },
           ].map(({ label, value, sub, color, icon }) => (
             <div key={label} className="bg-gray-50 rounded-xl p-4 border border-gray-100">
@@ -301,7 +337,7 @@ export function DepartmentOverview({ onSelectDepartment }: Props) {
                   </div>
                   <div className="bg-white/60 rounded-lg p-2.5 text-center">
                     <p className={`text-base font-bold ${dept.criticalSkills > 0 ? 'text-red-600' : 'text-emerald-600'}`}>{dept.criticalSkills}</p>
-                    <p className="text-[10px] text-gray-400 mt-0.5">Critical skills</p>
+                    <p className="text-[10px] text-gray-400 mt-0.5">Below target</p>
                   </div>
                   <div className="bg-white/60 rounded-lg p-2.5 text-center">
                     <p className="text-base font-bold text-gray-800">{dept.belowTarget}</p>
@@ -320,7 +356,18 @@ export function DepartmentOverview({ onSelectDepartment }: Props) {
             );
           })}
         </div>
-        <FeedbackBanner context="Skills Overview" className="mt-6" />
+        <div className="mt-6 flex items-center gap-1.5 flex-wrap" data-tour="heatmap-legend">
+          <span className="text-xs text-gray-400 mr-2">Severity key:</span>
+          {[
+            { label: 'On Track', badge: 'bg-emerald-100 text-emerald-700' },
+            { label: 'Developing', badge: 'bg-amber-100 text-amber-700' },
+            { label: 'At Risk', badge: 'bg-orange-100 text-orange-700' },
+            { label: 'Critical', badge: 'bg-red-100 text-red-700' },
+          ].map(({ label, badge }) => (
+            <span key={label} className={`text-xs font-semibold px-2 py-0.5 rounded-full ${badge}`}>{label}</span>
+          ))}
+        </div>
+        <FeedbackBanner context="Skills Overview" className="mt-4" />
       </main>
     </div>
   );

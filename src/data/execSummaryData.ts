@@ -75,6 +75,7 @@ export interface ExecSummary {
   totalNearReady: number;
   totalStalled: number;
   criticalSkillGaps: number; // skills where 70%+ below target
+  peopleWithSkillGaps: number; // people below target on at least one skill
   managersNeedingSupport: number; // effectiveness score < 40
   benchmarkPosition: QuartilePosition;
   benchmarkRank: number;
@@ -168,6 +169,7 @@ export function computeExecSummary(): ExecSummary {
     .sort((a, b) => b.belowPct - a.belowPct);
 
   const criticalSkillGaps = criticalSkillsList.length;
+  const peopleWithSkillGaps = allReadiness.filter(r => r.readinessPct < 100).length;
 
   // ── Pipeline signals ───────────────────────────────────────────────
   const totalNearReady = allReadiness.filter(r => r.readinessPct >= 90).length;
@@ -415,6 +417,7 @@ export function computeExecSummary(): ExecSummary {
     totalNearReady,
     totalStalled,
     criticalSkillGaps,
+    peopleWithSkillGaps,
     managersNeedingSupport: managersNeedingSupport.length,
     benchmarkPosition: benchSummary.overallPosition,
     benchmarkRank: benchSummary.acmeRank,

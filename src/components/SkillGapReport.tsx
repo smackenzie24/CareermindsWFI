@@ -519,7 +519,7 @@ export function SkillGapReport({ department, onBack, onNavigateToPipeline }: Pro
           <div className="flex items-center gap-3">
             <div className="bg-red-50 border border-red-100 rounded-xl px-4 py-2 text-center">
               <p className="text-xl font-black text-red-600">{orgStats.criticalCount}</p>
-              <p className="text-[10px] text-red-500 font-medium">Critical skills</p>
+              <p className="text-[10px] text-red-500 font-medium">Below expected</p>
             </div>
             <div className="bg-gray-50 border border-gray-100 rounded-xl px-4 py-2 text-center">
               <p className="text-xl font-black text-gray-900">{orgStats.totalBelow}</p>

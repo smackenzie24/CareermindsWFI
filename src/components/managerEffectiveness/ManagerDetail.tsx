@@ -3,6 +3,7 @@ import {
   ArrowLeft, Users, TrendingUp, TrendingDown, AlertTriangle, Star,
   Clock, MapPin, CheckCircle2, XCircle, ChevronRight, Minus, ExternalLink,
 } from 'lucide-react';
+import { ExportButtons } from '../ExportButtons';
 import { type ManagerMetrics } from '../../data/managerData';
 import { DEPT_COLORS, type Department } from '../../data/mockData';
 import { getReadinessTier, TIER_CONFIG, type ReadinessResult } from '../../data/promotionData';
@@ -139,6 +140,35 @@ export function ManagerDetail({ metrics, onBack, onNavigateToGapReport, onNaviga
       .sort((a, b) => b.gap - a.gap);
   }, [readinessResults]);
 
+  function buildExportContent(): string {
+    const lines: string[] = [
+      `MANAGER DETAIL — ${manager.name.toUpperCase()}`,
+      `Generated: ${new Date().toLocaleDateString()}`,
+      '='.repeat(50),
+      '',
+      `Title: ${manager.title}`,
+      `Department: ${manager.department}`,
+      `Location: ${manager.location}`,
+      `Tenure in role: ${manager.tenure}m`,
+      `Effectiveness score: ${score}`,
+      '',
+      `Avg readiness: ${avgReadiness}%`,
+      `Near ready (90%+): ${nearReadyCount}`,
+      `Progressing: ${progressingCount}`,
+      `Stalled: ${stalledCount}`,
+      `Framework completion: ${avgFrameworkCompletion}%`,
+      `Top blocking skill: ${topBlockingSkill}`,
+      '',
+      'DIRECT REPORTS',
+      '-'.repeat(50),
+    ];
+    for (const r of sortedResults) {
+      const tier = r.readinessPct >= 90 ? 'Near Ready' : r.readinessPct >= 70 ? 'Progressing' : r.readinessPct >= 50 ? 'Developing' : 'Early';
+      lines.push(`${r.person.name} — ${r.readinessPct}% (${tier}) | ${r.criteriaMet}/${r.criteriaTotal} criteria | ${r.person.tenure}m tenure`);
+    }
+    return lines.join('\n');
+  }
+
   return (
     <div className="flex flex-col min-h-screen bg-gray-50 font-sans">
       {/* Header */}
@@ -188,11 +218,14 @@ export function ManagerDetail({ metrics, onBack, onNavigateToGapReport, onNaviga
             </div>
           </div>
 
+          <div className="flex items-start gap-4">
+            <ExportButtons title={`${manager.name} — Manager Detail`} buildContent={buildExportContent} />
           {/* Score badge */}
           <div className={`rounded-2xl border ${sc.bg} ${sc.border} px-5 py-3 text-center min-w-[100px]`}>
             <p className={`text-4xl font-black leading-none ${sc.text}`}>{score}</p>
             <p className={`text-xs font-bold mt-1 ${sc.text}`}>{scoreLabel(score)}</p>
             <p className="text-[10px] text-gray-400 mt-0.5">Effectiveness score</p>
+          </div>
           </div>
         </div>
       </header>

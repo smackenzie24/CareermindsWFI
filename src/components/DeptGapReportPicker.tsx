@@ -77,7 +77,7 @@ export function DeptGapReportPicker({ onSelect }: Props) {
           {[
             { label: 'Total headcount', value: orgTotals.head, sub: 'across all departments', color: 'text-gray-900', icon: <Users size={14} className="text-gray-400" /> },
             { label: 'Below target (org)', value: `${orgTotals.pct}%`, sub: `${orgTotals.below} people`, color: 'text-red-600', icon: <TrendingDown size={14} className="text-red-400" /> },
-            { label: 'Critical skill gaps', value: orgTotals.critical, sub: 'skills ≥60% below target', color: 'text-orange-600', icon: <AlertTriangle size={14} className="text-orange-400" /> },
+            { label: 'Skills below target', value: orgTotals.critical, sub: '60%+ of team below expected', color: 'text-orange-600', icon: <AlertTriangle size={14} className="text-orange-400" /> },
             { label: 'Departments', value: DEPARTMENTS.length, sub: 'with gap data', color: 'text-gray-900', icon: <Users size={14} className="text-gray-400" /> },
           ].map(({ label, value, sub, color, icon }) => (
             <div key={label} className="bg-gray-50 rounded-xl p-4 border border-gray-100">
@@ -145,7 +145,7 @@ export function DeptGapReportPicker({ onSelect }: Props) {
                   </div>
                   <div className="bg-gray-50 rounded-lg p-2.5 text-center">
                     <p className={`text-base font-bold ${criticalSkills > 0 ? 'text-red-600' : 'text-emerald-600'}`}>{criticalSkills}</p>
-                    <p className="text-[10px] text-gray-400 mt-0.5">Critical skills</p>
+                    <p className="text-[10px] text-gray-400 mt-0.5">Below expected</p>
                   </div>
                   <div className="bg-gray-50 rounded-lg p-2.5 text-center">
                     <p className="text-base font-bold text-gray-800">{skillCount}</p>

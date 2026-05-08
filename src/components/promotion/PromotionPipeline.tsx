@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
-import { ChevronDown, ChevronRight, ChevronUp, Users, TrendingUp, Star, Clock, DollarSign, Building2 } from 'lucide-react';
+import { ChevronDown, ChevronRight, ChevronUp, Users, TrendingUp, Star, Clock, DollarSign, Building2, CalendarCheck } from 'lucide-react';
+import { ExportButtons } from '../ExportButtons';
 import {
   getAllReadiness,
   TIER_CONFIG,
@@ -25,6 +26,7 @@ const DEPT_SALARIES: Record<Department, number> = {
   'People Ops': 90000,
 };
 
+const CHECKIN_CUTOFF = new Date('2026-04-29');
 function computeOrgSummary() {
   const deptCounts = new Map<Department, number>();
   for (const dept of DEPARTMENTS) deptCounts.set(dept, 0);
@@ -40,7 +42,12 @@ function computeOrgSummary() {
     .map(d => ({ dept: d, count: deptCounts.get(d) ?? 0 }))
     .sort((a, b) => b.count - a.count);
 
-  return { headcount, totalCost, avgSalary, roleLevels, deptBreakdown };
+  const checkedIn = PEOPLE.filter(p =>
+    Math.floor((CHECKIN_CUTOFF.getTime() - new Date(p.lastCheckIn).getTime()) / (1000 * 60 * 60 * 24)) <= 30
+  ).length;
+  const checkInCoverage = Math.round((checkedIn / headcount) * 100);
+
+  return { headcount, totalCost, avgSalary, roleLevels, deptBreakdown, checkInCoverage };
 }
 
 const ORG_SUMMARY = computeOrgSummary();
@@ -79,14 +86,14 @@ function OrgExpandedCards() {
   const max = ORG_SUMMARY.deptBreakdown[0]?.count ?? 1;
   return (
     <div className="grid grid-cols-4 gap-4 pt-4 border-t border-gray-100 mt-4">
-      {/* Org size */}
+      {/* Check-in coverage */}
       <div className="bg-white rounded-2xl border border-gray-100 p-5 shadow-sm">
         <div className="flex items-center gap-2 mb-3">
-          <Users size={14} className="text-gray-400" />
-          <span className="text-xs text-gray-500">Org Size</span>
+          <CalendarCheck size={14} className={ORG_SUMMARY.checkInCoverage >= 80 ? 'text-emerald-500' : 'text-amber-500'} />
+          <span className="text-xs text-gray-500">Check-in Coverage</span>
         </div>
-        <p className="text-3xl font-black text-gray-900">{ORG_SUMMARY.headcount}</p>
-        <p className="text-xs text-gray-400 mt-1">total employees</p>
+        <p className={`text-3xl font-black ${ORG_SUMMARY.checkInCoverage >= 80 ? 'text-emerald-600' : 'text-amber-600'}`}>{ORG_SUMMARY.checkInCoverage}%</p>
+        <p className="text-xs text-gray-400 mt-1">checked in (30d)</p>
       </div>
 
       {/* Total cost */}
@@ -199,6 +206,29 @@ export function PromotionPipeline({ initialDepartment, selectedDept: selectedDep
     });
   }, [allResults]);
 
+  function buildExportContent(): string {
+    const lines: string[] = [
+      'PROMOTION READINESS PIPELINE — ACME CORP',
+      `Generated: ${new Date().toLocaleDateString()}`,
+      '='.repeat(50),
+      '',
+      `Total tracked: ${orgStats.total}`,
+      `Near ready (90%+): ${orgStats.nearReady}`,
+      `Progressing (70-89%): ${orgStats.progressing}`,
+      `Avg readiness: ${orgStats.avgReadiness}%`,
+      `Avg tenure in level: ${orgStats.avgTenure}m`,
+      '',
+      'BY DEPARTMENT',
+      '-'.repeat(50),
+    ];
+    for (const d of deptSummaries) {
+      if (d.total === 0) continue;
+      lines.push(`${d.department}: ${d.total} people | ${d.nearReady} near-ready | ${d.progressing} progressing | avg ${d.avgReadiness}%`);
+      if (d.nearReady > 0) lines.push(`  Top candidate: ${d.topCandidate} (${d.topCandidatePct}%)`);
+    }
+    return lines.join('\n');
+  }
+
   if (selectedDept) {
     return (
       <DeptPipelineView
@@ -222,9 +252,12 @@ export function PromotionPipeline({ initialDepartment, selectedDept: selectedDep
               Who's close to the next level? Click a department to see individual readiness scores and skill gaps.
             </p>
           </div>
-          <div className="flex items-center gap-2 text-xs text-gray-400">
-            <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-            Acme Corp
+          <div className="flex items-center gap-3">
+            <ExportButtons title="Promotion Readiness Pipeline" buildContent={buildExportContent} />
+            <div className="flex items-center gap-2 text-xs text-gray-400">
+              <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+              Acme Corp
+            </div>
           </div>
         </div>
 

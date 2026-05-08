@@ -1,12 +1,10 @@
 import { useState } from 'react';
-import { LayoutGrid, TrendingUp, Sparkles, FileBarChart, BarChart3, Globe, Home, ArrowLeft, ClipboardList, BookOpen, HelpCircle } from 'lucide-react';
+import { LayoutGrid, TrendingUp, Sparkles, BarChart3, Globe, Home, ArrowLeft, ClipboardList, BookOpen, HelpCircle } from 'lucide-react';
 import { TourOverlay } from './components/tour/TourOverlay';
 import type { ActiveView as TourActiveView } from './components/tour/tourData';
 import { SkillsGapHeatmap } from './components/SkillsGapHeatmap';
 import { PromotionPipeline } from './components/promotion/PromotionPipeline';
 import { ChatPanel } from './components/ChatPanel';
-import { SkillGapReport } from './components/SkillGapReport';
-import { DeptGapReportPicker } from './components/DeptGapReportPicker';
 import { ManagerEffectiveness } from './components/managerEffectiveness/ManagerEffectiveness';
 import { IndustryBenchmark } from './components/benchmark/IndustryBenchmark';
 import { ExecutiveSummary } from './components/ExecutiveSummary';
@@ -18,7 +16,7 @@ import type { NavTarget } from './data/execSummaryData';
 import type { ActionNavTarget } from './data/chatEngine';
 import type { ManagerMetrics } from './data/managerData';
 
-type ActiveView = 'home' | 'heatmap' | 'pipeline' | 'gap-report' | 'managers' | 'benchmark' | 'ask-ai' | 'journal' | 'how-it-works';
+type ActiveView = 'home' | 'heatmap' | 'pipeline' | 'managers' | 'benchmark' | 'ask-ai' | 'journal' | 'how-it-works';
 
 function TourNudge({ onDismiss }: { onDismiss: () => void }) {
   const [visible, setVisible] = useState(() => {
@@ -47,7 +45,6 @@ const NAV_ITEMS: { id: ActiveView; label: string; icon: React.ReactNode; accent?
   { id: 'home',         label: 'Summary',      icon: <Home size={13} /> },
   { id: 'heatmap',      label: 'Skills',       icon: <LayoutGrid size={13} /> },
   { id: 'pipeline',     label: 'Pipeline',     icon: <TrendingUp size={13} /> },
-  { id: 'gap-report',   label: 'Gaps',         icon: <FileBarChart size={13} /> },
   { id: 'managers',     label: 'Managers',     icon: <BarChart3 size={13} /> },
   { id: 'benchmark',    label: 'Benchmarks',   icon: <Globe size={13} /> },
   { id: 'journal',      label: 'Decisions',    icon: <ClipboardList size={13} /> },
@@ -138,7 +135,7 @@ export default function App() {
           {!tourActive && <TourNudge onDismiss={() => {}} />}
         </div>
 
-        {/* Scrollable nav items — pushed to the right */}
+{/* Scrollable nav items — pushed to the right */}
         <div className="flex items-center gap-0.5 px-2 overflow-x-auto flex-1 min-w-0 scrollbar-none justify-end">
           {NAV_ITEMS.map(item => {
             const isActive = nav.view === item.id;
@@ -203,35 +200,22 @@ export default function App() {
         {nav.view === 'heatmap' && (
           <SkillsGapHeatmap
             onNavigateToPipeline={() => setView('pipeline')}
-            onNavigateToGapReport={(dept) => setNav({ view: 'gap-report', department: dept })}
             tourActive={tourActive}
+            initialDepartment={nav.department}
           />
         )}
         {nav.view === 'pipeline' && (
           <PromotionPipeline
             initialDepartment={nav.department}
             onSelectDept={setPipelineDept}
-            onNavigateToGapReport={(dept) => setNav({ view: 'gap-report', department: dept })}
             onNavigateToManagers={(managerId) => setNav({ view: 'managers', managerId })}
           />
-        )}
-        {nav.view === 'gap-report' && (
-          nav.department
-            ? <SkillGapReport
-                department={nav.department}
-                onBack={() => setNav({ view: 'gap-report' })}
-                onNavigateToPipeline={() => setNav({ view: 'pipeline', department: nav.department })}
-              />
-            : <DeptGapReportPicker
-                onSelect={(dept) => setNav({ view: 'gap-report', department: dept })}
-              />
         )}
         {nav.view === 'managers' && (
           <ManagerEffectiveness
             initialManagerId={nav.managerId}
             selectedManager={selectedManager}
             onSelectManager={setSelectedManager}
-            onNavigateToGapReport={(dept) => setNav({ view: 'gap-report', department: dept })}
             onNavigateToHeatmap={() => setView('heatmap')}
             onNavigateToPipeline={(dept) => setNav({ view: 'pipeline', department: dept })}
           />
@@ -239,7 +223,6 @@ export default function App() {
         {nav.view === 'benchmark' && (
           <IndustryBenchmark
             initialTab={nav.benchmarkTab}
-            onNavigateToGapReport={(dept) => setNav({ view: 'gap-report', department: dept })}
           />
         )}
         {nav.view === 'journal' && <CommitmentsJournal onReviewSource={openAI} />}
@@ -258,7 +241,6 @@ export default function App() {
         <TourOverlay
           activeView={
             nav.view === 'pipeline' && pipelineDept ? 'pipeline-dept' :
-            nav.view === 'gap-report' && nav.department ? 'gap-report-dept' :
             nav.view === 'managers' && selectedManager ? 'managers-detail' :
             nav.view as TourActiveView
           }

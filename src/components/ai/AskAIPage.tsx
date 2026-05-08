@@ -700,14 +700,24 @@ export function AskAIPage({ initialQuestion, onNavigate }: Props) {
 
           {/* Mode tabs */}
           <div className="flex gap-0 border-b border-white/10" data-tour="ai-mode-tabs">
-            <button onClick={() => setMode('diagnose')}
-              className={`flex items-center gap-1.5 px-3 py-2 text-xs font-semibold border-b-2 transition-colors -mb-px ${mode === 'diagnose' ? 'border-sky-400 text-sky-400' : 'border-transparent text-gray-500 hover:text-gray-300'}`}>
-              <Search size={10} />Diagnose
-            </button>
-            <button onClick={() => setMode('plan')}
-              className={`flex items-center gap-1.5 px-3 py-2 text-xs font-semibold border-b-2 transition-colors -mb-px ${mode === 'plan' ? 'border-amber-400 text-amber-400' : 'border-transparent text-gray-500 hover:text-gray-300'}`}>
-              <Lightbulb size={10} />Plan & Act
-            </button>
+            <div className="relative group">
+              <button onClick={() => setMode('diagnose')}
+                className={`flex items-center gap-1.5 px-3 py-2 text-xs font-semibold border-b-2 transition-colors -mb-px ${mode === 'diagnose' ? 'border-sky-400 text-sky-400' : 'border-transparent text-gray-500 hover:text-gray-300'}`}>
+                <Search size={10} />Diagnose
+              </button>
+              <div className="pointer-events-none absolute left-0 top-full mt-2 w-48 bg-gray-800 text-gray-200 text-[11px] leading-relaxed rounded-lg px-3 py-2 shadow-xl border border-white/10 opacity-0 group-hover:opacity-100 transition-opacity duration-150 z-50">
+                Surface insights — who's ready for promotion, at churn risk, or where skill gaps are widest.
+              </div>
+            </div>
+            <div className="relative group">
+              <button onClick={() => setMode('plan')}
+                className={`flex items-center gap-1.5 px-3 py-2 text-xs font-semibold border-b-2 transition-colors -mb-px ${mode === 'plan' ? 'border-amber-400 text-amber-400' : 'border-transparent text-gray-500 hover:text-gray-300'}`}>
+                <Lightbulb size={10} />Plan & Act
+              </button>
+              <div className="pointer-events-none absolute left-0 top-full mt-2 w-48 bg-gray-800 text-gray-200 text-[11px] leading-relaxed rounded-lg px-3 py-2 shadow-xl border border-white/10 opacity-0 group-hover:opacity-100 transition-opacity duration-150 z-50">
+                Get actionable strategies — hiring plans, retention plays, restructuring ideas, and scenario analysis.
+              </div>
+            </div>
           </div>
         </div>
 
@@ -831,7 +841,7 @@ export function AskAIPage({ initialQuestion, onNavigate }: Props) {
 
         {/* Input */}
         <div className="flex-shrink-0 px-4 pb-4 pt-2">
-          <div className={`flex items-end gap-2 bg-white/5 border rounded-xl px-3 py-2.5 transition-all ${
+          <div className={`flex items-start gap-2 bg-white/5 border rounded-xl px-3 py-2.5 transition-all ${
             mode === 'plan'
               ? 'border-white/10 focus-within:border-amber-500/50 focus-within:bg-amber-500/5'
               : 'border-white/10 focus-within:border-sky-500/50 focus-within:bg-sky-500/5'
@@ -846,13 +856,13 @@ export function AskAIPage({ initialQuestion, onNavigate }: Props) {
             </button>
             <textarea
               ref={inputRef}
-              rows={1}
+              rows={3}
               value={input}
               onChange={e => setInput(e.target.value)}
               onKeyDown={handleKeyDown}
               placeholder={mode === 'plan' ? 'Ask for a plan or strategy…' : 'Ask about your workforce…'}
-              className="flex-1 resize-none bg-transparent text-xs text-gray-200 placeholder:text-gray-600 focus:outline-none leading-5 max-h-24"
-              style={{ overflowY: input.split('\n').length > 3 ? 'auto' : 'hidden' }}
+              className="flex-1 resize-none bg-transparent text-xs text-gray-200 placeholder:text-gray-600 focus:outline-none leading-5 max-h-36"
+              style={{ overflowY: input.split('\n').length > 6 ? 'auto' : 'hidden' }}
             />
             <button onClick={() => sendMessage(input)} disabled={!input.trim() || typing}
               className={`w-7 h-7 rounded-lg flex items-center justify-center text-white disabled:opacity-25 disabled:cursor-not-allowed transition-all flex-shrink-0 ${

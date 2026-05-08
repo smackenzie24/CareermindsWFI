@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import { Users, TrendingUp, TrendingDown, Minus, Star, AlertTriangle, Clock, ChevronRight, MapPin, BarChart3, Filter } from 'lucide-react';
+import { ExportButtons } from '../ExportButtons';
 import { getAllManagerMetrics, type ManagerMetrics } from '../../data/managerData';
 import { DEPT_COLORS, type Department } from '../../data/mockData';
 import { DEPARTMENTS } from '../../data/mockData';
@@ -171,6 +172,31 @@ export function ManagerEffectiveness({ initialManagerId, selectedManager: select
     }
   }, [allMetrics, deptFilter, sortKey]);
 
+  function buildExportContent(): string {
+    const lines: string[] = [
+      'MANAGER EFFECTIVENESS — ACME CORP',
+      `Generated: ${new Date().toLocaleDateString()}`,
+      '='.repeat(50),
+      '',
+      `Managers tracked: ${orgStats.total}`,
+      `High impact (75+): ${orgStats.highImpact}`,
+      `Reports near promotion: ${orgStats.totalNearReady}`,
+      `Stalled reports: ${orgStats.totalStalled}`,
+      `Avg score: ${orgStats.avgScore}`,
+      '',
+      'MANAGER BREAKDOWN',
+      '-'.repeat(50),
+    ];
+    for (const m of allMetrics.filter(m => m.reports.length > 0)) {
+      const score = Math.round(m.avgReadiness * 0.4 + m.avgFrameworkCompletion * 0.3 + (100 - (m.stalledCount / m.reports.length) * 100) * 0.3);
+      lines.push(`${m.manager.name} (${m.manager.title})`);
+      lines.push(`  Score: ${score} | Team: ${m.reports.length} reports | Near-ready: ${m.nearReadyCount} | Stalled: ${m.stalledCount}`);
+      lines.push(`  Avg readiness: ${m.avgReadiness}% | Framework completion: ${m.avgFrameworkCompletion}%`);
+      lines.push('');
+    }
+    return lines.join('\n');
+  }
+
   if (selectedManager) {
     return (
       <ManagerDetail
@@ -195,9 +221,12 @@ export function ManagerEffectiveness({ initialManagerId, selectedManager: select
               Aggregate progression velocity and framework completion rates by manager. Identify whose teams are growing fastest — and who needs coaching support.
             </p>
           </div>
-          <div className="flex items-center gap-2 text-xs text-gray-400">
-            <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-            Acme Corp
+          <div className="flex items-center gap-3">
+            <ExportButtons title="Manager Effectiveness" buildContent={buildExportContent} />
+            <div className="flex items-center gap-2 text-xs text-gray-400">
+              <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+              Acme Corp
+            </div>
           </div>
         </div>
 
