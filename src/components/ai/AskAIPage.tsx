@@ -886,9 +886,16 @@ export function AskAIPage({ initialQuestion, onNavigate }: Props) {
     ) => {
       const aiMsg: ChatMessage = { id: makeId(), role: 'assistant', text, results, timestamp: new Date() };
       const output: OutputEntry = { id: outputId, question: trimmed, answer: text, results, timestamp: new Date(), ...opts };
+      // When the AI needs more context, inject its clarifying question directly into the chat thread
+      const clarifyMsg: ChatMessage | null = (opts.needsMoreContext && opts.contextQuestion)
+        ? { id: makeId(), role: 'assistant', text: opts.contextQuestion, results: [], timestamp: new Date() }
+        : null;
       setConversations(prev => prev.map(c => {
         if (c.id !== activeId) return c;
-        return { ...c, messages: [...c.messages, aiMsg], outputs: [...c.outputs, output], activeOutputId: outputId };
+        const msgs = clarifyMsg
+          ? [...c.messages, aiMsg, clarifyMsg]
+          : [...c.messages, aiMsg];
+        return { ...c, messages: msgs, outputs: [...c.outputs, output], activeOutputId: outputId };
       }));
       setTyping(false);
     };
@@ -906,6 +913,19 @@ export function AskAIPage({ initialQuestion, onNavigate }: Props) {
       // Pure AI question — wait for full response before showing anything
       try {
         const aiResp = await callWorkforceAI(trimmed, docContext);
+
+        // If AI only needs clarification and has no real answer yet, just show
+        // the clarifying question directly in the chat thread — no output panel entry
+        if (aiResp.needsMoreContext && aiResp.contextQuestion && !aiResp.text.trim()) {
+          const clarifyMsg: ChatMessage = { id: makeId(), role: 'assistant', text: aiResp.contextQuestion, results: [], timestamp: new Date() };
+          setConversations(prev => prev.map(c => {
+            if (c.id !== activeId) return c;
+            return { ...c, messages: [...c.messages, clarifyMsg] };
+          }));
+          setTyping(false);
+          return;
+        }
+
         finalize(aiResp.text, [], {
           needsMoreContext: aiResp.needsMoreContext,
           contextQuestion: aiResp.contextQuestion,
@@ -1026,10 +1046,13 @@ export function AskAIPage({ initialQuestion, onNavigate }: Props) {
             </div>
           ) : (
             <>
-              {active.messages.map(msg => {
+              {active.messages.map((msg, msgIdx) => {
                 const isUser = msg.role === 'user';
                 const linkedOutput = isUser ? active.outputs.find(o => o.question === msg.text) : null;
                 const isActiveOutput = linkedOutput && activeOutput?.id === linkedOutput.id;
+                // A clarifying question: assistant message with no linked output that comes after a user message
+                const prevMsg = msgIdx > 0 ? active.messages[msgIdx - 1] : null;
+                const isClarifyQuestion = !isUser && !linkedOutput && prevMsg?.role === 'user' && msg.results?.length === 0;
 
                 return (
                   <div key={msg.id} className={`flex flex-col ${isUser ? 'items-end' : 'items-start'}`}>
@@ -1043,6 +1066,16 @@ export function AskAIPage({ initialQuestion, onNavigate }: Props) {
                         }`}>
                         {msg.text}
                       </button>
+                    ) : isClarifyQuestion ? (
+                      <div className="flex items-start gap-2 max-w-[95%]">
+                        <div className="w-5 h-5 rounded-md bg-amber-500/20 border border-amber-500/30 flex items-center justify-center flex-shrink-0 mt-0.5">
+                          <AlertTriangle size={9} className="text-amber-400" />
+                        </div>
+                        <div className="bg-amber-500/10 border border-amber-500/20 rounded-2xl rounded-tl-sm px-3 py-2.5">
+                          <p className="text-[10px] font-bold text-amber-400 uppercase tracking-widest mb-1">More context needed</p>
+                          <p className="text-xs text-amber-200 leading-relaxed">{msg.text}</p>
+                        </div>
+                      </div>
                     ) : (
                       <div className="flex items-start gap-2 max-w-[95%]">
                         <div className="w-5 h-5 rounded-md bg-sky-500/20 border border-sky-500/30 flex items-center justify-center flex-shrink-0 mt-0.5">
