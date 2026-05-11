@@ -152,7 +152,7 @@ DEPARTMENT BREAKDOWN
 
 ### 2.6 Feedback banner
 
-A feedback prompt banner is shown at the bottom of the Overview page below the department cards. It is context-tagged "Skills Overview" for routing purposes.
+A feedback prompt banner is shown at the bottom of the Overview page below the department cards. It is context-tagged "Skills Overview". See §9 for the full feedback system specification.
 
 ### 2.7 Legend
 
@@ -286,7 +286,7 @@ Note: these labels and thresholds are specific to heatmap *cells* and differ fro
 
 ### 3.5 Upsell banner and feedback banner
 
-Below the legend, a talent development upsell banner is shown. Below that, a feedback prompt banner is shown (context-tagged "Skills Heatmap").
+Below the legend, a talent development upsell banner is shown. Below that, a feedback prompt banner is shown (context-tagged "Skills Heatmap"). See §9 for the full feedback system specification.
 
 ---
 
@@ -798,7 +798,143 @@ Wherever data is absent — whether an entire department has no skills data, a s
 
 ---
 
-## 9. Tour integration
+## 9. Feedback system
+
+The feedback system is a lightweight, two-component in-product feedback mechanism used across all major views. It is not specific to the heatmap — it runs on eight views — but its placement in the heatmap is described here.
+
+---
+
+### 9.1 FeedbackBanner — placement and copy
+
+The `FeedbackBanner` component renders as a full-width banner below the main content of a view, above the page bottom. It appears on every view that has a clear task context so that feedback can be attributed precisely.
+
+**Views and their context tags:**
+
+| View | Context tag | Question shown |
+|---|---|---|
+| Skills Overview (department cards) | `Skills Overview` | "Does this department view help you plan development conversations?" |
+| Skills Heatmap (department view) | `Skills Heatmap` | "Is this heatmap surfacing the gaps that matter most to you?" |
+| Areas to Improve (gap report picker) | `Areas to Improve` | "Is this gap report giving you what you need to make a case?" |
+| Promotion Pipeline | `Promotion Pipeline` | "Does this pipeline reflect how you actually think about readiness?" |
+| Manager Effectiveness | `Manager Effectiveness` | "Are these manager metrics helping you have better conversations?" |
+| Industry Benchmarks | `Industry Benchmarks` | "Are you benchmarking against the right peers?" |
+| Executive Summary | `Executive Summary` | "Is this summary giving you what you need before a leadership meeting?" |
+| Decisions Journal | `Decisions Journal` | "Is the journal helping you follow through on commitments?" |
+
+**Visual design:**
+- Full-width rounded card with a sky-to-blue horizontal gradient background
+- A subtle radial dot pattern overlaid at low opacity for texture
+- Left side: a white/translucent icon square (MessageSquare icon) + the view-specific question in white bold text + a smaller sub-label in sky-100 (hidden on small screens)
+- Right side: a white pill button labelled "Share feedback" with a MessageSquare icon
+- Clicking the button opens the `FeedbackFlow` modal
+
+---
+
+### 9.2 FeedbackFlow — the modal
+
+`FeedbackFlow` is a centred modal overlay triggered by clicking "Share feedback" in the banner. It is a three-step form with a progress bar, rendered over a blurred scrim.
+
+**Entry animation:** The panel enters with a `translateY(16px) → 0, opacity 0 → 1, scale 0.95 → 1` transition over 350ms.
+
+**Modal chrome:**
+- A 4px gradient accent bar at the top (sky → teal → emerald)
+- Header row: "Your feedback" label (uppercase, small, grey) with a dark square MessageSquare icon; a small × close button top-right
+- A thin horizontal progress bar below the header, animated as steps advance (0% → 33% → 66% → 100%)
+- Clicking the scrim or the × button closes the modal with a reverse exit animation
+
+---
+
+### 9.3 Step 1 — Rating
+
+**Prompt:** "How useful is this for your day-to-day?"
+
+**Sub-label:** "You're on [context tag]. Your rating helps us prioritise what to build next."
+
+**Input:** Five horizontally-arranged buttons, each showing a number (1–5) and a label below:
+
+| Value | Label |
+|---|---|
+| 1 | Not useful |
+| 2 | Somewhat |
+| 3 | Useful |
+| 4 | Really useful |
+| 5 | Love it |
+
+**Interaction:**
+- Hovering highlights all buttons from 1 up to the hovered value (scale 1.05, darker border)
+- Clicking selects that value and colours the button according to the rating sentiment: 1 = red, 2 = orange, 3 = amber, 4 = teal, 5 = emerald
+- Rating is required — the "Continue" button is disabled until one is selected
+
+**CTA:** "Continue →" button (dark, full-width). Advances to step 2.
+
+---
+
+### 9.4 Step 2 — Free text
+
+**Prompt:** "What's missing, or what would make this more useful?"
+
+**Sub-label:** "Data points, new views, workflow improvements — anything goes. Be as blunt as you like."
+
+**Input:** A 4-row textarea with placeholder: "e.g. I wish I could see attrition risk per manager, or export the gap report as a PDF…". Autofocuses on arrival.
+
+**CTAs:**
+- "Skip" (light, left) — advances to step 3 without capturing text
+- "Continue →" (dark, right, flex-3 width) — advances to step 3 with text
+
+---
+
+### 9.5 Step 3 — Research opt-in
+
+**Prompt:** "Help shape the roadmap"
+
+**Body:** "We do short product calls with people using this in the real world. 20 minutes, no pitch — just honest conversation about what would make this genuinely better."
+
+**CTAs (initial state):**
+- "I'm in" (dark, full-width left half) — reveals the name/email form below
+- "Maybe later" (light border, right half) — submits the feedback without a research call and advances to the done state
+
+**When "I'm in" is clicked:** The two buttons are replaced by:
+- Name input (autofocus)
+- Work email input (type=email; pressing Enter while both fields are filled submits)
+- "Submit feedback →" button (dark, full-width, disabled until both name and email are non-empty)
+- "Back" link below (returns to the initial two-button state, without clearing name/email)
+
+While submitting, the button shows a spinner and "Saving…" label.
+
+---
+
+### 9.6 Done state
+
+After submission the modal transitions to a thank-you screen:
+
+- A large emerald star icon in an emerald-50 rounded square
+- "Thank you." heading
+- Body copy varies by research opt-in choice:
+  - With call: "We'll be in touch to set up a call. Your input directly influences what we build next."
+  - Without call: "Your feedback goes straight to the team. We read every response."
+- A "Done" button (dark) that closes the modal
+
+---
+
+### 9.7 Data persistence
+
+Feedback is written to the `feedback` Supabase table with the following fields:
+
+| Column | Type | Notes |
+|---|---|---|
+| `context` | text | The view's context tag (e.g. "Skills Heatmap") |
+| `rating` | integer or null | 1–5 from step 1 |
+| `feedback_text` | text or null | Free text from step 2; null if skipped or empty |
+| `wants_research_call` | boolean | True if the user clicked "I'm in" and submitted name+email |
+| `researcher_name` | text or null | Name collected in step 3; null if no call requested |
+| `researcher_email` | text or null | Email collected in step 3; null if no call requested |
+| `created_at` | timestamptz | Set by database default |
+
+**Error handling:** Submission errors are intentionally swallowed — a failed feedback write must never surface an error to the user or block the UI. The modal always advances to the done state regardless of whether the database write succeeds.
+
+---
+
+## 9A. Tour integration
 
 When the product tour is active and the page lands on the Department view, the first skill in the skills list is **automatically selected** and its drilldown panel is opened. This ensures the drilldown panel is present in the DOM so that the tour overlay can anchor its step annotations to elements inside the panel. This is a tour-only behaviour — it should not trigger in normal usage.
 
