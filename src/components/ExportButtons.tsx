@@ -6,6 +6,35 @@ interface Props {
   buildContent: () => string;
 }
 
+function buildPrintHtml(title: string, content: string): string {
+  const lines = content.split('\n');
+  const bodyLines = lines.map(line => {
+    if (line.startsWith('=') || line.startsWith('-')) return `<hr style="border:none;border-top:1px solid #e5e7eb;margin:8px 0"/>`;
+    if (line === '') return '<br/>';
+    if (line === line.toUpperCase() && line.trim().length > 2 && !/^\d/.test(line)) {
+      return `<h2 style="font-size:11px;font-weight:700;color:#6b7280;letter-spacing:.08em;text-transform:uppercase;margin:20px 0 6px">${line}</h2>`;
+    }
+    if (line.startsWith('  ')) {
+      return `<p style="font-size:12px;color:#374151;margin:2px 0;padding-left:20px">${line.trim()}</p>`;
+    }
+    return `<p style="font-size:13px;color:#111827;margin:3px 0">${line}</p>`;
+  });
+
+  return `<!DOCTYPE html><html><head><meta charset="utf-8"><title>${title}</title>
+<style>
+  @media print { @page { margin: 2cm; } }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; padding: 32px; max-width: 800px; margin: 0 auto; background: #fff; color: #111; }
+  h1 { font-size: 20px; font-weight: 800; color: #111827; margin: 0 0 4px; }
+  .meta { font-size: 11px; color: #9ca3af; margin-bottom: 24px; }
+</style>
+</head><body>
+<h1>${title}</h1>
+<p class="meta">Progression · ${new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
+${bodyLines.join('\n')}
+<script>window.onload = () => { window.print(); window.onafterprint = () => window.close(); }<\/script>
+</body></html>`;
+}
+
 function EmailModal({ title, buildContent, onClose }: { title: string; buildContent: () => string; onClose: () => void }) {
   const [email, setEmail] = useState('');
   const [sent, setSent] = useState(false);
@@ -101,15 +130,12 @@ export function ExportButtons({ title, buildContent }: Props) {
 
   function handleDownload() {
     const text = buildContent();
-    const slug = title.toLowerCase().replace(/[^a-z0-9]+/g, '-').slice(0, 40);
-    const filename = `progression-${slug}.txt`;
-    const blob = new Blob([text], { type: 'text/plain' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = filename;
-    a.click();
-    URL.revokeObjectURL(url);
+    const html = buildPrintHtml(title, text);
+    const win = window.open('', '_blank');
+    if (win) {
+      win.document.write(html);
+      win.document.close();
+    }
     setDownloaded(true);
     setTimeout(() => setDownloaded(false), 2000);
   }
