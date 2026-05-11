@@ -346,7 +346,7 @@ Cards are built by `buildKpiCards(summary): KpiCardData[]`. The function returns
 
 **Grid layout:**
 - Primary (indices 0–3): `grid grid-cols-4 gap-3`
-- Secondary (indices 4–7): `grid grid-cols-3 gap-3 mt-3` — only rendered when `kpiExpanded === true`
+- Secondary (indices 4–7): `grid grid-cols-4 gap-3 mt-3` — only rendered when `kpiExpanded === true`
 
 **Expand toggle:** Centered text button below the grids. Clicking toggles `kpiExpanded`. Labels:
 - Collapsed: "Show managers, rank, attrition & check-ins"

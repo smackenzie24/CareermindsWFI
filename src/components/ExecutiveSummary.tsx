@@ -577,9 +577,9 @@ export function ExecutiveSummary({ onNavigate, onAskAI }: Props) {
               ))}
             </div>
 
-            {/* Secondary 3 — revealed on expand */}
+            {/* Secondary 4 — revealed on expand */}
             {kpiExpanded && (
-              <div className="grid grid-cols-3 gap-3 mt-3">
+              <div className="grid grid-cols-4 gap-3 mt-3">
                 {buildKpiCards(summary).slice(4).map(card => (
                   <KpiCard key={card.label} card={card} onNavigate={onNavigate} />
                 ))}
