@@ -506,6 +506,45 @@ Used in the promotion pipeline section. Each chip shows:
 
 Background: teal-50 with teal-100 border for "met" chips; red-50 with red-100 border for "blocked" chips.
 
+**Each chip is fully clickable and navigates to that person's individual record in the Progression page** (see §5.8A).
+
+---
+
+### 5.8A Individual person record (Progression page)
+
+Clicking a candidate chip opens that person's full profile as a slide-over panel within the Progression (Promotion Pipeline) page. This panel is the `PersonPanel` component and is the authoritative view of a person's promotion readiness detail.
+
+The panel is not rendered inside the heatmap itself — clicking the chip navigates the user out of the heatmap and into the Progression page, where the person's panel opens automatically. The navigation passes the person's ID so the Progression page can open the correct panel on arrival.
+
+**Until deep-linking is implemented**, the chip click should navigate to the Progression page filtered to the relevant department, with the person's panel opened. At minimum, the Progression page should scroll to and highlight the person's card.
+
+**The person panel contains:**
+
+- **Header:**
+  - Person's initials avatar (large, 48×48px, slate gradient square)
+  - Full name (large bold)
+  - Team · Department sub-label
+  - Meta pills: Location, Tenure in current level (e.g. "14m in current level"), Target level title
+  - Close (×) button
+  - Prev / Next navigation if the panel was opened as part of a peer group (not applicable when opened from the heatmap — no peer navigation context)
+
+- **Readiness score block:**
+  - "Readiness for [Target level label]" with the tier badge (e.g. "Near Ready")
+  - Large percentage score (e.g. "94%")
+  - "N of N criteria met" sub-label
+  - Horizontal progress bar coloured by tier
+
+- **Criteria breakdown (scrollable):**
+  - **"Meeting criteria (N)"** section — one row per skill the person currently meets for their target level. Each row shows: skill name, category, rating dot visualisation (5 dots: filled sky = meeting requirement, filled emerald = exceeding, empty red border = gap), and the rating as "actual/required"
+  - **"Gaps to close (N)"** section — one row per skill the person has not yet met. Same row format. Sorted by gap size descending (largest gap first).
+
+- **Footer actions (currently placeholder buttons — destinations to be defined):**
+  - "Set as focus skills →"
+  - "Find mentors for gap skills →"
+  - "Schedule check-in →"
+
+**Relationship to the heatmap drilldown:** When the user arrives at the Progression page from a heatmap chip click, the context is that specific skill. A future enhancement should pre-scroll the person's criteria breakdown to highlight the relevant skill row (the one that was the subject of the heatmap drilldown). This is not yet implemented.
+
 ### 5.9 Check-in drilldown panel
 
 When the user clicks the check-in coverage row at the top of the heatmap grid, the panel switches to a dedicated check-in view (instead of a skill drilldown). This panel has its own layout:
@@ -570,6 +609,7 @@ A sticky footer at the bottom of the skill drilldown panel (not the check-in pan
 | Click any skill label cell | Selects the skill and opens its drilldown panel |
 | Click any heatmap data cell | Selects the skill for that row and opens the drilldown panel |
 | Click the same selected skill/cell again | Deselects; closes the drilldown panel |
+| Click a candidate chip (met or blocked) in the promotion pipeline section | Progression page with that person's panel open |
 | "View N promotion-ready in pipeline →" button | Promotion Pipeline page (current department) |
 | "Find mentors with this skill →" | No destination — placeholder |
 | "Set as team focus skill →" | No destination — placeholder |
