@@ -7,6 +7,15 @@
 
 ---
 
+## Open questions
+
+These are unresolved ambiguities that require a decision before the affected components can be built or tested.
+
+**OQ-1 — `gap-report` routing is broken.**  
+`NavTarget.view` includes `'gap-report'` and several risk card CTAs navigate to it, but `App.tsx`'s `ActiveView` type does not include `'gap-report'`, and there is no conditional renderer for it. When `navigate({ view: 'gap-report' })` is called from this page, `nav.view` is set to `'gap-report'` but nothing renders — the main content area goes blank. `DeptGapReportPicker` and `SkillGapReport` components exist in `src/components/` but are not mounted in `App.tsx`. This must be resolved before the critical-skills and benchmark-gap risk card CTAs will work. **Decision needed:** add `'gap-report'` to `ActiveView` and wire up the renderer in `App.tsx`.
+
+---
+
 ## Table of contents
 
 1. [Architecture & file map](#1-architecture--file-map)
@@ -68,6 +77,39 @@ All components below are **local to `ExecutiveSummary.tsx`** — they are define
 ## 2. TypeScript interfaces
 
 These are the exact types the page works with. Do not redefine them — import from the paths shown.
+
+### From `src/data/mockData.ts`
+
+```typescript
+// The seven department names used throughout the app as a discriminated union.
+// Import from 'src/data/mockData.ts', not redefined elsewhere.
+export type Department =
+  | 'Engineering'
+  | 'Product'
+  | 'Design'
+  | 'Data'
+  | 'Marketing'
+  | 'Sales'
+  | 'People Ops';
+```
+
+### From `src/data/promotionData.ts`
+
+The full `Person` interface is defined here. `CheckInRow` only renders a subset of its fields:
+
+```typescript
+export interface Person {
+  id: string;
+  name: string;               // displayed in CheckInRow
+  department: Department;     // displayed in CheckInRow
+  team: string;               // displayed in CheckInRow
+  // (additional fields not used by this page)
+  tenure: number;             // months in current level — used to compute stalledCount
+  lastCheckIn: string;        // ISO date string — used to compute daysSinceCheckIn
+  flightRisk?: 'high' | 'medium' | 'low';
+  flightRiskDrivers?: string[];
+}
+```
 
 ### From `src/data/execSummaryData.ts`
 
@@ -834,6 +876,25 @@ interface Props {
 
 Called with `context="Executive Summary"` and `className="mt-6"`.
 
+The `context` string must exactly match a key in the `CONTEXT_COPY` map inside `FeedbackBanner.tsx`. If it doesn't match, a generic fallback is used. The full map is:
+
+```typescript
+const CONTEXT_COPY: Record<string, { question: string; sub: string }> = {
+  'Skills Heatmap':        { question: 'Is this heatmap surfacing the gaps that matter most to you?',           sub: 'Tell us what data or filters would make it more actionable.' },
+  'Skills Overview':       { question: 'Does this department view help you plan development conversations?',     sub: "We'd love to know what's missing from the skills picture." },
+  'Areas to Improve':      { question: 'Is this gap report giving you what you need to make a case?',           sub: 'Tell us what would make this report more useful in practice.' },
+  'Promotion Pipeline':    { question: 'Does this pipeline reflect how you actually think about readiness?',     sub: 'Share what\'s missing from the promotion picture.' },
+  'Manager Effectiveness': { question: 'Are these manager metrics helping you have better conversations?',       sub: 'Tell us what signals you wish you had.' },
+  'Industry Benchmarks':   { question: 'Are you benchmarking against the right peers?',                         sub: 'Let us know what comparisons would be most useful.' },
+  'Executive Summary':     { question: 'Is this summary giving you what you need before a leadership meeting?',  sub: 'Tell us what signals belong on this page.' },
+  'Decisions Journal':     { question: 'Is the journal helping you follow through on commitments?',             sub: 'Tell us how we can make it a better accountability tool.' },
+};
+// Fallback (key not found):
+// { question: 'Is this view useful for your work?', sub: "Tell us what's missing or what would make it better." }
+```
+
+When adding the `FeedbackBanner` to a new page, add a corresponding entry to this map using the exact string you pass as `context`.
+
 **Appearance:** Full-width sky-blue gradient banner (`linear-gradient(135deg, #0ea5e9, #0284c7, #0369a1)`) with a white "Share feedback" button on the right.
 
 **Behaviour:** Clicking "Share feedback" opens `FeedbackFlow` as a modal overlay.
@@ -1026,7 +1087,7 @@ All navigation is handled by `onNavigate(NavTarget)` which is passed down from `
 | AI Prompt Bar — chip | Click chip | `onAskAI(chipText)` → `ask-ai` view |
 | Dept row | Click anywhere | `{ view: 'heatmap', department: snap.department }` |
 
-`gap-report` in `NavTarget.view` corresponds to the `DeptGapReportPicker` / `SkillGapReport` view. In `App.tsx`, the `NavTarget` type from `execSummaryData.ts` is a subset — `navigate()` in `App.tsx` handles the `gap-report` case by setting `nav.view = 'heatmap'` and passing `department`. Confirm exact routing behaviour in `App.tsx:navigate()` before implementing.
+**Note:** All rows with `view: 'gap-report'` are currently non-functional. See **OQ-1** at the top of this document.
 
 ---
 
