@@ -62,6 +62,8 @@ query() — chatEngine.ts
 
 Both `AskAIPage` and `ChatPanel` follow this same two-layer pattern. The difference is UI only.
 
+> **Data source — current state:** All workforce data (employees, skill gaps, readiness scores, manager metrics, benchmarks) is **static mock data** defined in `src/data/*.ts` files. No data is read from a database at query time. `buildWorkforceContext()` serialises these in-memory fixtures into the string sent to the AI. The AI's answers are therefore based on this fixture dataset, not live Progression records. When real data is connected (e.g. from Supabase), `buildWorkforceContext()` and the local handler data sources are the integration points to update — the rest of the pipeline stays the same.
+
 ---
 
 ## 2. Query routing — the two-tier system
