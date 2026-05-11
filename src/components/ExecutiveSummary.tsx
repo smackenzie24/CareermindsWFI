@@ -568,6 +568,9 @@ export function ExecutiveSummary({ onNavigate, onAskAI }: Props) {
       <main className="flex-1 overflow-auto p-8">
         <div className="max-w-6xl mx-auto space-y-8">
 
+          {/* ── AI prompt bar ─────────────────────────────────────────────── */}
+          <AIPromptBar onAskAI={onAskAI} />
+
           {/* ── KPI metric strip ──────────────────────────────────────────── */}
           <div data-tour="home-kpi-strip">
             {/* Primary 4 — always visible */}
@@ -651,8 +654,6 @@ export function ExecutiveSummary({ onNavigate, onAskAI }: Props) {
                   ))}
                 </div>
               )}
-
-              <AIPromptBar onAskAI={onAskAI} />
             </div>
           </div>
 

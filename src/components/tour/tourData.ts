@@ -19,6 +19,15 @@ export const TOUR_STEPS: TourStep[] = [
   // ── Executive Summary ─────────────────────────────────────────────────────
 
   {
+    id: 'home-3b',
+    view: 'home',
+    title: 'Workforce AI',
+    body: 'Ask any workforce question in plain English right from the dashboard — "Who is at risk of leaving?", "Build a retention plan for churn risks", "How does our bench compare to industry?". The AI reads your live org data and returns a structured briefing. You can also reach the full AI workspace from the Ask AI page in the nav.',
+    anchorId: 'home-ai-hero',
+    anchorOffsetX: 0.5, anchorOffsetY: 0.5,
+    side: 'bottom',
+  },
+  {
     id: 'home-2',
     view: 'home',
     title: 'Org Health KPIs',
@@ -35,15 +44,6 @@ export const TOUR_STEPS: TourStep[] = [
     anchorId: 'home-risks',
     anchorOffsetX: 0.5, anchorOffsetY: 0.3,
     side: 'right',
-  },
-  {
-    id: 'home-3b',
-    view: 'home',
-    title: 'Workforce AI',
-    body: 'Once you\'ve seen the risks, ask a follow-up in plain English — "Who is at risk of leaving?", "Build a retention plan for churn risks". The AI reads your live org data and returns a structured briefing. You can also reach it anytime from the Ask AI page in the nav.',
-    anchorId: 'home-ai-hero',
-    anchorOffsetX: 0.5, anchorOffsetY: 0.5,
-    side: 'top',
   },
   {
     id: 'home-4',
