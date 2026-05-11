@@ -11,12 +11,14 @@ import { ExecutiveSummary } from './components/ExecutiveSummary';
 import { AskAIPage } from './components/ai/AskAIPage';
 import { CommitmentsJournal } from './components/CommitmentsJournal';
 import { HowItWorks } from './components/HowItWorks';
+import { DeptGapReportPicker } from './components/DeptGapReportPicker';
+import { SkillGapReport } from './components/SkillGapReport';
 import type { Department } from './data/mockData';
 import type { NavTarget } from './data/execSummaryData';
 import type { ActionNavTarget } from './data/chatEngine';
 import type { ManagerMetrics } from './data/managerData';
 
-type ActiveView = 'home' | 'heatmap' | 'pipeline' | 'managers' | 'benchmark' | 'ask-ai' | 'journal' | 'how-it-works';
+type ActiveView = 'home' | 'heatmap' | 'pipeline' | 'managers' | 'benchmark' | 'ask-ai' | 'journal' | 'how-it-works' | 'gap-report';
 
 function TourNudge({ onDismiss }: { onDismiss: () => void }) {
   const [visible, setVisible] = useState(() => {
@@ -223,6 +225,17 @@ export default function App() {
         )}
         {nav.view === 'benchmark' && (
           <IndustryBenchmark onNavigateToGapReport={(dept) => setNav({ view: 'gap-report', department: dept })} />
+        )}
+        {nav.view === 'gap-report' && (
+          nav.department
+            ? <SkillGapReport
+                department={nav.department}
+                onBack={() => setNav({ view: 'gap-report' })}
+                onNavigateToPipeline={() => setNav({ view: 'pipeline', department: nav.department })}
+              />
+            : <DeptGapReportPicker
+                onSelect={(dept) => setNav({ view: 'gap-report', department: dept })}
+              />
         )}
         {nav.view === 'journal' && <CommitmentsJournal onReviewSource={openAI} />}
         {nav.view === 'how-it-works' && (
