@@ -84,7 +84,17 @@ supabase.from('commitments').insert({ ... })
 CommitmentsJournal.load() picks it up on next visit / refresh
 ```
 
-### 3.2 `withCommitmentPrompt` (AskAIPage.tsx)
+### 3.2 Query flow exceptions — when no commitment card appears
+
+Two cases suppress the output panel (and therefore the commitment card) entirely:
+
+1. **Local clarify detection** — `detectLocalClarifyQuestion()` checks for restructuring, generic strategy, or compensation/budget questions (when no doc is attached). When triggered, the AI page injects a clarifying question directly into the chat thread and returns early — no `OutputEntry` is created and no `finalize()` is called.
+
+2. **AI-returned clarification** — if the `workforce-ai` edge function responds with `needsMoreContext: true` and `contextQuestion`, the AI page again injects the question into the chat thread and returns early without calling `finalize()`.
+
+In both cases, the conversation continues but no `commitment-prompt` is appended, so no entry is created in the Journal from that turn.
+
+### 3.3 `withCommitmentPrompt` (AskAIPage.tsx)
 
 Located in `AskAIPage.tsx`, called inside `finalize()`, which is invoked at the end of both local-intent and AI-backed query flows.
 
@@ -102,9 +112,9 @@ const withCommitmentPrompt = (text: string, results: QueryResult[]) => {
 - The guard (`hasCommitment`) prevents duplicate capture cards if `chatEngine.query()` itself returned a `commitment-prompt` result (which also stamps `sourceQuery` at `chatEngine.ts` line 1613).
 - Every response from the AI page — regardless of query type — appends exactly one `commitment-prompt` result.
 
-### 3.3 `buildCommitmentPrompt` (chatEngine.ts, line 168)
+### 3.4 `buildCommitmentPrompt` (chatEngine.ts, line 168)
 
-Takes `(question: string, responseText: string)` and returns a `CommitmentPrompt` object by regex-matching the question and response text.
+Takes `(question: string, responseText: string)` and returns a `CommitmentPrompt` object by regex-matching the question and response text. Both the question (`q`) and response (`r`) are lowercased before matching. The helper `detectDept(q)` extracts a department name if present.
 
 **`CommitmentPrompt` interface** (chatEngine.ts, line 158):
 
@@ -118,23 +128,36 @@ interface CommitmentPrompt {
 }
 ```
 
-**Intent classification branches** (9 named + fallback):
+**Intent classification branches** — evaluated in order, first match wins:
 
-| Branch | Regex match on question/response | `insightKind` | Example `suggestedDecisions` |
-|--------|----------------------------------|---------------|------------------------------|
-| promotion | `/promot/i` | `'promotion'` | Schedule check-in with near-ready candidates, update role criteria |
-| churn | `/churn\|flight.risk\|retain\|attrition\|leaving/i` | `'churn-risk'` | Arrange 1:1 with at-risk employees, review compensation |
-| skill-gap | `/skill.gap\|competency\|training\|upskill\|reskill/i` | `'skill-gap'` | Commission training programme, assign mentors |
-| hiring | `/hir\|recruit\|headcount\|backfill/i` | `'hiring'` | Open requisition, define role profile |
-| reduction | `/reduc\|downsize\|restructur\|layoff\|RIF/i` | `'reduction'` | Draft communication plan, review severance |
-| manager | `/manager\|coaching\|1.1\|one.on.one/i` | `'manager'` | Book coaching session, review manager effectiveness scores |
-| benchmark | `/benchmark\|industr\|peer\|quartile/i` | `'benchmark'` | Share benchmark report with leadership, identify improvement areas |
-| action-plan | `/action.plan\|roadmap\|strategy\|plan/i` | `'action-plan'` | Present plan to leadership, set quarterly milestones |
-| general (fallback) | no match | `'general'` | Schedule follow-up, document findings |
+| Branch | Regex on question | Regex on response | `insightKind` | `insightSummary` |
+|--------|-------------------|-------------------|---------------|------------------|
+| promotion | `/promot\|near.?ready\|ready for promo\|promo.?pipeline\|pipeline\|show me the/` | `/ready for promotion\|near.ready\|pipeline summary/` | `'promotion'` | `"Promotion readiness findings[deptSuffix]"` |
+| churn | `/churn\|flight.?risk\|attrition\|retain\|leaving\|resign/` | `/churn risk\|flight risk\|attrition/` | `'churn-risk'` | `"Retention risk findings[deptSuffix]"` |
+| skill-gap | `/skill.?gap\|missing skill\|skill deficit\|upskill\|training\|develop/` | `/skill gap\|below target\|skill deficit/` | `'skills-gap'` | `"Skills gap findings[deptSuffix]"` |
+| hiring | `/hir\|recruit\|headcount\|add.*role\|open.*role\|backfill/` | `/hiring\|recruit\|headcount gap/` | `'hiring'` | `"Hiring strategy findings[deptSuffix]"` |
+| reduction | `/redund\|lay.?off\|downsize\|reduce headcount\|workforce reduction\|rif/` | `/redundan\|reduction in force\|headcount reduction/` | `'reduction'` | `"Workforce reduction findings[deptSuffix]"` |
+| manager | `/manager\|management\|leadership\|coach/` | `/manager effectiveness\|leadership gap/` | `'manager'` | `"Manager effectiveness findings[deptSuffix]"` |
+| benchmark | `/bench\|benchm\|industry\|peer\|compan\|compar/` | `/benchmark\|industry average\|peer comparison/` | `'benchmark'` | `"Benchmark comparison findings[deptSuffix]"` |
+| action-plan | `/90.?day\|action plan\|roadmap\|priorit\|quarter\|plan/` | `/action plan\|priority\|roadmap/` | `'action-plan'` | `"Workforce action plan"` (no dept suffix) |
+| general (fallback) | no match | — | `'general'` | `"Workforce insight[deptSuffix]"` |
 
-`insightSummary` is derived from the response text (truncated to a readable summary). `department` is extracted from the question if a department name is detected.
+`deptSuffix` is `" in [dept]"` when a department is detected, otherwise `""`. The action-plan branch does not append a dept suffix.
 
-### 3.4 `CommitmentCaptureCard` (AIChatRenderer.tsx, line 566)
+**Important: `insightKind` mismatch with `KIND_CONFIG`**
+
+`buildCommitmentPrompt` returns `insightKind: 'skills-gap'` (with an `s`) for skill-gap queries, but `KIND_CONFIG` in `CommitmentsJournal.tsx` only has the key `'skill-gap'` (no `s`). This means skill-gap commitments display the **general** (gray/Sparkles) badge rather than the teal Skills gap badge. This is a known inconsistency in the codebase.
+
+**Suggested decisions (4 per branch):**
+
+Each branch returns 4 `suggestedDecisions`. The last chip in every branch is a Careerminds chip (matches `/careerminds/i` in `CommitmentCaptureCard`). Examples:
+
+- **promotion**: "Schedule promotion review meetings…", "Set up monthly check-ins…", "Share readiness reports…", "Upgrade promotion pipeline management with CareerMinds Talent Development"
+- **churn-risk**: "Schedule 1:1 stay interviews…", "Build tailored retention plans…", "Review compensation and progression paths…", "Engage CareerMinds outplacement readiness…"
+- **skills-gap**: "Commission a focused upskilling programme…", "Identify internal mentors…", "Add critical gap skills to the next hiring brief…", "Explore CareerMinds Talent Development…"
+- **general fallback**: "Share this analysis with your leadership team", "Document the key findings…", "Schedule a review in 30 days…", "Contact CareerMinds to discuss tailored support…"
+
+### 3.5 `CommitmentCaptureCard` (AIChatRenderer.tsx, line 566)
 
 Rendered at the bottom of every AI response output panel when `result.kind === 'commitment-prompt'`.
 
@@ -145,42 +168,99 @@ const [text, setText] = useState('');
 const [status, setStatus] = useState<'idle' | 'saving' | 'saved'>('idle');
 ```
 
+**Card structure:**
+
+```
+rounded-2xl border border-gray-200 bg-white shadow-sm
+├── Header row (px-4 py-3 border-b border-gray-100)
+│   ├── w-6 h-6 rounded-lg bg-emerald-500 icon: <Pencil size={10} />
+│   └── Label: "WHAT WILL YOU DO ABOUT THIS?" (text-[11px] uppercase tracking-widest)
+│       + insightSummary (text-xs text-gray-500 mt-0.5)
+├── Suggested decisions section (px-3 pt-3 pb-1) — only if suggestedDecisions.length > 0
+│   ├── "SUGGESTED DECISIONS" label (text-[10px] uppercase tracking-wider mb-2)
+│   ├── Action chips (emerald styling)
+│   └── Careerminds chips (sky styling + Sparkles icon)
+└── Input/success section (p-3)
+    ├── [idle/saving] textarea + "Log it" button
+    └── [saved] green success banner
+```
+
 **Suggested decision chips:**
 
-The `suggestedDecisions[]` array from `buildCommitmentPrompt` is split into two chip groups:
+`suggestedDecisions[]` from `buildCommitmentPrompt` is split by testing each string against `/careerminds/i`:
 
-- `actionChips` — decisions that do **not** reference Careerminds. Styled with emerald background.
-- `careermindsChips` — decisions that reference Careerminds or Keystone Partners. Styled with sky background and a `Sparkles` icon.
+- `actionChips` — no match → rendered first, emerald styling
+- `careermindsChips` — matches → rendered after action chips, sky styling with `<Sparkles size={10} />` icon
 
-Clicking any chip sets `text` to that chip's value, populating the textarea. This does not auto-save.
+**Chip states:**
+
+| State | Styles |
+|-------|--------|
+| Selected (`text === s`) — action chip | `bg-emerald-50 border-emerald-200 text-emerald-800 font-medium` |
+| Unselected — action chip | `bg-gray-50 border-gray-200 text-gray-700 hover:border-emerald-200 hover:bg-emerald-50 hover:text-emerald-800` |
+| Selected (`text === s`) — careerminds chip | `bg-sky-50 border-sky-200 text-sky-800 font-medium` |
+| Unselected — careerminds chip | `bg-sky-50/60 border-sky-100 text-sky-700 hover:border-sky-200 hover:bg-sky-50 hover:text-sky-800` |
+
+Clicking a chip sets `text` to that chip's value. This does not auto-save.
 
 **Textarea:**
 
-Free-text input. Placeholder: "Write your commitment here...". `Enter` (without `Shift`) triggers `save()`. `Shift+Enter` inserts a newline.
+Free-text input. Placeholder: `"Type your decision, or pick one above…"`. Styled with `bg-gray-50 border-gray-200 rounded-xl focus:border-emerald-300 focus:bg-white focus:ring-1 focus:ring-emerald-100`. `Enter` (without `Shift`) triggers `save()` via `onKeyDown`. `Shift+Enter` inserts a newline.
 
 **"Log it" button:**
 
-Disabled when `!text.trim() || status === 'saving'`. On click, calls `save()`.
+Disabled when `!text.trim() || status === 'saving'` (guard also includes `status !== 'idle'` in the save function itself). During `'saving'` state, shows `<RefreshCw size={11} className="animate-spin" />` in place of the `<Check>` icon. On click calls `save()`.
 
 **`save()` function:**
 
 ```typescript
-await supabase.from('commitments').insert({
-  text: text.trim(),
-  context: data.insightSummary,
-  insight_kind: data.insightKind,
-  department: data.department ?? null,
-  source_query: data.sourceQuery ?? null,
-  status: 'open',
-});
+async function save() {
+  if (!text.trim() || status !== 'idle') return;
+  setStatus('saving');
+  await supabase.from('commitments').insert({
+    text: text.trim(),
+    context: data.insightSummary,
+    insight_kind: data.insightKind,
+    department: data.department ?? null,
+    source_query: data.sourceQuery ?? null,
+    status: 'open',
+  });
+  setStatus('saved');
+}
 ```
 
-After a successful insert, `status` is set to `'saved'` and the card displays a green success message:
-> "Commitment logged — you'll see it in your Decisions journal."
+The guard is `status !== 'idle'` (not just `'saving'`), which prevents re-saving if the button is clicked again after a successful save.
+
+After a successful insert, `status` is set to `'saved'` and the card replaces the textarea/button with a green banner:
+
+```
+bg-emerald-50 border border-emerald-200 rounded-xl flex items-center gap-2
+<CheckCircle2 size={14} className="text-emerald-500" />
+"Commitment logged — you'll see it in your Decisions journal."
+```
 
 The `id`, `created_at`, and `updated_at` columns are generated server-side by Supabase defaults.
 
-### 3.5 `sourceQuery` stamping — two locations
+### 3.6 ChatPanel does NOT generate commitments
+
+The `ChatPanel` (slide-out sidebar) also calls `chatEngine.query()` but does **not** call `withCommitmentPrompt`. Commitments can only be created from the full `AskAIPage`. The sidebar is for quick lookups only.
+
+### 3.7 `onReviewSource` navigation detail
+
+When a user clicks "Review source in Ask AI" in the Journal, `openAI(query)` is called in `App.tsx`, which calls `setNav({ view: 'ask-ai', aiQuestion: query })`. Because the Ask AI page is always-mounted, it receives this as a prop change. A `useEffect` watches `initialQuestion`:
+
+```typescript
+useEffect(() => {
+  if (initialQuestion && sentInitialRef.current !== initialQuestion) {
+    sentInitialRef.current = initialQuestion;
+    setTimeout(() => sendMessage(initialQuestion), 200);
+  }
+}, [initialQuestion]);
+```
+
+The question is **automatically sent** after a 200ms delay — the user does not need to press Enter. The `sentInitialRef` guard prevents the same question from being re-sent if the component re-renders without a new `initialQuestion`.
+
+### 3.8 `sourceQuery` stamping — two locations
 
 The `source_query` field is stamped in two places to ensure it is always set:
 
