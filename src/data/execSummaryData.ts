@@ -256,11 +256,12 @@ export function computeExecSummary(): ExecSummary {
   }
 
   // Stalled employees
+  const stalledRate = allReadiness.length > 0 ? totalStalled / allReadiness.length : 0;
   if (totalStalled > 0 && managersWithMostStalled.length > 0) {
     const worstMgr = managersWithMostStalled[0];
     risks.push({
       id: 'stalled-reports',
-      level: totalStalled >= 5 ? 'critical' : 'warning',
+      level: stalledRate >= 0.05 ? 'critical' : 'warning',
       title: `${totalStalled} employee${totalStalled > 1 ? 's' : ''} showing stall signals`,
       detail: `These individuals have been in their current level for 24+ months with less than 50% promotion readiness. ${worstMgr.manager.name}'s team has the most (${worstMgr.stalledCount}). Inaction risks attrition.`,
       metric: `${totalStalled} stalled (24m+ · <50% ready)`,
@@ -320,12 +321,13 @@ export function computeExecSummary(): ExecSummary {
 
   // Flight risk signal (Revelio Labs)
   const highFlightRisk = getFlightRiskPeople('high');
+  const flightRiskRate = allReadiness.length > 0 ? highFlightRisk.length / allReadiness.length : 0;
   if (highFlightRisk.length > 0) {
     const withOpportunity = highFlightRisk.filter(e => e.hasInternalOpportunity);
     const topPerson = highFlightRisk[0];
     risks.push({
       id: 'flight-risk',
-      level: highFlightRisk.length >= 3 ? 'critical' : 'warning',
+      level: flightRiskRate >= 0.06 ? 'critical' : 'warning',
       title: `${highFlightRisk.length} employee${highFlightRisk.length > 1 ? 's' : ''} flagged high flight risk by Revelio Labs`,
       detail: `${topPerson.person.name} (${topPerson.person.department}) has the strongest signal — ${topPerson.flightRiskDrivers[0] ?? 'multiple risk factors detected'}.${withOpportunity.length > 0 ? ` ${withOpportunity.length} also match an internal mobility opportunity.` : ''}`,
       metric: `${highFlightRisk.length} high risk · ${withOpportunity.length} internal match`,
