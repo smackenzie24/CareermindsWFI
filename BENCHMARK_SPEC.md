@@ -66,17 +66,19 @@ This callback is only invoked from `DeptBenchmarkRow` for departments positioned
   <header>                    // bg-white border-b border-gray-100 px-8 py-5 flex-shrink-0
   <main className="flex-1 overflow-auto p-8">
     <div className="max-w-5xl mx-auto space-y-12">
-      <section>               // Overview
+      <section className="space-y-6">   // Overview
       <div className="border-t border-gray-200" />
-      <section>               // By Department
+      <section className="space-y-6">   // By Department
       <div className="border-t border-gray-200" />
-      <section>               // Talent Flow
+      <section className="space-y-6">   // Talent Flow
       <UpsellBanner ... />
       <FeedbackBanner ... />
     </div>
   </main>
 </div>
 ```
+
+All three `<section>` elements use `className="space-y-6"` — child elements within each section are spaced 24px apart. The outer `space-y-12` governs spacing between the top-level items (sections, dividers, banners).
 
 The `max-w-5xl mx-auto` container constrains all content. The header does not scroll. The main scrolls independently via `overflow-auto`.
 
@@ -95,9 +97,11 @@ The `max-w-5xl mx-auto` container constrains all content. The header does not sc
 
 The subtitle always uses `PEER_COMPANIES.length` (always 8), not the currently filtered `peers.length`.
 
+The title block and right-side controls (export button + context badge) are in a `flex items-start justify-between mb-4` row. The peer filter bar is a separate row below, outside that flex container. The `mb-4` separates the title row from the peer filter row within the `<header>` element.
+
 ### 4.2 Export button
 
-`<ExportButtons title="Industry Benchmarks" buildContent={...} />` — top-right of header. See [Section 12](#12-export-content) for exact content.
+`<ExportButtons title="Industry Benchmarks" buildContent={...} />` — top-right of header, inside a `flex items-center gap-3 mt-1` container alongside the context badge. See [Section 12](#12-export-content) for exact content.
 
 ### 4.3 Live context badge
 
@@ -135,7 +139,9 @@ The subtitle always uses `PEER_COMPANIES.length` (always 8), not the currently f
 
 Active: `bg-gray-900 text-white`. Inactive: `text-gray-500 hover:bg-gray-100`. Both: `text-xs px-3 py-1.5 rounded-lg font-medium transition-colors`.
 
-Changing the peer filter triggers recomputation of `summary`, `orgBenchmarks`, `skillBenchmarks`, `compBenchmarks`, `sizeBenchmarks`, `overviewRecs`, `skillsRecs`, `compRecs`, `compositionRecs` — all via `useMemo([peerFilter])`.
+**Button render order** is determined by `Object.entries(PEER_FILTER_LABELS)` which preserves insertion order: `all → similar → saas → scaleup`. The displayed order is therefore: All peers | Similar size | B2B SaaS only | Scaleups.
+
+**`useMemo` dependency chain:** `peers` is memoized on `[peerFilter]`. All downstream memos depend on `peers`: `summary`, `orgBenchmarks`, `skillBenchmarks`, `compBenchmarks`, `sizeBenchmarks`, `overviewRecs`, `skillsRecs`, `compRecs`, `compositionRecs`. All recompute when `peerFilter` changes. `talentFlowRecs` and `attritionScore` have empty deps `[]` and never recompute.
 
 ---
 
@@ -152,10 +158,12 @@ Background, border, and text colours all driven by `QUARTILE_CONFIG[summary.over
 **Left side:**
 ```
 "Overall benchmark position"       // text-xs font-semibold text-gray-500 uppercase tracking-widest mb-1
-{overallCfg.label}                 // text-3xl font-black {overallCfg.color}
-"Across skill competency, compensation, and org structure, Acme Corp ranks in the {label} compared to {peers.length} similar-sized SaaS and tech companies."
+{overallCfg.label}                 // h2, text-3xl font-black {overallCfg.color}
+"Across skill competency, compensation, and org structure, Acme Corp ranks in the <strong>{label.toLowerCase()}</strong> compared to {peers.length} similar-sized SaaS and tech companies."
                                    // text-sm text-gray-600 mt-2 max-w-xl
 ```
+
+Note: the label within the description paragraph is wrapped in `<strong>` and lowercased via `.toLowerCase()` — e.g. "above median" not "Above median".
 
 **Right side — quartile icon box** (`w-16 h-16 rounded-2xl bg-white/50 border {overallCfg.border} flex items-center justify-center`):
 ```
@@ -188,17 +196,25 @@ Two cards from `getOrgBenchmarks(peers)`:
 
 Each card (`bg-white rounded-2xl border border-gray-100 p-6 shadow-sm`):
 ```
-{bench.label}                           // text-xs text-gray-500 mb-1
-{bench.acmeValue}{bench.unit}           // text-3xl font-black {bCfg.color}
-<QuartileBadge pos={bench.position} />
-<DeltaChip delta={bench.delta} unit={unitArg} higherIsBetter={bench.higherIsBetter} />
-<DistributionBar .../>                  // mt-4 mb-6
+{bench.label}                                   // text-xs text-gray-500 mb-1
+<div className="flex items-end gap-3 mb-1">
+  {bench.acmeValue}{bench.unit}                 // text-3xl font-black {bCfg.color}
+  <div className="pb-1 space-y-0.5">
+    <QuartileBadge pos={bench.position} />
+    <DeltaChip delta={bench.delta} unit={unitArg} higherIsBetter={bench.higherIsBetter} />
+  </div>
+</div>
+<DistributionBar .../>                          // mt-4 mb-6 wrapper div
 "Peer range: {min}–{max}{unit} · Median: {p50}{unit}"    // text-[11px] text-gray-400 mt-6
 ```
+
+The `pb-1 space-y-0.5` wrapper aligns the QuartileBadge and DeltaChip to the bottom of the value and stacks them with 2px gap.
 
 **DeltaChip `unit` arg:** `bench.unit.includes('months') ? 'm' : ''` — so velocity shows "±Xm vs median", maturity shows "±X vs median".
 
 **DistributionBar format function:** `v => \`${v}${bench.unit}\`` — e.g. "3.6/ 5" or "19months avg".
+
+**DistributionBar type workaround:** `OrgBenchmark` and `DeptBenchmark` are different types. The component passes a spread object `{ ...bench, category: '', ... } as any` to satisfy `DistributionBar`'s `DeptBenchmark` type. The `category` field is set to `''`. This is an implementation detail and does not affect rendered output.
 
 ### 5.3 Skill category panels
 
@@ -206,11 +222,11 @@ Each card (`bg-white rounded-2xl border border-gray-100 p-6 shadow-sm`):
 
 **Left — Strongest skill categories** (`<TrendingUp size={14} className="text-emerald-500" />`):
 - Source: `summary.topCategories` = `getCategoryBenchmarks(peers).filter(b => b.delta > 0).slice(-3).reverse()` — last 3 entries with positive delta from the ascending-sorted array, reversed so best first. Max 3 items.
-- Each row: category name (`text-xs font-medium text-gray-700`) + value (`text-xs font-bold text-gray-800`) + `<DeltaChip>` + emerald bar (`bg-emerald-400`), width = `(b.acmeValue / 5) * 100%`.
+- Each row: category name (`text-xs font-medium text-gray-700`) + value (`b.acmeValue.toFixed(1)`, `text-xs font-bold text-gray-800`) + `<DeltaChip delta={b.delta} />` (no unit/higherIsBetter — defaults) + emerald bar (`bg-emerald-400`), width = `(b.acmeValue / 5) * 100%`.
 
 **Right — Largest skill gaps vs peers** (`<TrendingDown size={14} className="text-red-400" />`):
 - Source: `summary.gapCategories` = `getCategoryBenchmarks(peers).filter(b => b.delta < 0).slice(0, 3)` — first 3 with negative delta (worst gaps first). Max 3 items.
-- Same layout; red bar (`bg-red-400`), width = `(b.acmeValue / 5) * 100%`.
+- Same layout; red bar (`bg-red-400`), width = `(b.acmeValue / 5) * 100%`. `DeltaChip` uses same defaults.
 
 Both bar tracks: `w-full bg-gray-100 rounded-full h-1.5 overflow-hidden`.
 
@@ -358,7 +374,7 @@ Card: `rounded-2xl border p-6 {attritionScore.riskBg} {attritionScore.riskBorder
 | Comp-driven | `{compDrivenPct}%` | "cited pay as reason" | `compDrivenPct >= 40` |
 | Avg tenure exit | `{avgTenureMonths}m` | "months at exit" | `avgTenureMonths < 18` |
 
-When `warn` is true, value text uses `attritionScore.riskColor`; otherwise `text-gray-700`. Label: `text-[10px] font-bold uppercase tracking-widest text-gray-500 mt-1.5`. Sub: `text-[10px] text-gray-400 mt-0.5`.
+When `warn` is true, value text uses `attritionScore.riskColor`; otherwise `text-gray-700`. Value: `text-xl font-black leading-none`. Label: `text-[10px] font-bold uppercase tracking-widest text-gray-500 mt-1.5`. Sub: `text-[10px] text-gray-400 mt-0.5`.
 
 ### 7.3 Department filter bar
 
@@ -380,10 +396,12 @@ When `deptFilter` changes: `filteredAttrition`, `topDestinations`, `trend`, and 
 `grid grid-cols-4 gap-4` — all derived from `filteredAttrition`:
 
 ```typescript
+// filteredAttrition is useMemo([deptFilter]):
 filteredAttrition = ATTRITION_RECORDS
   .filter(r => deptFilter === 'All' || r.department === deptFilter)
   .sort((a, b) => b.date.localeCompare(a.date))
 
+// All of these are plain (non-memoized) variables derived each render:
 totalLeavers = filteredAttrition.length
 avgTenure = totalLeavers > 0 ? Math.round(sum(tenureMonths) / totalLeavers) : 0
 bigTechCount = filteredAttrition.filter(r => r.destinationType === 'Big Tech').length
@@ -445,7 +463,7 @@ Empty state (when `topDestinations.length === 0`):
 
 `trend = getAttritionTrend(filteredAttrition)` — sorted ascending by month.
 
-`maxTrend = Math.max(...trend.map(t => t.count), 1)` — prevents divide-by-zero.
+`maxTrend = Math.max(...trend.map(t => t.count), 1)` — plain variable, not memoized. Prevents divide-by-zero when all counts are 0.
 
 **Bar chart** (`flex items-end gap-1.5 h-28`), one `flex-1` column per month:
 - On hover: count label (`text-[9px] font-semibold text-gray-400`) fades in via `opacity-0 group-hover:opacity-100`
@@ -492,6 +510,10 @@ Data rows — same grid template, alternating `bg-white` / `bg-gray-50/40`, `px-
 - **Tenure**: `text-xs text-gray-500` — `{r.tenureMonths}m`
 
 Note: `r.level` and `r.reason` are in the data model but are **not displayed** in the departure log.
+
+**Row key:** `` `${r.name}-${r.date}` `` — name + ISO date concatenation.
+
+**`visibleRecords`** is a plain derived variable (not `useMemo`): `showAllRecords ? filteredAttrition : filteredAttrition.slice(0, 8)`. Recomputed on every render.
 
 **Pagination:**
 - Default: `filteredAttrition.slice(0, 8)` shown.
@@ -590,7 +612,7 @@ function DeptBenchmarkRow({ bench, formatValue, onNavigateToGapReport })
 - **Dept avatar**: `w-9 h-9 rounded-lg flex items-center justify-center text-white text-xs font-bold flex-shrink-0`, `background: DEPT_COLORS[bench.department]`, shows `bench.department[0]` (first character of dept name).
 - **Content (`flex-1 min-w-0`)**:
   - Row 1: dept name (`text-xs font-semibold text-gray-800`) + right side: `<QuartileBadge>` + optional "View gaps →" link
-  - Row 2: `{formatValue(bench.acmeValue)}` (`text-sm font-black {cfg.color}`) + `<DeltaChip delta={bench.delta} />`
+  - Row 2: `{formatValue(bench.acmeValue)}` (`text-sm font-black {cfg.color}`) + `<DeltaChip delta={bench.delta} />` — no `unit` or `higherIsBetter` props passed; defaults apply (`unit=''`, `higherIsBetter=true`)
   - Row 3 (`mt-2 mb-5`): `<DistributionBar>`
   - Row 4 (`text-[10px] text-gray-400 mt-5`): "Peer median: {formatValue(peerMedian)} · Range: {formatValue(min)}–{formatValue(max)}"
 
