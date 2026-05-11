@@ -634,6 +634,128 @@ In "By Manager" grouping, a data row is assigned to a manager's column if the ro
 
 ---
 
+## 8A. Missing data — calls to action
+
+Wherever data is absent — whether an entire department has no skills data, a skill has no ratings for a particular group, or an individual employee has not completed a self-assessment — the product must not silently display a blank state. Every missing-data situation must surface a specific, actionable prompt that tells the user **what is missing**, **who is responsible for providing it**, and **what action to take**.
+
+### Principles
+
+1. **Never leave a blank without a prompt.** A dashed cell or empty section is always accompanied by a short explanation and a next step.
+2. **Attribute the gap.** Where possible, name the team, location, manager, or individual whose data is missing — not just "no data available."
+3. **Offer the lowest-friction action.** The action should be as direct as possible: a button to send a nudge, a link to the data entry flow, or a prompt to open a conversation.
+4. **Distinguish the two root causes.** Data can be missing because (a) no one has submitted ratings yet, or (b) ratings exist but are incomplete or outdated (> N months old). Each case calls for a different message and action.
+
+---
+
+### 8A.1 Overview — department card with no skills data
+
+**When:** A department has no skills entries at all (e.g. a newly created department, or data has never been collected).
+
+**What to show:** The department card still renders in the grid but instead of the segmented bar and skill tiles, it shows a neutral grey state with:
+
+> **No skills data yet**  
+> Skill ratings have not been collected for this department.
+
+**Call to action:** A button labelled **"Request skill assessment →"** that initiates a prompt or workflow to ask the department's HR partner or manager to trigger a skills assessment for the team.
+
+---
+
+### 8A.2 Overview — department card with stale data
+
+**When:** A department has skills data but the most recent submission is older than a configurable threshold (suggested default: 6 months).
+
+**What to show:** The card renders normally but includes an amber "Data outdated" badge alongside the severity badge.
+
+**Call to action:** A small text link beneath the biggest-gap callout row: **"Last updated [Month Year] — request refresh →"**
+
+---
+
+### 8A.3 Department view — entire department has no data
+
+**When:** The user navigates into a department with no skills rows.
+
+**What to show:** Instead of the heatmap grid, the full content area shows a centred empty state:
+
+> **No skill data for [Department name]**  
+> Skill ratings haven't been collected for this team yet. To populate this view, team members need to complete a skills self-assessment and their managers need to validate the ratings.
+
+**Call to action (two options, stacked):**
+1. **"Send assessment request to team →"** — initiates a message/email to the department's manager or HR partner to trigger collection
+2. **"Learn how skill data is collected →"** — links to documentation or a help article
+
+---
+
+### 8A.4 Department view — filter combination returns no rows
+
+**When:** The user applies a Location + Level filter combination that has no matching data (e.g. "Berlin" + "M2" for a department with no M2s in Berlin).
+
+**What to show:** The grid content area shows:
+
+> **No data for [Level] in [Location]**  
+> There are no employees at this level in this location for [Department]. Try adjusting your filters, or this combination may not yet have skill data on record.
+
+**Call to action:** A button labelled **"Clear filters"** that resets both filters to "All". No data-collection action is needed here since the gap is likely a filter issue, not a missing-data issue.
+
+---
+
+### 8A.5 Heatmap cell — no data for a skill/group combination
+
+**When:** A cell at the intersection of a skill row and a group column has no data rows (e.g. "System Design" has no entries for the Berlin location).
+
+**What to show:** The cell renders a dashed placeholder tile. On hover, a tooltip explains:
+
+> **No data**  
+> No skill ratings on record for [Skill] in [Group]. This may mean no employees at this location/level have been assessed for this skill yet.
+
+**Call to action:** No inline button (the cell is too small). Instead, the tooltip includes a small text link: **"Flag for assessment"** that marks this skill/group combination as needing data collection. This creates a record that can be reviewed in a separate data-completeness workflow.
+
+---
+
+### 8A.6 Drilldown panel — skill has breakdown bars but some entries have no data
+
+**When:** The drilldown panel is open for a skill, and one or more group rows in the breakdown section have zero headcount.
+
+**What to show:** Rather than omitting those rows, each zero-headcount row renders in the breakdown list with a dashed bar and the text:
+
+> **No ratings recorded** — [Group name]
+
+**Call to action:** A small inline link to the right of each empty row: **"Request data →"** — this should trigger a nudge to the relevant manager or team lead asking them to ensure their team completes ratings for this skill.
+
+---
+
+### 8A.7 Drilldown panel — no promotion candidates (neither ready nor blocked)
+
+**When:** The promotion pipeline section has no candidates of either type for this skill in this department.
+
+**What to show:** The promotion pipeline section is hidden entirely (no change from current behaviour). No empty-state message is needed here — the absence of candidates is expected and not a data problem.
+
+---
+
+### 8A.8 Check-in panel — an employee has never had a check-in recorded
+
+**When:** An employee appears in the flagged list but has no check-in date on record at all (as opposed to having an old check-in date).
+
+**What to show:** In the flagged employees list, these employees render with a "Never checked in" label instead of a day count. Badge colour: red.
+
+**Call to action:** The same "Send reminder to overdue members →" button in the footer covers this case, but the label on this specific employee's row should read **"Schedule first check-in →"** as a more appropriate prompt.
+
+---
+
+### 8A.9 Check-in panel — entire department has no check-in data
+
+**When:** None of the employees in the department have any check-in records at all.
+
+**What to show:** The check-in panel shows a centred state with:
+
+> **No check-in data for [Department name]**  
+> It looks like 1:1 check-ins haven't been logged for this team yet. Encourage managers to record their regular check-ins to track engagement over time.
+
+**Call to action (two options):**
+1. **"Send reminder to all managers →"** — sends a prompt to all managers in the department to begin logging check-ins
+2. **"Learn about check-in tracking →"** — links to documentation
+
+---
+
 ## 9. Tour integration
 
 When the product tour is active and the page lands on the Department view, the first skill in the skills list is **automatically selected** and its drilldown panel is opened. This ensures the drilldown panel is present in the DOM so that the tour overlay can anchor its step annotations to elements inside the panel. This is a tour-only behaviour — it should not trigger in normal usage.
