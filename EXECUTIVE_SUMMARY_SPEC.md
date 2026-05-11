@@ -1,598 +1,1065 @@
 # Executive Summary — Component Specification
 
-**Page:** `home` view (`ExecutiveSummary.tsx`)  
-**Data layer:** `computeExecSummary()` in `src/data/execSummaryData.ts`  
+**Page:** `home` view  
+**Entry point:** `src/components/ExecutiveSummary.tsx`  
+**Data layer:** `src/data/execSummaryData.ts` → `computeExecSummary()`  
 **Last updated:** May 2026
 
 ---
 
-## Overview
+## Table of contents
 
-The Executive Summary is the default landing page. It is a CPO-level read-only digest that aggregates signals from all five intelligence modules (Skills, Pipeline, Managers, Benchmark, Attrition) into a single scrollable dashboard. Every element is clickable and navigates to a deeper view for investigation.
-
-The page owns no local state beyond UI toggles. All data is derived from `computeExecSummary()`, which is a pure function re-run on every manual refresh.
+1. [Architecture & file map](#1-architecture--file-map)
+2. [TypeScript interfaces](#2-typescript-interfaces)
+3. [Page layout](#3-page-layout)
+4. [Component reference](#4-component-reference)
+   - 4.1 [Page Header](#41-page-header)
+   - 4.2 [Data Freshness Bar](#42-data-freshness-bar)
+   - 4.3 [KPI Metric Strip](#43-kpi-metric-strip)
+   - 4.4 [Highlights Panel](#44-highlights-panel)
+   - 4.5 [Priority Risks Panel](#45-priority-risks-panel)
+   - 4.6 [AI Prompt Bar](#46-ai-prompt-bar)
+   - 4.7 [Check-in Coverage Panel](#47-check-in-coverage-panel)
+   - 4.8 [Department Health Table](#48-department-health-table)
+   - 4.9 [Feedback Banner](#49-feedback-banner)
+   - 4.10 [Export Buttons](#410-export-buttons)
+5. [Data compute reference](#5-data-compute-reference)
+6. [Navigation map](#6-navigation-map)
+7. [Responsive behaviour](#7-responsive-behaviour)
+8. [Empty & loading states](#8-empty--loading-states)
 
 ---
 
-## Page Layout (top to bottom)
+## 1. Architecture & file map
+
+### Component locations
+
+All components below are **local to `ExecutiveSummary.tsx`** — they are defined in the same file and are not exported or reused elsewhere. Do not extract them into `src/components/shared/` unless they are explicitly needed by another page.
+
+| Component | Location | Exported? |
+|---|---|---|
+| `ExecutiveSummary` | `src/components/ExecutiveSummary.tsx` | Yes — named export, consumed by `App.tsx` |
+| `KpiCard` | Same file | No |
+| `AIPromptBar` | Same file | No |
+| `RiskCard` | Same file | No |
+| `CheckInRow` | Same file | No |
+| `DeptRow` | Same file | No |
+| `buildKpiCards()` | Same file | No — helper function |
+| `ordinal()` | Same file | No — helper function |
+| `riskIcon/Bg/Title/etc.` | Same file | No — style helpers |
+
+### Shared components consumed by this page
+
+| Component | Location | Purpose |
+|---|---|---|
+| `FeedbackBanner` | `src/components/feedback/FeedbackBanner.tsx` | Feedback prompt at page bottom |
+| `FeedbackFlow` | `src/components/feedback/FeedbackFlow.tsx` | Modal triggered by FeedbackBanner |
+| `ExportButtons` | `src/components/ExportButtons.tsx` | Download + email export |
+
+### Data dependencies
+
+| Function / constant | Source file | What it provides |
+|---|---|---|
+| `computeExecSummary()` | `src/data/execSummaryData.ts` | Full summary object — single source of truth for the page |
+| `QUARTILE_CONFIG` | `src/data/benchmarkData.ts` | Colour/label config for quartile position badges |
+
+---
+
+## 2. TypeScript interfaces
+
+These are the exact types the page works with. Do not redefine them — import from the paths shown.
+
+### From `src/data/execSummaryData.ts`
+
+```typescript
+export type RiskLevel = 'critical' | 'warning' | 'healthy';
+
+export interface OrgRisk {
+  id: string;
+  level: RiskLevel;
+  title: string;           // short description, e.g. "3 critical skill gaps across the org"
+  detail: string;          // one sentence with named actors
+  metric: string;          // badge text, e.g. "87% below target"
+  action: NavTarget;       // primary CTA destination
+  actionLabel: string;     // primary CTA button text
+  secondaryAction?: NavTarget;
+  secondaryLabel?: string;
+  source: 'skills' | 'pipeline' | 'managers' | 'benchmark';
+}
+
+export interface NavTarget {
+  view: 'heatmap' | 'pipeline' | 'gap-report' | 'managers' | 'benchmark';
+  department?: Department;       // pre-filter destination to this dept
+  skill?: string;
+  managerId?: string;            // deep-link to a specific manager
+  pipelineTab?: 'pipeline' | 'hidden-talent' | 'flight-risk';
+}
+
+export interface DeptHealthSnapshot {
+  department: Department;
+  color: string;             // hex — department brand colour from DEPT_COLORS
+  overallScore: number;      // 0–100 composite
+  scoreLabel: string;        // 'Strong' | 'Moderate' | 'At Risk' | 'Critical'
+  skillCompetency: number;   // 1.0–5.0
+  nearReadyCount: number;
+  stalledCount: number;
+  benchmarkPosition: QuartilePosition;  // 'top' | 'above-median' | 'below-median' | 'bottom'
+  criticalSkillGaps: number;
+  avgManagerScore: number;
+}
+
+export interface CheckInFlag {
+  person: Person;            // from promotionData.ts
+  daysSinceCheckIn: number;
+  severity: 'overdue' | 'critical';  // overdue = 30–90d, critical = 90d+
+}
+
+export interface ExecSummary {
+  asOf: string;                      // display string e.g. 'Apr 2026'
+  orgHealthScore: number;            // 0–100
+  orgHealthLabel: string;            // 'Strong' | 'Moderate' | 'At Risk' | 'Critical'
+  orgHealthColor: string;            // Tailwind text colour class
+
+  totalHeadcount: number;
+  totalNearReady: number;
+  totalStalled: number;
+  criticalSkillGaps: number;         // skills where 70%+ of people are below target
+  peopleWithSkillGaps: number;       // people below target on ≥1 skill
+  managersNeedingSupport: number;    // managers with effectiveness score < 40
+  benchmarkPosition: QuartilePosition;
+  benchmarkRank: number;             // e.g. 2 (Acme is 2nd of N companies)
+  benchmarkTotal: number;            // total companies in peer set
+
+  attritionScore: AttritionScore;    // from benchmarkData.ts
+
+  checkInCoverage: number;           // 0–100 percentage
+  overdueCheckIns: number;           // count of 30–90d
+  criticalCheckIns: number;          // count of 90d+
+  flaggedCheckIns: CheckInFlag[];    // sorted by daysSinceCheckIn desc
+
+  risks: OrgRisk[];                  // up to 5, sorted critical-first
+  deptSnapshots: DeptHealthSnapshot[];
+  wins: { title: string; detail: string; source: string }[];  // up to 3
+}
+```
+
+### From `src/data/benchmarkData.ts`
+
+```typescript
+export type QuartilePosition = 'top' | 'above-median' | 'below-median' | 'bottom';
+
+export interface AttritionScore {
+  score: number;           // 0–100 composite risk score
+  riskLabel: string;       // 'Low' | 'Moderate' | 'Elevated' | 'High'
+  annualisedRate: number;  // e.g. 14.2 (percent)
+  competitorPct: number;   // % of leavers going to direct competitors
+  compDrivenPct: number;   // % of leavers citing comp as driver
+  headline: string;        // one-sentence summary for risk card detail
+}
+
+// QUARTILE_CONFIG maps QuartilePosition to display config:
+export const QUARTILE_CONFIG: Record<QuartilePosition, {
+  label: string;    // e.g. 'Top Quartile'
+  color: string;    // Tailwind text class
+  bg: string;       // Tailwind bg class
+  border: string;   // Tailwind border class
+  dot: string;      // Tailwind bg class for dot indicator
+}>;
+```
+
+### Props interfaces
+
+```typescript
+// ExecutiveSummary — the page root
+interface ExecutiveSummaryProps {
+  onNavigate: (target: NavTarget) => void;  // routes the app to another view
+  onAskAI: (initialQuestion?: string) => void;  // opens ask-ai view, optionally pre-seeds a question
+}
+
+// KpiCard
+interface KpiCardData {
+  icon: React.ReactNode;
+  iconColor: string;       // Tailwind text colour class for icon
+  value: string;           // large displayed number/value
+  valueSuffix?: string;    // smaller text after value, e.g. '/100'
+  valueColor: string;      // Tailwind text colour class for value
+  valueNote?: string;      // small text beside value, e.g. 'people'
+  valueNoteColor?: string;
+  label: string;           // uppercase caption below value
+  action: NavTarget;       // where clicking the card navigates
+}
+
+interface KpiCardProps {
+  card: KpiCardData;
+  onNavigate: (target: NavTarget) => void;
+}
+
+// RiskCard
+interface RiskCardProps {
+  risk: OrgRisk;
+  onNavigate: (target: NavTarget) => void;
+}
+
+// CheckInRow — no navigation, display only
+interface CheckInRowProps {
+  flag: CheckInFlag;
+}
+
+// DeptRow
+interface DeptRowProps {
+  snap: DeptHealthSnapshot;
+  onNavigate: (target: NavTarget) => void;
+}
+
+// AIPromptBar
+interface AIPromptBarProps {
+  onAskAI: (question?: string) => void;
+}
+```
+
+---
+
+## 3. Page layout
 
 ```
 ┌─────────────────────────────────────────┐
-│ 1. Page Header                          │
-│    └─ Data Freshness Bar                │
+│ 4.1 Page Header                         │
+│     └─ 4.2 Data Freshness Bar           │
 ├─────────────────────────────────────────┤
-│ 2. KPI Metric Strip (primary 4)         │
-│    └─ [expand toggle]                   │
-│    └─ KPI Metric Strip (secondary 3)    │
+│ 4.3 KPI Strip — primary 4 (always)      │
+│     [expand toggle]                     │
+│     KPI Strip — secondary 3 (toggle)    │
 ├─────────────────────────────────────────┤
-│ 3. Highlights Panel                     │
+│ 4.4 Highlights Panel                    │
 ├─────────────────────────────────────────┤
-│ 4. Priority Risks Panel                 │
-│    └─ Risk Cards (up to 5)             │
-│    └─ AI Prompt Bar                     │
+│ 4.5 Priority Risks Panel                │
+│     └─ RiskCard × N (up to 5)          │
+│     └─ 4.6 AI Prompt Bar               │
 ├─────────────────────────────────────────┤
-│ 5. Check-in Coverage Panel              │
+│ 4.7 Check-in Coverage Panel             │
 ├─────────────────────────────────────────┤
-│ 6. Department Health Table              │
+│ 4.8 Department Health Table             │
 ├─────────────────────────────────────────┤
-│ 7. Feedback Banner                      │
+│ 4.9 Feedback Banner                     │
 └─────────────────────────────────────────┘
+```
+
+The page uses a single scrollable column. `max-w-6xl mx-auto` constrains content width. Sections are separated by `space-y-8`. Background is `bg-gray-50`.
+
+---
+
+## 4. Component reference
+
+### 4.1 Page Header
+
+**Location:** Inline in `ExecutiveSummary`, inside a `<header>` element.  
+**Background:** White with bottom border.  
+**Not clickable.** Navigation is handled by child components.
+
+| Element | Content | Notes |
+|---|---|---|
+| Eyebrow | "Chief People Officer · Executive View" | Static string |
+| Title | "Workforce Health Dashboard" | `text-2xl font-bold` |
+| Subtitle | "Organisation-wide signal digest · Click any insight to investigate further" | Static string |
+| Org pill | Company name + `summary.totalHeadcount` + pulsing green dot | Read-only |
+| Export row | `ExportButtons` component | See §4.10 |
+
+---
+
+### 4.2 Data Freshness Bar
+
+**Location:** Inline in `ExecutiveSummary`, below the header content row.  
+**Background:** `bg-gray-50 border border-gray-100 rounded-xl`.
+
+**State owned by `ExecutiveSummary`:**
+```typescript
+const [refreshKey, setRefreshKey] = useState(0);
+const [lastRefreshed, setLastRefreshed] = useState<Date>(() => new Date());
+const [isRefreshing, setIsRefreshing] = useState(false);
+```
+
+| Element | Content | Behaviour |
+|---|---|---|
+| "Last updated" | `formatTimestamp(lastRefreshed)` — day/month/year + HH:MM | Updates on refresh |
+| "Next auto-refresh" | `nextScheduledRun()` — next occurrence of 23:59 | Display only; auto-refresh is not implemented |
+| "Refresh now" button | Spinner icon when `isRefreshing` | See below |
+
+**Refresh sequence:**
+1. `setIsRefreshing(true)`
+2. 600ms `setTimeout`
+3. `setRefreshKey(k => k + 1)` — triggers `useMemo` to re-run `computeExecSummary()`
+4. `setLastRefreshed(new Date())`
+5. `setIsRefreshing(false)`
+
+The 600ms delay is intentional — it makes the spinner visible so the user perceives a response. Button is `disabled` while refreshing.
+
+---
+
+### 4.3 KPI Metric Strip
+
+**Tour anchor:** `data-tour="home-kpi-strip"`  
+**State:** `const [kpiExpanded, setKpiExpanded] = useState(false)` — owned by `ExecutiveSummary`.
+
+Cards are built by `buildKpiCards(summary): KpiCardData[]`. The function returns an array of 8 items; indices 0–3 are primary, 4–7 are secondary.
+
+**Grid layout:**
+- Primary (indices 0–3): `grid grid-cols-4 gap-3`
+- Secondary (indices 4–7): `grid grid-cols-3 gap-3 mt-3` — only rendered when `kpiExpanded === true`
+
+**Expand toggle:** Centered text button below the grids. Clicking toggles `kpiExpanded`. Labels:
+- Collapsed: "Show managers, rank, attrition & check-ins"
+- Expanded: "Hide managers, rank, attrition & check-ins"
+
+Every `KpiCard` is a `<button>` that calls `onNavigate(card.action)` on click. No modal, no panel — direct view navigation.
+
+#### KpiCard anatomy
+
+```
+┌─────────────────────────────┐
+│ [icon]              [→]     │  ← icon + hover arrow
+│                             │
+│  42 people                  │  ← value + suffix/note
+│                             │
+│  BELOW EXPECTED LEVEL       │  ← uppercase label
+└─────────────────────────────┘
+```
+
+`bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-md hover:-translate-y-px`
+
+---
+
+#### Card 1 — Org Health
+
+| Field | Value |
+|---|---|
+| Source | `summary.orgHealthScore` |
+| Suffix | `/100` |
+| Label | "Org Health" |
+| Navigates to | `heatmap` |
+
+Colour of value text (and icon is always `text-orange-500`):
+
+| Score | Class |
+|---|---|
+| ≥ 75 | `text-emerald-600` |
+| ≥ 55 | `text-amber-500` |
+| ≥ 35 | `text-orange-500` |
+| < 35 | `text-red-600` |
+
+**Compute:** See [§5.1 — Org Health Score](#51-org-health-score).
+
+---
+
+#### Card 2 — Below Expected Level
+
+| Field | Value |
+|---|---|
+| Source | `summary.peopleWithSkillGaps` |
+| Note | "people" |
+| Label | "Below Expected Level" |
+| Navigates to | `heatmap` |
+
+Colour:
+
+| Count | Class |
+|---|---|
+| 0 | `text-emerald-600` |
+| ≤ 10 | `text-amber-500` |
+| > 10 | `text-red-600` |
+
+**Compute:** Count of people where `readinessPct < 100` (at least one skill criterion unmet).
+
+---
+
+#### Card 3 — Promotable Now
+
+| Field | Value |
+|---|---|
+| Source | `summary.totalNearReady` |
+| Note | "ready" |
+| Label | "Promotable Now" |
+| Navigates to | `pipeline` |
+
+Colour:
+
+| Count | Class |
+|---|---|
+| ≥ 5 | `text-emerald-600` |
+| ≥ 2 | `text-amber-500` |
+| < 2 | `text-orange-500` |
+
+**Compute:** Count of people with `readinessPct >= 90`.
+
+---
+
+#### Card 4 — Stalled 24M+
+
+| Field | Value |
+|---|---|
+| Source | `summary.totalStalled` |
+| Note | "stalled" |
+| Label | "Stalled 24M+" |
+| Navigates to | `pipeline` |
+
+Colour: Always `text-gray-600` (neutral — risk escalation is handled in the Risk Cards section, not here).
+
+**Compute:** Count of people with `person.tenure > 24` months AND `readinessPct < 50`.
+
+---
+
+#### Card 5 — Managers (secondary)
+
+| Field | Value |
+|---|---|
+| Source | `summary.managersNeedingSupport` |
+| Note | "flagged" |
+| Label | "Managers" |
+| Navigates to | `managers` |
+
+Colour:
+
+| Count | Class |
+|---|---|
+| 0 | `text-emerald-600` |
+| 1 | `text-amber-500` |
+| > 1 | `text-orange-500` |
+
+**Compute:** Count of managers with `reports.length > 0` whose composite effectiveness score < 40. Score = `avgReadiness × 0.4 + avgFrameworkCompletion × 0.3 + (100 − stallRate%) × 0.3`.
+
+---
+
+#### Card 6 — Industry Rank (secondary)
+
+| Field | Value |
+|---|---|
+| Source | `ordinal(summary.benchmarkRank)` — e.g. "2nd" |
+| Note | `of ${summary.benchmarkTotal}` |
+| Label | "Industry Rank" |
+| Navigates to | `benchmark` |
+
+`ordinal(n)` appends the correct English suffix (st/nd/rd/th).
+
+Colour:
+
+| Condition | Class |
+|---|---|
+| Rank = 1 | `text-emerald-600` |
+| Rank ≤ top half | `text-amber-500` |
+| Rank > top half | `text-red-600` |
+
+**Compute:** Acme's rank among `SIMILAR_PEERS` on overall skill benchmark score. Rank 1 = best.
+
+---
+
+#### Card 7 — Attrition Risk (secondary)
+
+| Field | Value |
+|---|---|
+| Source | `summary.attritionScore.score` (0–100) |
+| Suffix | `/100` |
+| Note | `summary.attritionScore.riskLabel` |
+| Label | "Attrition Risk" |
+| Navigates to | `benchmark` |
+
+Both value and note share the same colour:
+
+| Score | Class |
+|---|---|
+| ≥ 70 | `text-red-600` |
+| ≥ 45 | `text-amber-500` |
+| ≥ 25 | `text-sky-600` |
+| < 25 | `text-emerald-600` |
+
+**Compute:** See [§5.2 — Attrition Score](#52-attrition-score).
+
+---
+
+#### Card 8 — No Check-In (secondary)
+
+| Field | Value |
+|---|---|
+| Source | `summary.overdueCheckIns + summary.criticalCheckIns` |
+| Suffix | `/ ${summary.totalHeadcount}` — only shown when total > 0 |
+| Note | "all current" — only shown when total = 0 |
+| Label | "No Check-In" |
+| Navigates to | `pipeline` |
+
+Colour:
+
+| State | Class |
+|---|---|
+| 0 flagged | `text-emerald-600` |
+| Any critical (90d+) | `text-red-600` |
+| Only overdue (30–90d) | `text-amber-500` |
+
+**Compute:** See [§5.3 — Check-in Coverage](#53-check-in-coverage).
+
+---
+
+### 4.4 Highlights Panel
+
+**Tour anchor:** `data-tour="home-highlights"`  
+**Background:** `bg-white rounded-2xl border border-gray-100 p-5 shadow-sm`
+
+Header: "Highlights to communicate upward" with a `Star` icon (amber).
+
+Renders `summary.wins` — up to 3 items. Each win is a green card:
+- `bg-emerald-50 rounded-xl border border-emerald-100`
+- `CheckCircle2` icon (emerald)
+- Title (`text-xs font-semibold text-emerald-800`)
+- Detail (`text-[11px] text-emerald-700`)
+- Source badge: small icon + label at bottom (`text-[10px] text-emerald-500`)
+
+**Empty state:** If `summary.wins.length === 0`, the panel should not render at all (condition is `wins.length > 0` — if no wins, the panel is simply absent from the DOM). This will not happen with the current data set but is the correct behaviour.
+
+**Win detection logic** (in priority order, first 3 included):
+
+| Win | Trigger condition |
+|---|---|
+| "N employees ready for promotion" | `totalNearReady > 0` |
+| "X departments skill in top quartile" | Any dept with `skillBenchmarks.position === 'top'` |
+| "[Name] is the highest-rated manager" | Always — top-scoring manager among those with `reports.length > 0` |
+
+Source badge labels: `Skills Heatmap`, `Industry Benchmark`, `Promotion Pipeline`, `Manager Effectiveness`.
+
+---
+
+### 4.5 Priority Risks Panel
+
+**Tour anchor:** `data-tour="home-risks"`
+
+Header row:
+- Left: "Priority risks requiring attention" with a red `Shield` icon
+- Right: count badge — `${summary.risks.length} active signal(s)`
+
+**Empty state (zero risks):**
+```
+bg-emerald-50 border border-emerald-200 rounded-2xl p-8 text-center
+[CheckCircle2 icon, size 32, emerald]
+"No critical risks detected"
+"All org dimensions are performing at or above benchmark"
+```
+This is a full-width block. It is not the same height as a RiskCard — it has `p-8` padding and is taller.
+
+When risks exist: `space-y-3` list of `RiskCard` components.
+
+#### RiskCard
+
+```
+┌─────────────────────────────────────────────────┐
+│ [!] Risk title                    [metric badge] │
+│     Detail sentence                              │
+│     [source icon] Source label                   │
+│                                                  │
+│ [Primary CTA button]  [Secondary CTA button]     │
+└─────────────────────────────────────────────────┘
+```
+
+Background, text colours, and button colours all derive from `risk.level`:
+
+| Level | Background | Border | Title | Detail | Metric badge | Primary btn | Secondary btn |
+|---|---|---|---|---|---|---|---|
+| `critical` | `bg-red-50` | `border-red-200` | `text-red-800` | `text-red-700` | `bg-red-100 text-red-700 border-red-200` | `bg-red-600 hover:bg-red-700 text-white` | `text-red-600 border-red-200` |
+| `warning` | `bg-amber-50` | `border-amber-200` | `text-amber-800` | `text-amber-700` | `bg-amber-100 text-amber-700 border-amber-200` | `bg-amber-600 hover:bg-amber-700 text-white` | `text-amber-600 border-amber-200` |
+
+Secondary CTA is only rendered when `risk.secondaryAction` and `risk.secondaryLabel` are both defined.
+
+Source badge icons: `BarChart3` for skills, `TrendingUp` for pipeline, `Users` for managers, `Globe` for benchmark.
+
+---
+
+#### Risk types — full specification
+
+**critical-skills**
+
+| Property | Value |
+|---|---|
+| Trigger | `criticalSkillsList.length > 0` — any skill with ≥70% of people below target |
+| Level | Always `critical` |
+| Title | `"${n} critical skill gap(s) across the org"` |
+| Metric | `"${worst.belowPct}% below target"` |
+| Detail | Names the worst skill and its department |
+| Primary CTA | `gap-report`, `department: worst.dept` |
+| Primary label | `"View ${dept} skill gaps"` |
+| Secondary CTA | `heatmap` |
+| Secondary label | "Open heatmap" |
+| Source | `skills` |
+
+---
+
+**stalled-reports**
+
+| Property | Value |
+|---|---|
+| Trigger | `totalStalled > 0` AND `managersWithMostStalled.length > 0` |
+| Level | `critical` if `totalStalled / allReadiness.length >= 0.05`; else `warning` |
+| Title | `"${n} employee(s) showing stall signals"` |
+| Metric | `"${n} stalled (24m+ · <50% ready)"` |
+| Detail | Names the manager with the most stalled reports |
+| Primary CTA | `managers`, `managerId: worstMgr.manager.id` |
+| Primary label | `"Review ${name}'s team"` |
+| Secondary CTA | `pipeline` |
+| Secondary label | "Full pipeline view" |
+| Source | `pipeline` |
+
+---
+
+**manager-support**
+
+| Property | Value |
+|---|---|
+| Trigger | `managersNeedingSupport.length > 0` |
+| Level | Always `warning` |
+| Title | `"${n} manager(s) flagged for L&D coaching"` |
+| Metric | "Effectiveness score < 40" |
+| Detail | Describes pattern (high stall rate + poor framework completion) |
+| Primary CTA | `managers` (no managerId — shows full list) |
+| Primary label | "Manager effectiveness" |
+| Secondary CTA | None |
+| Source | `managers` |
+
+---
+
+**benchmark-gap**
+
+| Property | Value |
+|---|---|
+| Trigger | Any dept with `skillBenchmarks.position === 'bottom'` |
+| Level | Always `warning` |
+| Title | `"${dept} skills in bottom quartile vs industry"` |
+| Metric | `"${acmeValue} vs ${peerMedian} peer median"` |
+| Detail | Names the department and its competency score |
+| Primary CTA | `benchmark` |
+| Primary label | "View skill benchmarks" |
+| Secondary CTA | `gap-report`, `department: worst.department` |
+| Secondary label | `"${dept} gap report"` |
+| Source | `benchmark` |
+
+---
+
+**comp-risk**
+
+| Property | Value |
+|---|---|
+| Trigger | Any dept with comp benchmark position `bottom` or `below-median` |
+| Level | Always `warning` |
+| Title | `"${dept} compensation below market"` |
+| Metric | `"$${amount}K below median"` |
+| Detail | Names the department, dollar gap, and combined flight-risk implication |
+| Primary CTA | `benchmark` |
+| Primary label | "Compensation benchmarks" |
+| Secondary CTA | None |
+| Source | `benchmark` |
+
+---
+
+**flight-risk**
+
+| Property | Value |
+|---|---|
+| Trigger | `highFlightRisk.length > 0` |
+| Level | `critical` if `highFlightRisk.length / allReadiness.length >= 0.06`; else `warning` |
+| Title | `"${n} employee(s) flagged high flight risk by Revelio Labs"` |
+| Metric | `"${n} high risk · ${m} internal match"` |
+| Detail | Names the top-risk individual and their first risk driver |
+| Primary CTA | `pipeline`, `pipelineTab: 'flight-risk'` |
+| Primary label | "View flight risk" |
+| Secondary CTA | `pipeline`, `pipelineTab: 'hidden-talent'` — **only if** `withOpportunity.length > 0` |
+| Secondary label | "Internal opportunities" — only if secondary CTA present |
+| Source | `pipeline` |
+
+---
+
+**attrition-risk**
+
+| Property | Value |
+|---|---|
+| Trigger | `attritionScore.score >= 45` |
+| Level | `critical` if score ≥ 70; else `warning` |
+| Title | `"Attrition risk: ${riskLabel} (${annualisedRate}% annualised)"` |
+| Metric | `"${competitorPct}% to competitors · ${compDrivenPct}% comp-driven"` |
+| Detail | `attritionScore.headline` |
+| Primary CTA | `benchmark` |
+| Primary label | "View talent flow" |
+| Secondary CTA | None |
+| Source | `benchmark` |
+
+---
+
+**Sort order:** All `critical` risks appear before all `warning` risks. Within each group, detection order is preserved (skills → stalled → managers → benchmark-gap → comp-risk → flight-risk → attrition-risk). Maximum 5 risks are included (`risks.slice(0, 5)`).
+
+---
+
+### 4.6 AI Prompt Bar
+
+**Location:** Rendered inside the risks section, directly below the last RiskCard (or the empty state if no risks).  
+**Purpose:** Zero-friction entry point to the AI assistant, pre-contextualised to this page.
+
+**State (local to `AIPromptBar`):**
+```typescript
+const [input, setInput] = useState('');
+```
+
+| Element | Behaviour |
+|---|---|
+| Text input | `Enter` key submits; calls `submit(input)` |
+| "Ask" button | Disabled when `input.trim() === ''`; calls `submit(input)` |
+| Suggestion chip | Calls `submit(chip text)` immediately — no typing required |
+
+**`submit(text)` function:**
+1. Trim text; if empty, return early
+2. Call `onAskAI(text)` — parent navigates to `ask-ai` view with question pre-loaded
+3. `setInput('')`
+
+Suggestion chips (first 4 of 6 shown):
+1. "Who is at risk of leaving?"
+2. "Where are our biggest skills gaps?"
+3. "Which teams need restructuring?"
+4. "Build a retention plan for churn risks"
+
+---
+
+### 4.7 Check-in Coverage Panel
+
+**Tour anchor:** `data-tour="home-checkins"`  
+**Background:** `bg-white rounded-2xl border border-gray-100 p-6 shadow-sm`  
+**No navigation.** This panel is read-only.
+
+#### Header
+
+| Element | Content |
+|---|---|
+| Icon | `CalendarX` — red if `criticalCheckIns > 0`, amber if `overdueCheckIns > 0`, emerald if all clear |
+| Title | "Check-in coverage" |
+| Subtitle | `"${checkInCoverage}% of employees have checked in within the last 30 days"` |
+| Status pills | Up to 3 pills (see below) |
+
+Status pill logic (all three can show simultaneously):
+- Red pill: shown if `criticalCheckIns > 0` — label `"${n} critical (90d+)"`
+- Amber pill: shown if `overdueCheckIns > 0` — label `"${n} overdue (30–90d)"`
+- Green pill: shown if `flaggedCheckIns.length === 0` — label `"All up to date"`
+
+#### Coverage bar
+
+A single horizontal bar (`h-2 rounded-full`) made of three segments in a flex row:
+
+```
+[═══════ emerald ════][══ amber ══][═ red ═]
+```
+
+Segment widths:
+- Emerald: `${checkInCoverage}%`
+- Amber: `${Math.round((overdueCheckIns / totalHeadcount) * 100)}%`
+- Red: `${Math.round((criticalCheckIns / totalHeadcount) * 100)}%`
+
+Legend below bar: three dot + label pairs for Current / Overdue / Critical with actual counts.
+
+#### Flagged people list
+
+**Empty state (all clear):**
+```
+text-center py-4
+[CheckCircle2 icon, size 24, emerald]
+"Everyone has checked in within the last 30 days."
+```
+
+**When flagged people exist:**
+```
+2-column grid (grid-cols-2 gap-2)
+sorted by daysSinceCheckIn desc (most overdue first)
+```
+
+Each `CheckInRow`:
+- `bg-red-50 border-red-100` for critical; `bg-amber-50 border-amber-100` for overdue
+- Avatar circle with `Clock` icon
+- Name (truncated), department · team
+- Days since check-in (bold, right-aligned)
+- "Critical" or "Overdue" label (uppercase, right-aligned below days)
+
+---
+
+### 4.8 Department Health Table
+
+**Tour anchor:** `data-tour="home-dept-table"`  
+**Background:** `bg-white rounded-2xl border border-gray-100 p-6 shadow-sm`
+
+#### Header
+
+Title: "Department health at a glance"
+
+Legend (right side of header):
+- Emerald dot — "Strong (≥70)"
+- Amber dot — "Moderate (50–69)"
+- Red dot — "At Risk (<50)"
+
+#### DeptRow
+
+Clicking any row calls `onNavigate({ view: 'heatmap', department: snap.department })`.
+
+Row layout: `flex items-center gap-4 py-3 border-b border-gray-100 last:border-0`
+
+| Column | Content | Width |
+|---|---|---|
+| Colour bar | 8×32px rounded rectangle in `snap.color` | flex-shrink-0 |
+| Dept name + score label | Name on top, score label below in themed colour | `w-28` |
+| Score bar | Horizontal fill bar + score number right-aligned | flex-1 |
+| Skill avg | `snap.skillCompetency/5` | `w-14` |
+| Near ready | `snap.nearReadyCount` — emerald if >0, gray if 0 | `w-14` |
+| Stalled | `snap.stalledCount` — red if >0, gray if 0 | `w-12` |
+| vs industry | Quartile badge from `QUARTILE_CONFIG[snap.benchmarkPosition]` | `w-24` |
+| Arrow | `ArrowRight` icon, fades in on hover | flex-shrink-0 |
+
+Score bar colours:
+- `bg-emerald-500` if `overallScore >= 70`
+- `bg-amber-400` if `overallScore >= 50`
+- `bg-red-500` if `overallScore < 50`
+
+Departments are always rendered in this fixed order: Engineering, Product, Design, Data, Marketing, Sales, People Ops.
+
+**Compute:** See [§5.4 — Department Score](#54-department-score).
+
+---
+
+### 4.9 Feedback Banner
+
+**Component:** `FeedbackBanner` from `src/components/feedback/FeedbackBanner.tsx`  
+**Props:**
+
+```typescript
+interface Props {
+  context: string;     // page identifier — must match a key in CONTEXT_COPY
+  className?: string;
+}
+```
+
+Called with `context="Executive Summary"` and `className="mt-6"`.
+
+**Appearance:** Full-width sky-blue gradient banner (`linear-gradient(135deg, #0ea5e9, #0284c7, #0369a1)`) with a white "Share feedback" button on the right.
+
+**Behaviour:** Clicking "Share feedback" opens `FeedbackFlow` as a modal overlay.
+
+#### FeedbackFlow modal (from `src/components/feedback/FeedbackFlow.tsx`)
+
+A 3-step bottom sheet modal (`max-w-md`, centred, slides up from bottom).
+
+| Step | Content |
+|---|---|
+| `rating` | 5-option emoji rating (1–5). Requires selection before Continue is enabled. |
+| `text` | Free text textarea. Skippable. |
+| `research` | Research opt-in with "I'm in" / "Maybe later". If "I'm in", name + email fields appear. Submit requires both fields filled. |
+| `done` | Thank-you screen. Single "Done" button closes modal. |
+
+**Scrim:** `bg-gray-950/30 backdrop-blur-[2px]`. Clicking scrim closes modal (triggers fade-out before `onClose`).
+
+**Animation:** Panel slides up (`translate-y-0`) and fades in (`opacity-100`) on mount with 350ms transition. Reverse on close, then `onClose()` called after 350ms.
+
+**No data is persisted** in the current implementation — feedback is not sent to any backend.
+
+---
+
+### 4.10 Export Buttons
+
+**Component:** `ExportButtons` from `src/components/ExportButtons.tsx`  
+**Props:**
+
+```typescript
+interface Props {
+  title: string;           // "Workforce Health Dashboard"
+  buildContent: () => string;  // called lazily on click — generates the export text
+}
+```
+
+Renders two buttons in a flex row:
+
+**Download button:**
+1. Calls `buildContent()` to generate the plain-text report string
+2. Creates a `Blob` with `type: 'text/plain'`
+3. Creates a temporary `<a>` element with `download` attribute
+4. Filename: `progression-workforce-health-dashboard.txt`
+5. Shows "Downloaded" with check icon for 2 seconds, then resets
+
+**Email button:**
+Opens an `EmailModal` overlay. User enters an email address. On submit, opens `mailto:` URL with subject and body pre-filled. Nothing is sent through app servers — the user's own email client handles sending.
+
+#### Export content format
+
+`buildExportContent()` produces this plain-text structure (exact section order):
+
+```
+PROGRESSION — WORKFORCE HEALTH DASHBOARD
+Generated: {summary.asOf}
+Organisation: Acme Corp · {n} employees
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+KEY METRICS
+─────────────────────────────────────
+Org Health Score:         {n}/100
+Below Expected Level:     {n} people
+Promotable Now:           {n} near-ready
+Stalled 24M+:             {n}
+Managers Needing Support: {n}
+Industry Rank:            {ordinal} of {total}
+Check-in Coverage:        {n}%
+
+HIGHLIGHTS
+─────────────────────────────────────
+  • {win.title}: {win.detail}
+  ...
+
+PRIORITY RISKS
+─────────────────────────────────────
+  [CRITICAL] {risk.title} — {risk.detail}
+  [WARNING]  {risk.title} — {risk.detail}
+  ...
+  (or: "  No critical risks detected")
+
+DEPARTMENT HEALTH
+─────────────────────────────────────
+  Engineering     Score: 72  Near-ready: 3  Stalled: 1
+  ...
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Generated by Progression Workforce Intelligence.
 ```
 
 ---
 
-## 1. Page Header
+## 5. Data compute reference
 
-**Component:** Inline in `ExecutiveSummary`  
-**Purpose:** Identifies the view, shows org context, and provides export access.
+### 5.1 Org Health Score
 
-### Elements
+`computeOrgHealth()` in `src/data/execSummaryData.ts`. Starts at 100 and subtracts penalties. All inputs are converted to rates before use so the score is scale-invariant.
 
-| Element | Content | Behaviour |
+| Penalty | Calculation | Max deduction |
 |---|---|---|
-| Eyebrow label | "Chief People Officer · Executive View" | Static |
-| Page title | "Workforce Health Dashboard" | Static |
-| Subtitle | "Organisation-wide signal digest · Click any insight to investigate further" | Static |
-| Org pill | Displays company name + live headcount (`summary.totalHeadcount`) | Read-only |
-| Export buttons | `ExportButtons` component | See Export section |
+| Skill gap rate | `(criticalSkillGaps / totalDistinctSkills) × 25` | −25 |
+| Stalled rate | `(totalStalled / totalHeadcount) × 20` | −20 |
+| Manager rate | `(managersNeedingSupport / totalManagers) × 20` | −20 |
+| Benchmark position | top=0, above-median=−5, below-median=−12, bottom=−20 | −20 |
+| Attrition risk | `(attritionScore / 100) × 15` | −15 |
 
-### Export
+Result clamped to 10–100.
 
-Clicking export builds a plain-text report containing: key metrics, highlights, priority risks, and department health. No navigation triggered. Two formats are available (copy to clipboard and download as `.txt`).
+Score labels: ≥75 → Strong, ≥55 → Moderate, ≥35 → At Risk, <35 → Critical.
+
+A "critical skill" is any skill where ≥70% of people org-wide are below their target rating. `totalDistinctSkills` is the count of unique skill names across all `SKILLS_DATA` entries.
 
 ---
 
-### 1a. Data Freshness Bar
+### 5.2 Attrition Score
 
-Sits below the header content, full width.
+`computeAttritionScore()` in `src/data/benchmarkData.ts`. Returns `AttritionScore`.
 
-| Element | Content | Behaviour |
+| Component | Max pts | Source |
 |---|---|---|
-| "Last updated" | Timestamp of last `computeExecSummary()` call | Updates on manual refresh |
-| "Next auto-refresh" | Computed as next occurrence of 23:59 on today's date | Display only — auto-refresh is not wired; this is a UI affordance |
-| "Refresh now" button | Triggers `handleRefresh()` | Re-runs `computeExecSummary()`, shows spinner for 600ms, updates timestamp |
+| Annualised rate | 50 | `(rate / 25) × 50`, capped at 50 |
+| Competitor-bound departures | 20 | `(pct / 40) × 20`, capped at 20 |
+| Comp-driven departures | 15 | `(pct / 60) × 15`, capped at 15 |
+| Average tenure band | 15 | <18m → 15, <24m → 8, ≥24m → 0 |
 
-**Refresh behaviour:** `refreshKey` state increments → `useMemo` dependency re-runs `computeExecSummary()` → all downstream components re-render with new data.
-
----
-
-## 2. KPI Metric Strip
-
-**Component:** `KpiCard` (rendered via `buildKpiCards()`)  
-**Tour anchor:** `data-tour="home-kpi-strip"`  
-**Purpose:** Eight at-a-glance metrics. Primary four are always visible; secondary three are hidden behind an expand toggle.
-
-Every card is a `<button>` that navigates to a target view on click. Cards do not open modals or panels.
-
-### Primary cards (always visible — 4-column grid)
-
-#### 2.1 Org Health
-
-| Property | Value |
-|---|---|
-| Icon | Shield |
-| Value | `summary.orgHealthScore` (0–100) |
-| Suffix | `/100` |
-| Label | "Org Health" |
-| Navigates to | `heatmap` view |
-
-**Colour thresholds (value text):**
-
-| Score | Colour |
-|---|---|
-| ≥ 75 | Emerald |
-| ≥ 55 | Amber |
-| ≥ 35 | Orange |
-| < 35 | Red |
-
-**Compute:** `computeOrgHealth()` — starts at 100 and deducts penalties based on four normalised rates:
-
-1. **Skill gap rate** (`criticalSkillGaps / totalDistinctSkills`) → up to −25 pts. A "critical" skill is one where ≥70% of people org-wide are below their target rating.
-2. **Stalled rate** (`totalStalled / totalHeadcount`) → up to −20 pts. A person is "stalled" if tenure > 24 months AND promotion readiness < 50%.
-3. **Manager rate** (`managersNeedingSupport / totalManagers`) → up to −20 pts. A manager "needs support" if their composite effectiveness score < 40.
-4. **Benchmark position** → fixed penalty: top quartile = 0, above-median = −5, below-median = −12, bottom quartile = −20.
-5. **Attrition risk** (`attritionRiskScore / 100 × 15`) → up to −15 pts.
-
-Floor is 10. Ceiling is 100.
+Risk labels: ≥70 → High, ≥45 → Elevated, ≥25 → Moderate, <25 → Low.
 
 ---
 
-#### 2.2 Below Expected Level
+### 5.3 Check-in Coverage
 
-| Property | Value |
-|---|---|
-| Icon | AlertTriangle |
-| Value | `summary.peopleWithSkillGaps` |
-| Note | "people" |
-| Label | "Below Expected Level" |
-| Navigates to | `heatmap` view |
+Reference date: `2026-04-29` (hardcoded — **replace with `new Date()` in production**).
 
-**Colour thresholds:**
+```
+daysSinceCheckIn = floor((referenceDate - person.lastCheckIn) / msPerDay)
+```
 
-| Count | Colour |
-|---|---|
-| 0 | Emerald |
-| ≤ 10 | Amber |
-| > 10 | Red |
-
-**Compute:** Count of people whose overall promotion readiness is < 100% (i.e., at least one skill criterion not fully met).
-
----
-
-#### 2.3 Promotable Now
-
-| Property | Value |
-|---|---|
-| Icon | TrendingUp |
-| Value | `summary.totalNearReady` |
-| Note | "ready" |
-| Label | "Promotable Now" |
-| Navigates to | `pipeline` view |
-
-**Colour thresholds:**
-
-| Count | Colour |
-|---|---|
-| ≥ 5 | Emerald |
-| ≥ 2 | Amber |
-| < 2 | Orange |
-
-**Compute:** Count of people with promotion readiness ≥ 90%.
-
----
-
-#### 2.4 Stalled 24M+
-
-| Property | Value |
-|---|---|
-| Icon | CheckCircle2 |
-| Value | `summary.totalStalled` |
-| Note | "stalled" |
-| Label | "Stalled 24M+" |
-| Navigates to | `pipeline` view |
-
-**Colour:** Always gray (neutral display — the risk escalation lives in the Risk Cards section).
-
-**Compute:** Count of people with tenure > 24 months AND readiness < 50%.
-
----
-
-### Secondary cards (revealed on expand — 3-column grid)
-
-#### 2.5 Managers (Needing Support)
-
-| Property | Value |
-|---|---|
-| Icon | Users |
-| Value | `summary.managersNeedingSupport` |
-| Note | "flagged" |
-| Label | "Managers" |
-| Navigates to | `managers` view |
-
-**Colour thresholds:**
-
-| Count | Colour |
-|---|---|
-| 0 | Emerald |
-| 1 | Amber |
-| > 1 | Orange |
-
-**Compute:** Count of managers with `reports.length > 0` whose composite score < 40. Score formula: `avgReadiness × 0.4 + avgFrameworkCompletion × 0.3 + (100 − stallRate%) × 0.3`.
-
----
-
-#### 2.6 Industry Rank
-
-| Property | Value |
-|---|---|
-| Icon | Globe |
-| Value | `ordinal(summary.benchmarkRank)` (e.g. "2nd") |
-| Note | `of ${summary.benchmarkTotal}` |
-| Label | "Industry Rank" |
-| Navigates to | `benchmark` view |
-
-**Colour thresholds:**
-
-| Rank | Colour |
-|---|---|
-| 1st | Emerald |
-| ≤ top half | Amber |
-| > top half | Red |
-
-**Compute:** Acme's rank among `SIMILAR_PEERS` (similar-sized companies) on overall skill benchmark score. Lower rank number = better position. Ordinal suffix added via `ordinal()` helper.
-
----
-
-#### 2.7 Attrition Risk
-
-| Property | Value |
-|---|---|
-| Icon | LogOut |
-| Value | `summary.attritionScore.score` (0–100) |
-| Suffix | `/100` |
-| Note | `summary.attritionScore.riskLabel` (Low / Moderate / Elevated / High) |
-| Label | "Attrition Risk" |
-| Navigates to | `benchmark` view |
-
-**Colour thresholds (value and note):**
-
-| Score | Colour |
-|---|---|
-| ≥ 70 | Red |
-| ≥ 45 | Amber |
-| ≥ 25 | Sky blue |
-| < 25 | Emerald |
-
-**Compute:** `computeAttritionScore()` in `benchmarkData.ts`. Composite of annualised attrition rate (0–50 pts), competitor-bound departures (0–20 pts), comp-driven departures (0–15 pts), and average tenure band (0–15 pts). Risk label thresholds: ≥70 = High, ≥45 = Elevated, ≥25 = Moderate, < 25 = Low.
-
----
-
-#### 2.8 No Check-In
-
-| Property | Value |
-|---|---|
-| Icon | CalendarX |
-| Value | `overdueCheckIns + criticalCheckIns` (total flagged) |
-| Suffix | `/ totalHeadcount` (if any flagged) |
-| Note | "all current" (if none flagged) |
-| Label | "No Check-In" |
-| Navigates to | `pipeline` view |
-
-**Colour thresholds:**
-
-| State | Colour |
-|---|---|
-| 0 flagged | Emerald |
-| Any critical (90d+) | Red |
-| Only overdue (30–90d) | Amber |
-
-**Compute:** People are flagged if `daysSinceCheckIn > 30`. Severity: overdue = 30–90 days, critical = 90+ days. Reference date is `2026-04-29`.
-
----
-
-### Expand toggle
-
-A centered text button below the card grids. Toggles `kpiExpanded` state.
-
-- Collapsed label: "Show managers, rank, attrition & check-ins"
-- Expanded label: "Hide managers, rank, attrition & check-ins"
-
----
-
-## 3. Highlights Panel
-
-**Tour anchor:** `data-tour="home-highlights"`  
-**Purpose:** Positive signals surfaced for upward communication. Always visible, never actionable (no navigation).
-
-Shows up to 3 wins. Each win is a green card with:
-- Title (bold, emerald)
-- Detail sentence
-- Source badge (icon + label indicating which module detected the win)
-
-### Win detection logic (in order of priority)
-
-| Win | Trigger | Source badge |
-|---|---|---|
-| "N employees ready for promotion" | `totalNearReady > 0` | Promotion Pipeline |
-| "X dept(s) skill in top quartile vs industry" | Any department in top benchmark quartile | Industry Benchmark |
-| "[Manager name] is the highest-rated manager" | Always — top-scoring manager by composite score | Manager Effectiveness |
-
-If no near-ready employees exist, the first win is omitted. The manager win always appears if any manager has at least one direct report.
-
----
-
-## 4. Priority Risks Panel
-
-**Tour anchor:** `data-tour="home-risks"`  
-**Purpose:** The primary action surface. Lists up to 5 active risks sorted by severity (critical first, then warning).
-
-Header shows: "Priority risks requiring attention" + a count badge ("N active signals").
-
-If `risks.length === 0`: shows a full-width green empty state ("No critical risks detected").
-
----
-
-### 4a. Risk Card
-
-**Component:** `RiskCard`  
-**Purpose:** One card per detected risk. Renders differently based on `risk.level` (`critical` = red, `warning` = amber).
-
-Each card contains:
-
-| Element | Content |
-|---|---|
-| Severity icon | AlertTriangle (red = critical, amber = warning) |
-| Title | Short description of the risk |
-| Metric badge | Key number/stat (top-right of title row) |
-| Detail | One-sentence explanation with named actors |
-| Source badge | Which module the signal came from |
-| Primary CTA button | Navigates directly to the relevant deep-dive view |
-| Secondary CTA button | Optional second navigation target (shown when relevant) |
-
-#### Risk types, triggers, levels, and navigation
-
-**Critical Skills**
-
-| Property | Value |
-|---|---|
-| ID | `critical-skills` |
-| Trigger | Any skill where ≥ 70% of people org-wide are below their target rating |
-| Level | Always `critical` |
-| Primary CTA | Gap Report, pre-filtered to the worst department |
-| Secondary CTA | Skills Heatmap (full org view) |
-| Source | Skills Heatmap |
-
----
-
-**Stalled Employees**
-
-| Property | Value |
-|---|---|
-| ID | `stalled-reports` |
-| Trigger | `totalStalled > 0` AND at least one manager has stalled reports |
-| Level | `critical` if stalled ≥ 5% of headcount; otherwise `warning` |
-| Metric | Count + criteria (e.g. "3 stalled (24m+ · <50% ready)") |
-| Primary CTA | Manager Effectiveness, deep-linked to the manager with the most stalled reports |
-| Secondary CTA | Promotion Pipeline (full view) |
-| Source | Promotion Pipeline |
-
----
-
-**Managers Needing Support**
-
-| Property | Value |
-|---|---|
-| ID | `manager-support` |
-| Trigger | `managersNeedingSupport.length > 0` |
-| Level | Always `warning` |
-| Primary CTA | Manager Effectiveness (no specific manager pre-selected) |
-| Source | Manager Effectiveness |
-
----
-
-**Benchmark Gap**
-
-| Property | Value |
-|---|---|
-| ID | `benchmark-gap` |
-| Trigger | Any department in the bottom benchmark quartile for skill competency |
-| Level | Always `warning` |
-| Metric | Acme avg vs peer median (e.g. "3.1 vs 3.8 peer median") |
-| Primary CTA | Industry Benchmark view |
-| Secondary CTA | Gap Report, pre-filtered to the worst department |
-| Source | Industry Benchmark |
-
----
-
-**Compensation Risk**
-
-| Property | Value |
-|---|---|
-| ID | `comp-risk` |
-| Trigger | Any department with comp in bottom or below-median vs peers |
-| Level | Always `warning` |
-| Metric | $ gap below peer median (rounded to nearest $K) |
-| Primary CTA | Industry Benchmark (compensation tab) |
-| Source | Industry Benchmark |
-
----
-
-**Flight Risk**
-
-| Property | Value |
-|---|---|
-| ID | `flight-risk` |
-| Trigger | Any people flagged with "high" flight risk score (from Revelio Labs data) |
-| Level | `critical` if flight-risk people ≥ 6% of headcount; otherwise `warning` |
-| Metric | Count of high-risk people + count with an internal opportunity match |
-| Detail | Names the highest-risk individual and their top risk driver |
-| Primary CTA | Pipeline view, Flight Risk tab |
-| Secondary CTA | Pipeline view, Hidden Talent tab (only shown if ≥ 1 person has an internal opportunity match) |
-| Source | Promotion Pipeline |
-
----
-
-**Attrition Risk**
-
-| Property | Value |
-|---|---|
-| ID | `attrition-risk` |
-| Trigger | `attritionScore.score >= 45` |
-| Level | `critical` if score ≥ 70; otherwise `warning` |
-| Metric | `% to competitors · % comp-driven` |
-| Primary CTA | Industry Benchmark (talent flow section) |
-| Source | Industry Benchmark |
-
----
-
-#### Risk sort order
-
-Risks are sorted: all `critical` cards first, then all `warning` cards. Within each level, order follows detection order (skills → stalled → managers → benchmark → comp → flight risk → attrition). Maximum 5 risks are shown.
-
----
-
-### 4b. AI Prompt Bar
-
-**Component:** `AIPromptBar`  
-**Positioned:** Directly below the last risk card.  
-**Purpose:** Zero-friction entry to the AI assistant contextualised to the risks visible above.
-
-| Element | Behaviour |
-|---|---|
-| Free-text input | `Enter` key or "Ask" button submits. Navigates to `ask-ai` view with the question pre-loaded. |
-| Suggestion chips | Four hardcoded prompts. Clicking one submits immediately (no typing required). Navigates to `ask-ai`. |
-| "Ask" button | Disabled when input is empty. |
-
-Suggestions shown: "Who is at risk of leaving?", "Where are our biggest skills gaps?", "Which teams need restructuring?", "Build a retention plan for churn risks".
-
-On submit: calls `onAskAI(question)` → parent (`App.tsx`) switches view to `ask-ai` and seeds the conversation with the question.
-
----
-
-## 5. Check-in Coverage Panel
-
-**Tour anchor:** `data-tour="home-checkins"`  
-**Purpose:** Shows what proportion of the workforce has had a recent manager check-in, and surfaces individuals who are overdue.
-
-This panel is read-only. There is no navigation triggered from within it.
-
-### Header
-
-| Element | Content |
-|---|---|
-| Title icon | CalendarX — red if any critical, amber if any overdue, emerald if all current |
-| Title | "Check-in coverage" |
-| Subtitle | `{checkInCoverage}% of employees have checked in within the last 30 days` |
-| Status pills | Red pill: "N critical (90d+)" — amber pill: "N overdue (30–90d)" — or green pill: "All up to date" |
-
-### Coverage bar
-
-A segmented horizontal progress bar showing three zones:
-- **Emerald** — proportion checked in within 30 days
-- **Amber** — proportion overdue (30–90 days)
-- **Red** — proportion critical (90+ days)
-
-Widths computed as a percentage of `totalHeadcount`. A legend sits below the bar.
-
-### Flagged people list
-
-If `flaggedCheckIns.length > 0`: renders a 2-column grid of `CheckInRow` components, sorted by `daysSinceCheckIn` descending (most overdue first).
-
-Each row shows: name, department + team, days since last check-in, severity label ("Critical" or "Overdue").
-
-If `flaggedCheckIns.length === 0`: shows a centred green empty state.
-
-### Compute
-
-Reference date: `2026-04-29` (hardcoded; to be replaced with live `now()` in production).
-
-| State | Condition |
+| Bucket | Condition |
 |---|---|
 | Current | `daysSinceCheckIn ≤ 30` |
 | Overdue | `30 < daysSinceCheckIn < 90` |
 | Critical | `daysSinceCheckIn ≥ 90` |
 
-`checkInCoverage` = `(totalPeople − flaggedCount) / totalPeople × 100`, rounded to nearest integer.
+`checkInCoverage = round((currentCount / totalPeople) × 100)`
+
+`flaggedCheckIns` includes overdue + critical, sorted by `daysSinceCheckIn` descending.
 
 ---
 
-## 6. Department Health Table
+### 5.4 Department Score
 
-**Tour anchor:** `data-tour="home-dept-table"`  
-**Purpose:** One-line summary of each department's health across four dimensions. Every row is clickable.
+Per-department composite in `computeExecSummary()`.
 
-### Legend (header row)
-
-Three colour-coded legend items: Strong (≥70), Moderate (50–69), At Risk (<50).
-
-### Department Row
-
-**Component:** `DeptRow`  
-**Clicking any row navigates to:** `heatmap` view, pre-filtered to that department.
-
-Each row contains:
-
-| Column | Content |
-|---|---|
-| Colour bar | Department brand colour (left edge, 8px wide) |
-| Department name | Text |
-| Score label | "Strong" / "Moderate" / "At Risk" / "Critical" — coloured to match |
-| Score bar | Horizontal bar, width = `overallScore / 100`. Emerald ≥70, amber 50–69, red <50 |
-| Score number | `overallScore` (0–100) |
-| Skill avg | `skillCompetency` (1–5 scale) |
-| Near ready | `nearReadyCount` — emerald if > 0, gray if 0 |
-| Stalled | `stalledCount` — red if > 0, gray if 0 |
-| vs industry | Quartile badge (Top / Above Median / Below Median / Bottom Quartile) with colour-coded dot |
-
-### Department score compute
-
-The `overallScore` for each department is a weighted blend:
-
-| Input | Weight | Basis |
+| Input | Weight | Calculation |
 |---|---|---|
-| Skill competency score | 30% | `(avgActual / 5) × 100` — average skill rating across all skill entries for the dept, normalised to 0–100 |
-| Avg readiness | 30% | Average promotion readiness % across all people in the dept |
-| Benchmark score | 25% | Mapped from quartile position: top = 90, above-median = 70, below-median = 45, bottom = 20 |
+| Skill competency | 30% | `(avgActual / 5) × 100` — weighted by headcount across all skill entries for the dept |
+| Avg readiness | 30% | Mean `readinessPct` across all people in the dept |
+| Benchmark score | 25% | top=90, above-median=70, below-median=45, bottom=20 |
 | Stall penalty | 15% | `max(0, 100 − (stalledCount / deptHeadcount × 100) × 3)` |
 
-Result is clamped to 5–100.
-
-Departments shown (fixed order): Engineering, Product, Design, Data, Marketing, Sales, People Ops.
+Result clamped to 5–100. Score labels: ≥70 → Strong, ≥50 → Moderate, ≥35 → At Risk, <35 → Critical.
 
 ---
 
-## 7. Feedback Banner
+## 6. Navigation map
 
-**Component:** `FeedbackBanner`  
-**Context prop:** "Executive Summary"  
-**Purpose:** Collects qualitative feedback from the user about this page. Rendered at the bottom of the page. Behaviour is defined in the `FeedbackBanner` / `FeedbackFlow` components.
+All navigation is handled by `onNavigate(NavTarget)` which is passed down from `App.tsx`. `NavTarget` is defined in `src/data/execSummaryData.ts`.
 
----
-
-## Data dependencies
-
-All data for this page flows from a single call to `computeExecSummary()` which internally calls:
-
-| Function | Source file | Provides |
+| Element | Action | `NavTarget` |
 |---|---|---|
-| `getAllReadiness()` | `promotionData.ts` | Per-person readiness %, stall flags, flight risk |
-| `getAllManagerMetrics()` | `managerData.ts` | Manager composite scores, stall counts, report counts |
-| `getOverallBenchmarkSummary()` | `benchmarkData.ts` | Overall quartile position, rank |
-| `getDeptSkillBenchmarks()` | `benchmarkData.ts` | Per-dept skill quartile vs peers |
-| `getDeptCompBenchmarks()` | `benchmarkData.ts` | Per-dept comp quartile vs peers |
-| `getCategoryBenchmarks()` | `benchmarkData.ts` | Skill category gaps vs peers |
-| `getOrgBenchmarks()` | `benchmarkData.ts` | Promotion velocity, headcount ratios vs peers |
-| `computeAttritionScore()` | `benchmarkData.ts` | Composite attrition risk 0–100 |
-| `getFlightRiskPeople('high')` | `promotionData.ts` | People with high flight risk flag |
-| `SKILLS_DATA` | `mockData.ts` | Raw skill gap rows for critical gap detection |
-| `PEOPLE` | `promotionData.ts` | Check-in dates, headcount |
+| KPI: Org Health | Click card | `{ view: 'heatmap' }` |
+| KPI: Below Expected Level | Click card | `{ view: 'heatmap' }` |
+| KPI: Promotable Now | Click card | `{ view: 'pipeline' }` |
+| KPI: Stalled 24M+ | Click card | `{ view: 'pipeline' }` |
+| KPI: Managers | Click card | `{ view: 'managers' }` |
+| KPI: Industry Rank | Click card | `{ view: 'benchmark' }` |
+| KPI: Attrition Risk | Click card | `{ view: 'benchmark' }` |
+| KPI: No Check-In | Click card | `{ view: 'pipeline' }` |
+| Risk: critical-skills primary | Click button | `{ view: 'gap-report', department: worstDept }` |
+| Risk: critical-skills secondary | Click button | `{ view: 'heatmap' }` |
+| Risk: stalled-reports primary | Click button | `{ view: 'managers', managerId: worstMgr.id }` |
+| Risk: stalled-reports secondary | Click button | `{ view: 'pipeline' }` |
+| Risk: manager-support primary | Click button | `{ view: 'managers' }` |
+| Risk: benchmark-gap primary | Click button | `{ view: 'benchmark' }` |
+| Risk: benchmark-gap secondary | Click button | `{ view: 'gap-report', department: worstDept }` |
+| Risk: comp-risk primary | Click button | `{ view: 'benchmark' }` |
+| Risk: flight-risk primary | Click button | `{ view: 'pipeline', pipelineTab: 'flight-risk' }` |
+| Risk: flight-risk secondary | Click button | `{ view: 'pipeline', pipelineTab: 'hidden-talent' }` |
+| Risk: attrition-risk primary | Click button | `{ view: 'benchmark' }` |
+| AI Prompt Bar — submit | Enter / click Ask | `onAskAI(question)` → `ask-ai` view |
+| AI Prompt Bar — chip | Click chip | `onAskAI(chipText)` → `ask-ai` view |
+| Dept row | Click anywhere | `{ view: 'heatmap', department: snap.department }` |
 
-Peer comparison set: `SIMILAR_PEERS` — companies of similar size to Acme, filtered from `PEER_COMPANIES`.
+`gap-report` in `NavTarget.view` corresponds to the `DeptGapReportPicker` / `SkillGapReport` view. In `App.tsx`, the `NavTarget` type from `execSummaryData.ts` is a subset — `navigate()` in `App.tsx` handles the `gap-report` case by setting `nav.view = 'heatmap'` and passing `department`. Confirm exact routing behaviour in `App.tsx:navigate()` before implementing.
 
 ---
 
-## Navigation map
+## 7. Responsive behaviour
 
-| From | Action | Destination |
+| Breakpoint | KPI strip | Dept table | Check-in grid |
+|---|---|---|---|
+| Desktop (≥1024px) | 4-col primary, 3-col secondary | Horizontal row with all columns | 2-column grid |
+| Tablet (768–1023px) | 4-col primary (cards compress), 3-col secondary | Horizontal — rightmost KPI columns may be tight; consider hiding "vs industry" pill | 2-column grid |
+| Mobile (<768px) | Stack to 2-col for primary, 1-col for secondary | Horizontal scroll or collapsed to name + score only | 1-column grid |
+
+The `FeedbackBanner` subtitle (`sub` line) is hidden at `sm` breakpoint and below using `hidden sm:block`.
+
+No existing responsive breakpoints are defined in `ExecutiveSummary.tsx` at the time of writing. The above is the target behaviour — implementation is pending.
+
+---
+
+## 8. Empty & loading states
+
+### Loading state
+
+`computeExecSummary()` is a synchronous pure function — there is no async loading. The page renders immediately. There is no loading skeleton or spinner for the initial render.
+
+During manual refresh, `isRefreshing` is `true` for 600ms. Only the "Refresh now" button reacts (spinner + disabled). All content remains visible and unchanged during this window.
+
+**If `computeExecSummary()` is replaced with an async API call in future**, every section will need a loading skeleton. No skeletons exist today.
+
+### Empty states per section
+
+| Section | Empty condition | Renders |
 |---|---|---|
-| KPI: Org Health | Click | `heatmap` |
-| KPI: Below Expected Level | Click | `heatmap` |
-| KPI: Promotable Now | Click | `pipeline` |
-| KPI: Stalled 24M+ | Click | `pipeline` |
-| KPI: Managers | Click | `managers` |
-| KPI: Industry Rank | Click | `benchmark` |
-| KPI: Attrition Risk | Click | `benchmark` |
-| KPI: No Check-In | Click | `pipeline` |
-| Risk: Critical Skills (primary) | Click CTA | `gap-report` (dept pre-filtered) |
-| Risk: Critical Skills (secondary) | Click CTA | `heatmap` |
-| Risk: Stalled Employees (primary) | Click CTA | `managers` (manager deep-linked) |
-| Risk: Stalled Employees (secondary) | Click CTA | `pipeline` |
-| Risk: Managers (primary) | Click CTA | `managers` |
-| Risk: Benchmark Gap (primary) | Click CTA | `benchmark` |
-| Risk: Benchmark Gap (secondary) | Click CTA | `gap-report` (dept pre-filtered) |
-| Risk: Comp Risk (primary) | Click CTA | `benchmark` |
-| Risk: Flight Risk (primary) | Click CTA | `pipeline` → flight-risk tab |
-| Risk: Flight Risk (secondary) | Click CTA | `pipeline` → hidden-talent tab |
-| Risk: Attrition Risk (primary) | Click CTA | `benchmark` |
-| AI Prompt Bar | Submit question | `ask-ai` (question pre-loaded) |
-| Dept Health row | Click anywhere in row | `heatmap` (dept pre-filtered) |
+| KPI strip | Never empty — all values default to 0 | N/A |
+| Highlights Panel | `summary.wins.length === 0` | Panel is not rendered at all |
+| Priority Risks | `summary.risks.length === 0` | Green "No critical risks" block (full-width, `p-8`) |
+| Check-in list | `summary.flaggedCheckIns.length === 0` | Centred `CheckCircle2` icon + "Everyone has checked in" text |
+| Dept table | Never empty — 7 fixed departments always shown | N/A |
