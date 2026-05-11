@@ -173,7 +173,7 @@ export function buildCommitmentPrompt(question: string, responseText: string): C
   const deptSuffix = dept ? ` in ${dept}` : '';
 
   // Derive insight kind and contextual suggested decisions
-  if (/promot|near.?ready|ready for promo|promo.?pipeline/.test(q) || /ready for promotion|near.ready/.test(r)) {
+  if (/promot|near.?ready|ready for promo|promo.?pipeline|pipeline|show me the/.test(q) || /ready for promotion|near.ready|pipeline summary/.test(r)) {
     return {
       insightSummary: `Promotion readiness findings${deptSuffix}`,
       insightKind: 'promotion',
@@ -589,6 +589,21 @@ function handleDeptPipeline(query: string): { text: string; results: QueryResult
   });
 
   const scope = dept ? dept : 'all departments';
+
+  // When a specific dept is requested, also show the people sorted by readiness
+  if (dept) {
+    const people = all
+      .filter(r => r.person.department === dept)
+      .sort((a, b) => b.readinessPct - a.readinessPct);
+    return {
+      text: `Pipeline summary for ${scope}:`,
+      results: [
+        { kind: 'dept-summary', items: summaries },
+        { kind: 'person-list', items: people.map(toPersonResult) },
+      ],
+    };
+  }
+
   return {
     text: `Pipeline summary for ${scope}:`,
     results: [{ kind: 'dept-summary', items: summaries }],
