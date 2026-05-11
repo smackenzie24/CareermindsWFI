@@ -1,8 +1,15 @@
 # Promotion Readiness Pipeline — Product Specification
 
 **Feature:** Promotion Readiness Pipeline
-**Entry points:** `src/components/promotion/PromotionPipeline.tsx` (main container), `src/components/promotion/DeptPipelineView.tsx` (department drill-down), `src/components/promotion/PersonPanel.tsx` (individual side panel), `src/components/promotion/FlightRiskTab.tsx` (flight risk view), `src/components/promotion/HiddenTalent.tsx` (hidden talent view)
-**Data source:** `src/data/promotionData.ts` — static mock data (PEOPLE, LEVEL_DEFINITIONS, LEVEL_FRAMEWORKS)
+**Components:**
+- `src/components/promotion/PromotionPipeline.tsx` — org-level container
+- `src/components/promotion/DeptPipelineView.tsx` — department drill-down
+- `src/components/promotion/PersonPanel.tsx` — individual side panel
+- `src/components/promotion/FlightRiskTab.tsx` — flight risk view
+- `src/components/promotion/HiddenTalent.tsx` — hidden talent / cross-dept fit view
+- `src/components/ExportButtons.tsx` — shared download + email component
+
+**Data:** `src/data/promotionData.ts` — static mock data (PEOPLE, LEVEL_DEFINITIONS, LEVEL_FRAMEWORKS)
 **Last updated:** May 2026
 
 ---
@@ -12,107 +19,187 @@
 1. [Feature overview](#1-feature-overview)
 2. [Navigation model](#2-navigation-model)
 3. [PromotionPipeline — org-level view](#3-promotionpipeline--org-level-view)
+   - 3.1 Page header
+   - 3.2 Org-level stat cards
+   - 3.3 Expandable org summary section
+   - 3.4 Tab bar
+   - 3.5 Tier legend bar
+   - 3.6 Department cards grid
 4. [DeptPipelineView — department drill-down](#4-deptpipelineview--department-drill-down)
+   - 4.1 Page header
+   - 4.2 Transition grouping logic
+   - 4.3 Transition section layout
+   - 4.4 Candidate cards
+   - 4.5 Export content
 5. [PersonPanel — individual side panel](#5-personpanel--individual-side-panel)
+   - 5.1 Layout and overlay
+   - 5.2 Peer navigation controls
+   - 5.3 Person header
+   - 5.4 Readiness score block
+   - 5.5 Met criteria section
+   - 5.6 Gaps to close section
+   - 5.7 RatingDots component
+   - 5.8 Footer actions
 6. [FlightRiskTab — flight risk view](#6-flightrisktab--flight-risk-view)
+   - 6.1 Data population
+   - 6.2 Page header
+   - 6.3 Summary stat strip
+   - 6.4 Filter pills
+   - 6.5 Person cards
+   - 6.6 Empty state
+   - 6.7 Footer note
 7. [HiddenTalent — cross-department fit view](#7-hiddentalent--cross-department-fit-view)
-8. [Export and download behaviour](#8-export-and-download-behaviour)
+   - 7.1 Data population
+   - 7.2 Page header
+   - 7.3 High-risk alert banner
+   - 7.4 Department filter pills
+   - 7.5 Sort toggle
+   - 7.6 Candidate cards
+   - 7.7 Empty state
+   - 7.8 Footer note
+8. [Export — download and email](#8-export--download-and-email)
 9. [Data model and computations](#9-data-model-and-computations)
-10. [Readiness tiers](#10-readiness-tiers)
+   - 9.1 Source data
+   - 9.2 `computeReadiness`
+   - 9.3 `getAllReadiness`
+   - 9.4 `getReadinessTier`
+   - 9.5 `groupByTier`
+   - 9.6 `getFlightRiskPeople`
+   - 9.7 `getCrossDeptFitCandidates`
+   - 9.8 `fmtCurrency`
+10. [Readiness tiers reference](#10-readiness-tiers-reference)
 11. [Constants and configuration](#11-constants-and-configuration)
 
 ---
 
 ## 1. Feature overview
 
-The Promotion Readiness Pipeline is a people analytics module that surfaces who across the organisation is ready (or on their way to being ready) for promotion to the next level. It draws on a skills-based readiness model: each person's assessed skill ratings are compared against the skill requirements defined for their target level, producing a percentage readiness score.
+The Promotion Readiness Pipeline is a people analytics module that surfaces who is ready (or progressing towards being ready) for promotion to their next level. A skills-based readiness model compares each person's actual skill ratings against the requirements defined for their target level, producing a readiness percentage and a breakdown of met criteria vs gaps.
 
-The feature has three tabs:
+The pipeline view is accessible from `nav.view === 'pipeline'` and renders `PromotionPipeline` as the full page. Three tabs exist at the org level:
 
-| Tab | Purpose |
-|---|---|
-| **Pipeline** | Org-level summary grid + department drill-down with individual candidates |
-| **Hidden Talent** | People whose inferred (LinkedIn-derived) skills suggest a better fit in a different function |
-| **Flight Risk** | People flagged by the Revelio Labs job-switching model as at risk of leaving |
+| Tab | Purpose | Data source |
+|---|---|---|
+| **Pipeline** | Org summary grid + department drill-down with individual candidates | `getAllReadiness()` |
+| **Hidden Talent** | People whose LinkedIn-inferred skills suggest a better fit in a different function | `getCrossDeptFitCandidates()` |
+| **Flight Risk** | People flagged by Revelio Labs job-switching model as likely to leave | `getFlightRiskPeople('medium')` |
 
 ---
 
 ## 2. Navigation model
 
-Navigation is managed by `App.tsx` via the `NavState` object. The pipeline view is activated when `nav.view === 'pipeline'`.
+### Department selection (controlled/uncontrolled hybrid)
 
-`PromotionPipeline` supports a hybrid controlled/uncontrolled department selection pattern:
+`PromotionPipeline` accepts optional `selectedDept` and `onSelectDept` props from the parent (`App.tsx`). When these are provided the component is in **controlled mode** and the parent owns the selection. When they are absent the component manages `internalDept` state itself.
 
-- **Uncontrolled (internal):** `internalDept` state controls which department is drilled into. Starts as `initialDepartment` prop (or null).
-- **Controlled (prop-driven):** If `selectedDept` prop is passed from the parent, it takes precedence over `internalDept`. Parent uses `onSelectDept` callback to receive changes.
+```
+selectedDept = selectedDeptProp !== undefined ? selectedDeptProp : internalDept
+```
 
-When `selectedDept` is non-null, the entire pipeline view is replaced by `DeptPipelineView`. When `onBack()` fires inside `DeptPipelineView`, `selectedDept` is reset to null and the org-level grid returns.
+`setSelectedDept(dept)` always updates both `internalDept` and calls `onSelectDept?.(dept)`.
 
-**Cross-feature navigation:**
-- `onNavigateToGapReport(dept)` — fires from DeptPipelineView header and from AI chat recommendations; navigates to the Skills Gap Report filtered to a department.
-- `onNavigateToManagers(managerId?)` — fires from DeptPipelineView header; navigates to the Manager Effectiveness view, optionally pre-selected to a specific manager.
+When `selectedDept` is non-null, `PromotionPipeline` renders `DeptPipelineView` in its entirety (replaces the whole page). When `DeptPipelineView` calls `onBack()`, `selectedDept` is set to null and the org-level grid returns.
+
+### Prop-based entry points
+
+| Prop | Type | Effect |
+|---|---|---|
+| `initialDepartment` | `Department` | Sets `internalDept` initial state — opens directly to that dept on first render |
+| `initialTab` | `'pipeline' \| 'hidden-talent' \| 'flight-risk'` | Sets `activeTab` initial state |
+| `selectedDept` | `Department \| null` | Controlled dept selection (takes precedence over internal state) |
+| `onSelectDept` | `(dept: Department \| null) => void` | Callback when dept changes |
+| `onNavigateToGapReport` | `(dept: Department) => void` | Cross-feature link; fires from DeptPipelineView header → Skills Gap Report |
+| `onNavigateToManagers` | `(managerId?: string) => void` | Cross-feature link; fires from DeptPipelineView header → Manager Effectiveness |
 
 ---
 
 ## 3. PromotionPipeline — org-level view
 
-**Component:** `PromotionPipeline.tsx`
-**Route state:** `selectedDept === null`
+Rendered when `selectedDept === null`.
 
 ### 3.1 Page header
 
-The header is always visible and contains:
+Sticky white header with bottom border. Contains:
 
 **Left side:**
-- Eyebrow label: "Workforce Intelligence" (uppercase, tracking-widest)
-- Title: "Promotion Readiness Pipeline"
+- Eyebrow: "Workforce Intelligence" (uppercase, tracking-widest, gray-400)
+- Title: "Promotion Readiness Pipeline" (2xl bold)
 - Subtitle: "Who's close to the next level? Click a department to see individual readiness scores and skill gaps."
 
-**Right side:**
-- **Download button** — downloads a PDF of the current pipeline data. While downloading, button shows a spinner; on completion shows a green "Downloaded" confirmation for 2 seconds before reverting. See §8.
-- **Email me button** — opens the Email modal. See §8.
-- **Live indicator** — animated pulsing green dot + "Acme Corp" label confirming data source.
+**Right side (flex row, gap-3):**
+- `ExportButtons` component — Download + Email me. See §8.
+- Live data indicator: pulsing emerald dot + "Acme Corp" label (gray-400, text-xs)
 
 ### 3.2 Org-level stat cards
 
-Four stat cards displayed in a 4-column grid immediately below the header title block:
+Four `StatCard` components in a `grid-cols-4` layout (`data-tour="pipeline-stat-cards"`):
 
-| Card | Value | Sub-label | Colour |
-|---|---|---|---|
-| Tracked for promotion | `orgStats.total` | "people assessed org-wide" | Gray |
-| Near ready (90%+) | `orgStats.nearReady` | "meet 90%+ of next-level criteria" | Emerald |
-| Progressing (70–89%) | `orgStats.progressing` | "on track, closing gaps" | Sky |
-| Avg readiness score | `orgStats.avgReadiness%` | "avg Xm in current level" | Gray |
+| # | Label | Value | Sub-label | Number colour | Icon |
+|---|---|---|---|---|---|
+| 1 | Tracked for promotion | `orgStats.total` | "people assessed org-wide" | text-gray-900 | Users (gray-400) |
+| 2 | Near ready (90%+) | `orgStats.nearReady` | "meet 90%+ of next-level criteria" | text-emerald-600 | Star (emerald-400) |
+| 3 | Progressing (70–89%) | `orgStats.progressing` | "on track, closing gaps" | text-sky-600 | TrendingUp (sky-400) |
+| 4 | Avg readiness score | `orgStats.avgReadiness%` | "avg Xm in current level" | text-gray-800 | Clock (gray-400) |
 
-**How these values are computed:**
+**How `orgStats` is computed** (memoized, recomputes if `allResults` changes):
 
 ```
-allResults = getAllReadiness()            // all 42 people with a next level
-orgStats.total = allResults.length
-orgStats.nearReady = count where readinessPct >= 90
-orgStats.progressing = count where 70 <= readinessPct < 90
-orgStats.avgReadiness = Math.round(sum(readinessPct) / total)
-orgStats.avgTenure = Math.round(sum(person.tenure) / total)   // tenure in months
+allResults = getAllReadiness()           // all people with a defined next level + framework
+
+tiers = groupByTier(allResults)
+orgStats = {
+  total:        allResults.length,
+  nearReady:    tiers['near-ready'],
+  progressing:  tiers['progressing'],
+  avgReadiness: Math.round(sum(r.readinessPct) / total),   // 0 if total === 0
+  avgTenure:    Math.round(sum(r.person.tenure) / total),  // months in current level; 0 if total === 0
+}
 ```
 
-### 3.3 Org summary section (expandable)
+Note: `avgTenure` is the average tenure of **pipeline-tracked people only** (those with a defined next level and framework), not all employees.
 
-A collapsible row below the stat cards, toggled by the "Show/Hide org summary" chevron button. Expanded by default (`orgExpanded: true`).
+### 3.3 Expandable org summary section
 
-**Toggle button:** centred below the stat cards, shows ChevronUp icon + "Hide org summary" when expanded, ChevronDown + "Show org summary" when collapsed. Hover darkens the text.
+Rendered immediately below the stat cards when `orgExpanded === true` (default: `true`). `ORG_SUMMARY` is a module-level constant computed once at module load, not re-rendered.
 
-**When expanded — four cards:**
+**Toggle button:** Centred below stat cards. Shows:
+- When expanded: ChevronUp icon + "Hide org summary"
+- When collapsed: ChevronDown icon + "Show org summary"
+- Hover: text darkens from gray-400 to gray-600.
 
-| Card | Value | Logic |
-|---|---|---|
-| Check-in Coverage | `ORG_SUMMARY.checkInCoverage%` | % of PEOPLE whose `lastCheckIn` was within 30 days of `CHECKIN_CUTOFF` (2026-04-29). Icon and number are **emerald** if ≥ 80%, **amber** if < 80%. |
-| Est. Total Cost | `fmtCurrency(ORG_SUMMARY.totalCost)` | Sum of `DEPT_SALARIES[person.department]` for every person in PEOPLE. Formatted as $XM, $XK, or $X. |
-| Avg Salary | `fmtCurrency(ORG_SUMMARY.avgSalary)` | `totalCost / PEOPLE.length`, rounded. |
-| Team Headcount | Horizontal bar chart | Each department's headcount as a proportional bar. Bar width = `count / maxCount * 100%`. Bars use `DEPT_COLORS[dept]`. Sorted descending by count. |
+**When expanded — four cards in `grid-cols-4`:**
 
-**Department salary assumptions used for Total Cost:**
+#### Card 1 — Check-in Coverage
+- Label: "Check-in Coverage", CalendarCheck icon
+- Value: `ORG_SUMMARY.checkInCoverage%`
+- Sub-label: "checked in (30d)"
+- Icon and number are **emerald** if `checkInCoverage >= 80`, **amber** if `< 80`
+- Formula: `Math.round(checkedIn / PEOPLE.length * 100)` where `checkedIn` = count of PEOPLE whose `lastCheckIn` is within 30 days of `CHECKIN_CUTOFF` (2026-04-29).
+  - Days formula: `Math.floor((CHECKIN_CUTOFF - lastCheckIn) / 86_400_000) <= 30`
 
-| Department | Annual salary assumption |
+#### Card 2 — Est. Total Cost
+- Label: "Est. Total Cost", DollarSign icon (gray-400)
+- Value: `fmtCurrency(ORG_SUMMARY.totalCost)`
+- Sub-label: "annual salaries"
+- Formula: `sum(DEPT_SALARIES[person.department] for each person in PEOPLE)`
+- Formatted via `fmtCurrency`: `$X.XM` if ≥ 1,000,000; `$XK` if ≥ 1,000; `$X` otherwise (see §9.8)
+
+#### Card 3 — Avg Salary
+- Label: "Avg Salary", DollarSign icon (gray-400)
+- Value: `fmtCurrency(ORG_SUMMARY.avgSalary)`
+- Sub-label: "per employee"
+- Formula: `Math.round(totalCost / PEOPLE.length)`
+
+#### Card 4 — Team Headcount
+- Label: "Team Headcount", Building2 icon (gray-400)
+- Content: horizontal bar chart, one row per department, sorted descending by count
+- Each row: dept name (truncated) + count (right-aligned), then a proportional bar underneath
+- Bar width: `(count / maxCount) * 100%` where `maxCount = deptBreakdown[0].count` (first after desc sort)
+- Bar colour: `DEPT_COLORS[dept]`
+
+**Dept salary assumptions (DEPT_SALARIES constant):**
+
+| Department | Annual salary |
 |---|---|
 | Engineering | $128,000 |
 | Product | $118,000 |
@@ -122,380 +209,622 @@ A collapsible row below the stat cards, toggled by the "Show/Hide org summary" c
 | People Ops | $90,000 |
 | Marketing | $88,000 |
 
-### 3.4 Tabs
+### 3.4 Tab bar
 
-Three tabs appear below the header in a tab bar:
+White bar with bottom border, immediately below the header. Three tabs:
 
-| Tab | Icon | Active indicator | Badge |
-|---|---|---|---|
-| Pipeline | Users | dark bottom border | none |
-| Hidden Talent | Sparkles | sky bottom border | sky badge showing count if > 0 |
-| Flight Risk | AlertTriangle | red bottom border | red badge showing high-risk count if > 0 |
+| Tab | Icon | Active style | Inactive hover | Badge condition |
+|---|---|---|---|---|
+| Pipeline | Users | `border-gray-900 text-gray-900` bottom border | text-gray-700 | none |
+| Hidden Talent | Sparkles | `border-sky-500 text-sky-700` bottom border | text-gray-700 | sky pill with `hiddenTalentCount` if > 0 |
+| Flight Risk | AlertTriangle | `border-red-500 text-red-700` bottom border | text-gray-700 | red pill with `flightRiskHighCount` if > 0 |
 
-Clicking a tab sets `activeTab` and swaps the content area. The stat cards and org summary remain visible at all times regardless of active tab.
+- `hiddenTalentCount` = `getCrossDeptFitCandidates().length` (memoized, computed once)
+- `flightRiskHighCount` = `getFlightRiskPeople('high').length` (memoized, computed once)
+
+Clicking a tab sets `activeTab`. The stat cards and org summary remain visible across all tabs. The tier legend and dept grid are **only** shown when `activeTab === 'pipeline'`.
 
 ### 3.5 Tier legend bar
 
-Shown only when `activeTab === 'pipeline'`. A horizontal strip below the tabs listing the four readiness tiers, each with a coloured circle and the percentage range:
+Shown only when `activeTab === 'pipeline'`. White bar with bottom border (`data-tour="pipeline-tier-legend"`). Displays four tier entries in a row:
 
-| Tier | Colour | Range |
-|---|---|---|
-| Near Ready | Emerald | 90%+ |
-| Progressing | Sky | 70–89% |
-| Developing | Amber | 50–69% |
-| Early | Gray | <50% |
+| Tier | Coloured circle class | Label | Range |
+|---|---|---|---|
+| near-ready | `bg-emerald-500` | Near Ready | 90%+ |
+| progressing | `bg-sky-500` | Progressing | 70–89% |
+| developing | `bg-amber-400` | Developing | 50–69% |
+| early | `bg-gray-300` | Early Stage | <50% |
+
+Iterated directly from `TIER_CONFIG` object entries. Circle uses `cfg.barColor`.
 
 ### 3.6 Department cards grid
 
-Shown only when `activeTab === 'pipeline'`. A responsive grid (1 column on small screens, 2 on medium, 3 on extra-large) of department cards.
+Shown only when `activeTab === 'pipeline'`. Scrollable main area, padding 8. Subtitle text: "Click a department to explore individual candidates and skill gaps."
 
-**Each card shows:**
+**Grid:** `grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5` (`data-tour="pipeline-dept-grid"`).
 
-- **Dept icon** — coloured square with the department's first letter, using `DEPT_COLORS[dept]`.
-- **Dept name** + sub-label showing "X people · Y transitions" (where transitions = number of distinct target levels in the dept).
-- **ChevronRight icon** — visible only if `dept.total > 0`; nudges right on card hover.
-- **Pipeline breakdown bar** — horizontal segmented bar, height 3px, showing proportional share of each tier. Segments: emerald (near-ready), sky (progressing), amber (developing), gray (early). Segments are only rendered when the tier count > 0. Tooltip on each segment shows count and tier name.
-- **Average readiness** — shown as right-aligned label above the bar: "X% avg readiness".
-- **Tier count grid** — 2×2 grid of coloured badges, one per tier, showing count. Badge background uses tier colour. Label shows truncated tier name (first word only).
-- **Top candidate strip:**
-  - If `nearReady > 0`: emerald background, Star icon, "Top candidate: **[Name]** (X% ready)"
-  - If `nearReady === 0`: gray background, TrendingUp icon, "Highest: **[Name]** (X% ready)"
-- **Empty state** (when `total === 0`): dashed border box with "No candidates tracked yet". Card is disabled (opacity 60%, default cursor, not clickable).
+One card per department (all 7, in `DEPARTMENTS` order). Each card is a `<button>`.
 
-**Card interaction:**
-- Cards with `total > 0` are clickable buttons.
-- Hover: `shadow-lg`, slight upward translation (`-translate-y-0.5`).
-- Click: `setSelectedDept(dept.department)` — navigates to `DeptPipelineView`.
-- Focus: visible focus ring (gray, offset 2).
+**Card states:**
+
+- **`total === 0`:** `disabled` attribute set; `opacity-60`; `cursor-default`; not clickable; ChevronRight icon absent.
+- **`total > 0`:** Fully interactive. `hover:shadow-lg hover:-translate-y-0.5`; `focus:ring-2 focus:ring-offset-2 focus:ring-gray-400`.
+
+**Card click:** `setSelectedDept(dept.department)` — navigates to `DeptPipelineView`.
+
+**Card contents (when `total > 0`):**
+
+**Header row:**
+- Coloured square icon (40×40, rounded-xl, dept's first letter in white, background `DEPT_COLORS[dept]`)
+- Dept name (base font, bold, gray-900)
+- Sub-label: `"X people · Y transition"` / `"X people · Y transitions"` (singular if `transitions === 1`)
+- `transitions` = `new Set(allResults.filter(dept).map(r => r.targetLevelId)).size` — count of distinct target level IDs
+- ChevronRight icon (gray-400, nudges right by 0.5 on group hover)
+
+**Pipeline breakdown bar:**
+- Label row: "Pipeline breakdown" (left) + `"X% avg readiness"` (right, bold)
+- Bar: `h-3 rounded-full overflow-hidden gap-px bg-gray-100`
+- Four segments rendered in order, each only if their count > 0:
+  - Emerald: near-ready — width `nearReady / total * 100%`
+  - Sky: progressing — width `progressing / total * 100%`
+  - Amber: developing — width `developing / total * 100%`
+  - Gray-300: early — width `early / total * 100%`
+- `gap-px` between segments shows as the gray background (visible separator between segments)
+- Each segment has a `title` attribute: e.g. `"3 near ready"`, `"5 progressing"`, `"2 early stage"`
+
+**Tier count mini-grid:**
+- `grid-cols-4 gap-2`
+- One cell per tier (near-ready, progressing, developing, early)
+- Each cell: `rounded-lg p-2 text-center` with `cfg.bg` background
+- Number: `text-lg font-black` in `cfg.color`
+- Label: **first word only** of `cfg.label` — e.g. "Near", "Progressing", "Developing", "Early"
+
+**Top candidate strip:**
+- If `nearReady > 0`: emerald background (`bg-emerald-50 border-emerald-100`), Star icon (emerald-500), "Top candidate: **[Name]** (X% ready)"
+- If `nearReady === 0`: gray background (`bg-gray-50 border-gray-100`), TrendingUp icon (sky-400), "Highest: **[Name]** (X% ready)"
+- Name and pct come from `topCandidate` (highest `readinessPct` across dept) and `topCandidatePct`
+
+**Card contents (when `total === 0`):**
+- Dashed border box, 96px tall, centred text: "No candidates tracked yet" (gray-300)
 
 **Below the grid:**
-- Keystone Partners upsell banner (`<UpsellBanner variant="leadership-dev" />`)
-- Feedback banner (`<FeedbackBanner context="Promotion Pipeline" />`)
+- `<UpsellBanner variant="leadership-dev" className="mt-6" />` — Keystone Partners upsell for leadership development
+- `<FeedbackBanner context="Promotion Pipeline" className="mt-4" />` — user feedback prompt
+
+**`deptSummaries` computation** (memoized):
+```
+for each dept in DEPARTMENTS:
+  results = allResults.filter(r => r.person.department === dept)
+  tiers = groupByTier(results)
+  n = results.length
+  avgReadiness = n > 0 ? Math.round(sum(readinessPct) / n) : 0
+  top = results with highest readinessPct (reduce)
+  transitions = new Set(results.map(r => r.targetLevelId)).size
+
+  → { department, color: DEPT_COLORS[dept], total: n, nearReady, progressing,
+      developing, early, avgReadiness,
+      topCandidate: top?.person.name ?? '—',
+      topCandidatePct: top?.readinessPct ?? 0, transitions }
+```
 
 ---
 
 ## 4. DeptPipelineView — department drill-down
 
-**Component:** `DeptPipelineView.tsx`
-**Route state:** `selectedDept !== null` (replaces the org-level view entirely)
+Rendered when `selectedDept !== null` (replaces the entire pipeline page).
 
 ### 4.1 Page header
 
-**Left side — breadcrumb:**
-- Back button: "← All departments" — calls `onBack()`. Navigates back to the org-level grid.
-- Dept icon + name + headcount summary: "X people tracked across Y level transitions"
+White header with bottom border (`data-tour="pipeline-dept-header"`).
 
-**Right side — action buttons:**
-- **"Skill gap report" button** (ArrowRight icon) — calls `onNavigateToGapReport(department)`. Only rendered if prop is provided.
-- **"Manager view" button** (Users icon) — calls `onNavigateToManagers()`. Only rendered if prop is provided.
-- **Download button** — downloads a PDF of the department's pipeline data. See §8.
-- **Email me button** — opens the Email modal pre-filled with department data.
+**Breadcrumb row:**
+- Back button: ArrowLeft icon + "All departments" (gray-500; hover gray-900; ArrowLeft nudges left on group hover)
+- Clicking calls `onBack()` which resets `selectedDept` to null
+- Separator "/"
+- Mini dept icon (20×20, rounded, dept colour) + dept name (sm semibold, gray-900)
 
-**Tier summary pills (below the breadcrumb):**
-One pill per tier that has at least one person. Pill shows: coloured circle + tier label + count. Tiers with zero people are hidden entirely.
+**Title row (below breadcrumb):**
+- Left: dept icon (36×36, rounded-xl, dept colour) + dept name + "· Promotion Pipeline" + sub-label: "X people tracked across Y level transitions"
+- Right (flex row, gap-3):
+  - `ExportButtons` — Download (dept PDF) + Email me. See §8.
+  - **"Skill gap report" button** (ExternalLink icon, sky-600 text, sky-50 bg): shown only if `onNavigateToGapReport` prop is provided. Clicking calls `onNavigateToGapReport(department)`.
+  - **"Manager view" button** (ExternalLink icon, gray-600 text, gray-50 bg): shown only if `onNavigateToManagers` prop is provided. Clicking calls `onNavigateToManagers()` (no managerId argument).
+  - **Tier summary pills**: one pill per tier that has at least one person. Pills hidden if count === 0. Format: count (large bold) + tier label. Background: `cfg.badge`. Iterated from `TIER_CONFIG` entries.
 
-### 4.2 Transition groups
+### 4.2 Transition grouping logic
 
-People are grouped by their promotion transition (current level → target level). Each group is displayed as a section.
+`deptResults` = `allResults.filter(r => r.person.department === department)` (memoized).
 
-**Grouping logic:**
+`transitions` (memoized): groups `deptResults` by the key `"${currentLevelId}→${targetLevelId}"`:
+
+```typescript
+for each r of deptResults:
+  key = `${r.person.currentLevelId}→${r.targetLevelId}`
+  currentLabel = r.person.currentLevelId.split('-').slice(1).join('-').toUpperCase()
+    // e.g. 'eng-ic2' → 'IC2', 'ppl-m1' → 'M1'
+  nextLabel = r.targetLevelLabel
+    // e.g. 'IC3 · Senior Engineer'
 ```
-Map key: `${currentLevelId}→${targetLevelId}`
-Within each group: sorted by readinessPct descending
-Groups themselves: sorted by the minimum (most-junior) currentLevelId in the group
+
+Within each transition group, results are sorted by `readinessPct` descending.
+
+The transition groups are rendered in the order they were first encountered during the `deptResults` iteration. `deptResults` itself comes from `allResults` which is an unsorted array produced by `getAllReadiness()` (iterates PEOPLE in declaration order). There is no explicit sort of transition groups — their order reflects the order of first appearance in the PEOPLE array.
+
+**Note on label display in transition header:**
+- `currentLabel` shows as a rounded pill (e.g. "IC2", bg-gray-200)
+- `nextLabel` is trimmed: `nextLabel.split('·')[1]?.trim() ?? nextLabel` — strips the dept prefix (e.g. "IC3 · Senior Engineer" → "Senior Engineer"). Shown as dark pill (bg-gray-900, text-white).
+
+### 4.3 Transition section layout
+
+Each transition is a `<div>` with `data-tour="pipeline-dept-swimlanes"` on the container.
+
+**Transition header:**
+- "IC2" pill → ChevronRight → "Senior Engineer" pill + "(N people)"
+
+**Four-column tier layout** (`grid-cols-4 gap-4`, `data-tour="pipeline-dept-columns"`):
+
+| Column | Order |
+|---|---|
+| Near Ready | 1st |
+| Progressing | 2nd |
+| Developing | 3rd |
+| Early Stage | 4th |
+
+Each column header:
+- Tier label (xs, bold, uppercase, tracking-wide, `cfg.color`)
+- Count badge (5×5 circle, `cfg.badge`)
+- Tier range string (e.g. "90%+", text-[11px] gray-400)
+
+People within each column: `CandidateCard` components in readiness-desc order.
+
+**Empty tier column:** Dashed border box (h-16, rounded-xl) with "None" (gray-300).
+
+### 4.4 Candidate cards
+
+`CandidateCard` component — a fully interactive `<button>` element.
+
+**Hover/focus states:**
+- `hover:shadow-md hover:-translate-y-0.5`
+- `focus:ring-2 focus:ring-offset-1 focus:ring-gray-400`
+- Card background and border come from tier: `cfg.border cfg.bg`
+- ChevronRight icon: gray-400 normally, gray-600 on group hover
+
+**Avatar:** 36×36 px, `rounded-xl`, gradient `from-slate-600 to-slate-800` (not tier-coloured — gradient is always the same regardless of tier). 2-letter initials from name split.
+
+**Content:**
+- Name (sm, bold, gray-900, truncated)
+- Team (11px, gray-400, truncated, mt-0.5)
+- Readiness bar section:
+  - Tier label (`cfg.label`, 11px bold, `cfg.color`)
+  - Readiness % (11px bold, gray-700)
+  - Progress bar: `bg-white/70 rounded-full h-1.5 border border-black/5`, filled segment `cfg.barColor` at `readinessPct%`
+- Metadata row (11px, gray-400):
+  - MapPin icon + location
+  - Clock icon + tenure in months (e.g. "18m")
+  - Right-aligned: "X/Y criteria" (criteriaMet/criteriaTotal)
+
+**Click action:** `openPerson(result, items)` where `items` = all cards in the **same tier column** (not the whole transition group). `selection` state set to `{ result, peers: items, index: items.indexOf(result) }`.
+
+### 4.5 Export content
+
+`buildExportContent()` for the department view produces:
+
 ```
-
-**Transition header:** "[Current Level] → [Next Level]" with "(Y people)" count.
-
-**Four-column tier layout:**
-
-Each transition section is divided into four columns — one per readiness tier:
-
-| Column | Colour | Range |
-|---|---|---|
-| Near Ready | Emerald | 90%+ |
-| Progressing | Sky | 70–89% |
-| Developing | Amber | 50–69% |
-| Early | Gray | <50% |
-
-Column header shows: tier label (uppercase, tracking-widest), count badge, tier range (e.g. "90%+").
-
-**Empty tier column:** Dashed border box with "None" label.
-
-### 4.3 Candidate cards
-
-Each person in a tier column is rendered as a `CandidateCard`:
-
-- **Avatar** — circular, containing 2-letter initials. Background colour from `TIER_CONFIG[tier].bg`, border from `TIER_CONFIG[tier].border`.
-- **Name** (bold), **team** (truncated with ellipsis)
-- **Tier label** + **readiness %** (e.g. "Near Ready · 94%")
-- **Readiness progress bar** — full width, thin, coloured by tier.
-- **Metadata row:** location pin icon + location, clock icon + tenure in months, checkmark + "X/Y criteria met"
-
-**Card interaction:**
-- Click: opens `PersonPanel` with:
-  - `result` = the clicked ReadinessResult
-  - `peers` = all people in the same tier column (same transition group + same tier)
-  - `currentIndex` = position of the clicked person within `peers`
-
-### 4.4 Export content for department view
-
-When exporting from `DeptPipelineView`, the text content includes:
-```
-[DEPT] PIPELINE
+[DEPT UPPERCASE] — PROMOTION PIPELINE
 Generated: [date]
 ==================================================
-[CurrentLevel] → [NextLevel] ([N] people)
-  [Name] — [readinessPct]% ([tier label]) · [criteriaMet]/[criteriaTotal] criteria
+
+People tracked: X across Y level transitions
+
+[CurrentLabel] → [NextLabel trimmed] (N people)
+  [Name] — X% ([tier text]) | X/Y criteria
   ...
+  (blank line between transition groups)
 ```
+
+Tier text mapping (inline, not using TIER_CONFIG): `>= 90 → 'Near Ready'`; `>= 70 → 'Progressing'`; `>= 50 → 'Developing'`; else `'Early'`.
+
+`nextLabel` in export uses `t.nextLabel.split('·')[1]?.trim() ?? t.nextLabel`.
 
 ---
 
 ## 5. PersonPanel — individual side panel
 
-**Component:** `PersonPanel.tsx`
-**Triggered by:** clicking any `CandidateCard` in `DeptPipelineView`
+Triggered when the user clicks a `CandidateCard` in `DeptPipelineView`.
 
-### 5.1 Layout
+### 5.1 Layout and overlay
 
-A full-height side panel that slides in from the right over the department view. Closes via the X button in the top-right corner calling `onClose()`.
+A `fixed inset-0 z-50 flex justify-end` overlay. The backdrop (the `inset-0` div) calls `onClose()` when clicked, dismissing the panel. Clicking inside the panel itself stops propagation.
 
-### 5.2 Navigation controls
+The panel itself: `w-full max-w-md bg-white h-full shadow-2xl overflow-y-auto flex flex-col border-l border-gray-100`. The panel has three independently-controlled sections:
+1. Header (`flex-shrink-0 p-6 border-b`)
+2. Readiness score block (`flex-shrink-0 px-6 py-5 border-b`)
+3. Criteria breakdown (`flex-1 overflow-y-auto p-6`) — independently scrollable
 
-Shown when `peers` prop has more than one entry and `currentIndex` is defined:
+### 5.2 Peer navigation controls
 
-- **Previous (←) button** — calls `onPrev()`. Disabled and visually faded when `currentIndex === 0`.
-- **Next (→) button** — calls `onNext()`. Disabled and visually faded when `currentIndex === peers.length - 1`.
-- **Counter** — "X of Y" showing current position in the peer list.
+Shown when: `peers` prop exists AND `peers.length > 1` AND `currentIndex` is defined. These navigate through people in the same tier column.
+
+**Prev button:** ChevronLeft + "Prev". Disabled (opacity-30, cursor-not-allowed) when `currentIndex === 0`.
+
+**Next button:** "Next" + ChevronRight. Disabled when `currentIndex === peers.length - 1`.
+
+**Counter:** `"{currentIndex + 1} of {peers.length}"` (1-indexed).
+
+**Navigation:** `navigateTo(index)` in `DeptPipelineView` sets `selection` to `{ ...selection, result: peers[index], index }`.
+
+**Close button (X):** Top-right of header. `p-1.5 rounded-lg hover:bg-gray-100`. Calls `onClose()` which sets `selection` to null. Also called by backdrop click.
 
 ### 5.3 Person header
 
-- Name (large bold)
-- Team + Department
-- Pills: location, tenure in months (e.g. "18m"), target level label (e.g. "IC3 → IC4")
+Avatar: 48×48, `rounded-2xl`, gradient `from-slate-700 to-slate-900`, 2-letter initials (18px bold white).
+
+Name (lg bold, gray-900) + team + "·" + department (sm, gray-500).
+
+**Meta pills (flex-wrap, gap-2, text-xs, gray-500):**
+- Location pill: MapPin icon + `person.location`
+- Tenure pill: Clock icon + `"{person.tenure}m in current level"` — note the "in current level" suffix
+- Target level pill: Users icon + **trimmed** label: `result.targetLevelLabel.split('·')[1]?.trim() ?? result.targetLevelLabel` — e.g. "Senior Engineer" not "IC3 · Senior Engineer"
 
 ### 5.4 Readiness score block
 
-- **Tier badge** — coloured label (e.g. "Near Ready")
-- **Readiness percentage** — large display number, coloured by tier (e.g. emerald for near-ready)
-- **Criteria summary** — "X of Y criteria met"
-- **Progress bar** — full-width, height 8px, coloured by tier, fills to `readinessPct%`
+Background: **tier-coloured** — `cfg.bg` (e.g. emerald-50 for near-ready).
+
+**Top row:**
+- Left: "Readiness for" label (xs uppercase tracking-widest gray-500) + full `result.targetLevelLabel` below it (sm bold gray-900, e.g. "IC3 · Senior Engineer")
+- Right: tier badge (`cfg.badge` + `cfg.label`, xs bold, pill)
+
+**Score display:**
+- `result.readinessPct` in `text-5xl font-black cfg.color`
+- `"{result.criteriaMet} of {result.criteriaTotal} criteria met"` (sm, gray-500)
+
+**Progress bar:** `bg-white/70 rounded-full h-2.5 border border-black/5`, filled segment `cfg.barColor` at `readinessPct%`, transition `duration-700`.
 
 ### 5.5 Met criteria section
 
-Shown only when `metSkills.length > 0`. Header: "Meeting criteria" with a checkmark badge.
+Shown only when `result.metSkills.length > 0`.
 
-Each met skill shows:
-- Skill name + category label
-- **RatingDots** — 5 dots. For each dot position 1–5:
-  - Filled (actual ≥ position AND position ≤ required): emerald (above/meeting requirement) or sky-blue (below required but counted — i.e. actual ≥ required is true, so these will all be emerald in met-skills)
-  - Empty (position > actual): red-300 background if position ≤ required (required but not reached), gray-100 if position > required
-- **Actual/Required label** — "X/Y" (e.g. "4/3")
+Header: CheckCircle icon (emerald-500) + "Meeting criteria (N)" (xs bold uppercase tracking-widest, gray-700).
+
+Each met skill row (emerald-50 bg, emerald-100 border, rounded-lg, py-2 px-3):
+- Skill name (sm, medium, gray-800)
+- Category (11px, gray-400)
+- `RatingDots actual={person.skills[skill.skillId] ?? 0} required={skill.requiredRating}`
+- Score label `"{actual}/{skill.requiredRating}"` (xs, emerald-700, semibold, w-10, text-right)
 
 ### 5.6 Gaps to close section
 
-Shown only when `gapSkills.length > 0`. Header: "Gaps to close" with a warning badge. Skills sorted descending by `gap` (required − actual).
+Shown only when `result.gapSkills.length > 0`. **Sorted descending by `gap`** (`b.gap - a.gap`).
 
-Each gap skill shows:
+Header: AlertCircle icon (red-400) + "Gaps to close (N)" (xs bold uppercase tracking-widest, gray-700).
+
+Each gap skill row (red-50 bg, red-100 border, rounded-lg, py-2 px-3):
 - Skill name + category
-- RatingDots (same logic as above — filled dots show actual rating, red empty dots show missing required levels)
-- "X/Y" label where X < Y
+- `RatingDots actual={skill.actualRating} required={skill.requiredRating}`
+- Score label `"{skill.actualRating}/{skill.requiredRating}"` (xs, red-600, semibold)
 
-### 5.7 Footer actions
+### 5.7 RatingDots component
 
-Three buttons are shown at the bottom of the panel. These are currently placeholder interactions (no functionality wired):
-
-| Button | Label |
-|---|---|
-| 1 | Set as focus skills → |
-| 2 | Find mentors for gap skills → |
-| 3 | Schedule check-in → |
-
-### 5.8 RatingDots component
+5 dots, positions 0–4 (each dot represents ratings 1–5 respectively):
 
 ```
-props: actual (1–5), required (1–5)
-5 dots rendered for positions 1–5:
-  position <= actual:
-    if position <= required: emerald fill (meeting/exceeding)
-    else: sky fill (above required — over-indexed)
-  position > actual:
-    if position <= required: red-300 fill (gap — required but not met)
-    else: gray-100 fill (not required, not met — irrelevant)
+for each position i in [0..4]:
+  if i < actual:            // dot is filled (person has this skill level)
+    if i < required:        // this level is required
+      → sky-500 (bg + border)    // meeting a required level — at or below requirement
+    else:                   // above requirement
+      → emerald-500 (bg + border) // exceeding requirement
+  else:                     // dot is empty (person hasn't reached this level)
+    if i < required:        // this level is required but not met
+      → red-50 bg, red-300 border // gap
+    else:                   // not required, not reached
+      → gray-100 bg, gray-200 border // irrelevant
 ```
+
+**Interpretation:**
+- **Sky dots** — the person has this skill level AND it is a required level. They're meeting (but not exceeding) the bar at this position.
+- **Emerald dots** — the person has this skill level AND it exceeds what's required (over-indexed).
+- **Red-tinted empty dots** — the person is missing a required level (gap).
+- **Gray empty dots** — neither required nor achieved (irrelevant positions).
+
+### 5.8 Footer actions
+
+Three full-width buttons in `bg-gray-50 border-t`, `flex-shrink-0`:
+
+| Button | Label | Status |
+|---|---|---|
+| 1 | Set as focus skills → | Placeholder — no action wired |
+| 2 | Find mentors for gap skills → | Placeholder — no action wired |
+| 3 | Schedule check-in → | Placeholder — no action wired |
+
+All three buttons: `bg-white border-gray-200 hover:border-gray-300 hover:bg-white rounded-xl px-4 py-3`.
 
 ---
 
 ## 6. FlightRiskTab — flight risk view
 
-**Component:** `FlightRiskTab.tsx`
-**Activated by:** `activeTab === 'flight-risk'`
+Rendered when `activeTab === 'flight-risk'`. Wrapped in `<main className="flex-1 overflow-auto p-8">`.
 
-### 6.1 Overview
+### 6.1 Data population
 
-Displays employees flagged by the Revelio Labs job-switching propensity model as at risk of leaving. Risk levels are `high` and `medium`. People are sorted by risk level descending, then by `daysSinceCheckIn` descending.
+```
+all = getFlightRiskPeople('medium')   // high + medium risk people only
+```
 
-### 6.2 Header
+`all` is memoized. Filters `PEOPLE` to those with `flightRisk` defined and at or above the minimum level. Sorted: risk level desc (high before medium), then `daysSinceCheckIn` desc.
 
-- Title: "Flight Risk"
-- **"Revelio Labs" badge** — sky background, citing the data source.
-- Description: "Employees flagged by Revelio job-switching model, sorted by risk + days since last check-in."
-- **Confidentiality notice** — lock icon + "For managers only · Confidential"
+```
+highCount    = all.filter(e => e.flightRisk === 'high').length
+mediumCount  = all.filter(e => e.flightRisk === 'medium').length
+withOpportunity = all.filter(e => e.hasInternalOpportunity).length
+```
 
-### 6.3 Summary strip
+`filtered` (memoized): `filter === 'all'` → all; else filter by exact `flightRisk` value.
 
-Three stat tiles in a row:
+### 6.2 Page header
+
+**Left side:**
+- AlertTriangle icon (red-500) + "Flight Risk" (base bold, gray-900)
+- **"Revelio Labs" badge**: `bg-red-100 text-red-700`, xs semibold, rounded-full, px-2
+- Description: "Employees flagged by Revelio Labs' job-switching propensity model. Sorted by risk level and days since last check-in."
+
+**Right side:**
+- Shield icon (amber-500) + "For managers only · Confidential" (11px, amber-700, semibold) in `bg-amber-50 border-amber-100 rounded-xl px-3 py-2`
+
+### 6.3 Summary stat strip
+
+Three tiles in `grid-cols-3 gap-3`:
 
 | Tile | Value | Background |
 |---|---|---|
-| High risk | count of `flightRisk === 'high'` | Red |
-| Medium risk | count of `flightRisk === 'medium'` | Amber |
-| Internal match available | count with `hasInternalOpportunity` | Sky |
+| High risk | `highCount` (2xl black, red-600) + "High risk" (xs, red-500) | bg-red-50 border-red-100 |
+| Medium risk | `mediumCount` (2xl black, amber-600) + "Medium risk" (xs, amber-500) | bg-amber-50 border-amber-100 |
+| Internal match available | `withOpportunity` (2xl black, sky-600) + "Internal match available" (xs, sky-500) | bg-sky-50 border-sky-100 |
 
-**"View" button** on the Internal match tile — shown only when `withOpportunity > 0`. Clicking calls `onSwitchToHiddenTalent()` which switches the active tab to "Hidden Talent".
+**"View" button on Internal match tile:** Sparkles icon + "View" + ArrowRight. Rendered only when `withOpportunity > 0`. On click: `onSwitchToHiddenTalent()` → switches parent's `activeTab` to `'hidden-talent'`.
 
 ### 6.4 Filter pills
 
-Three filter buttons: **All** / **High** / **Medium**, each showing the count in parentheses.
+Three buttons: **All (N)** / **High risk (N)** / **Medium risk (N)**.
 
-- Active: dark background (bg-gray-900), white text.
-- Inactive: light gray background, gray text.
+- Active: `bg-gray-900 text-white`
+- Inactive: `bg-gray-100 text-gray-500 hover:text-gray-800`
+- Label format: `"All"` / `"High risk"` / `"Medium risk"` — always includes the word "risk" for high/medium
 
-Clicking a filter sets `filter` state. The displayed cards are filtered accordingly:
-- "All": shows all high + medium risk people
-- "High": shows only `flightRisk === 'high'`
-- "Medium": shows only `flightRisk === 'medium'`
+Counts: All = `all.length`; High = `highCount`; Medium = `mediumCount`.
 
 ### 6.5 Person cards
 
-Each person is displayed as a `PersonCard` with an expand/collapse toggle.
+Grid: `grid-cols-1 lg:grid-cols-2 gap-4`.
 
-**Collapsed state:**
+Each `PersonCard` has local `expanded` state (default: false).
 
-- **Avatar** — 2-letter initials. A red dot indicator overlaid at the bottom-right corner if `flightRisk === 'high'`.
-- **Name** + **Department pill** (coloured with `DEPT_COLORS[dept]`) + **current level label** + **team name**
-- **Risk badge** — shows risk level in the appropriate colour (red/amber).
-- **Expand button** (ChevronDown/ChevronUp icon) — toggles the expanded section.
-- **Key signals row:**
-  - Check-in recency: days since last check-in. Colour: red if > 60 days, amber if > 30 days, gray if ≤ 30 days.
-  - Tenure: X months
-  - Location
-- **"Internal opportunity available" button** — shown only when `hasInternalOpportunity`. Clicking calls `onSwitchToHiddenTalent()`.
+**Card border:** `border-red-100` if `flightRisk === 'high'`; otherwise `border-gray-100`.
 
-**Expanded state (additional content):**
+**Avatar (36×36, rounded-xl):** Background = `DEPT_COLORS[person.department]`. 2-letter initials (up to 2 chars). **Red dot indicator** (12×12 circle, bg-red-500, border-2 border-white, positioned `-top-1 -right-1`): shown **only** when `flightRisk === 'high'`.
 
-- "Revelio Labs · Risk drivers" sub-header
-- Bullet list of `flightRiskDrivers` strings
-- Amber info box: "Suggested action: schedule a growth conversation, review comp and career trajectory, and consider internal mobility options."
+**Person info row:**
+- Name (sm bold, gray-900)
+- Department pill: `DEPT_COLORS[dept]` as text colour and `${deptColor}18` (hex with 18 = ~10% opacity) as background
+- "·" separator
+- Level short label via `LEVEL_DEFINITIONS.find(l => l.id === currentLevelId)?.shortLabel` (xs, gray-500)
+- "·" separator
+- Team name (xs, gray-500)
+
+**Risk badge:** `inline-flex items-center gap-1.5 text-[11px] font-bold px-2 py-0.5 rounded-full`. Background from `RISK_CONFIG[risk].badgeBg`, text from `RISK_CONFIG[risk].text`. Contains a 1.5×1.5 coloured dot.
+
+**Expand button:** ChevronDown (collapsed) / ChevronUp (expanded). gray-400 → gray-600 on hover.
+
+**Key signals row (mt-3, flex-wrap):**
+- `CheckInAgo` component: Clock icon + "{days}d since check-in". Colour: **red-600** if days > 60; **amber-600** if days > 30; **gray-500** if ≤ 30.
+- "·" separator
+- Combined single span: `"{tenure}m at level · {location}"` (11px, gray-500)
+- If `hasInternalOpportunity`: "·" + Sparkles icon (sky) + "Internal opportunity available" + ArrowRight (11px, sky-600). Clicking calls `onViewOpportunity()` → `onSwitchToHiddenTalent()`.
+
+**Expanded section** (rendered when `expanded === true`):
+- Background: `cfg.bg cfg.border` (risk-level colour — e.g. red-50 for high, amber-50 for medium)
+- "Revelio Labs · Risk drivers" header (`cfg.text` colour)
+- Bulleted list of `entry.flightRiskDrivers` (each bullet uses `cfg.dot` coloured circle)
+- Info box (bg-white/70, border-white, rounded-xl p-3): Info icon (gray-400) + "Suggested action: schedule a growth conversation, review comp against market, and explore internal mobility if applicable."
+
+**Risk configuration (RISK_CONFIG):**
+
+| Risk | Dot | Card bg | Card border | Text | Badge bg |
+|---|---|---|---|---|---|
+| high | bg-red-500 | bg-red-50 | border-red-100 | text-red-700 | bg-red-100 |
+| medium | bg-amber-400 | bg-amber-50 | border-amber-100 | text-amber-700 | bg-amber-100 |
+| low | bg-emerald-400 | bg-emerald-50 | border-emerald-100 | text-emerald-700 | bg-emerald-100 |
 
 ### 6.6 Empty state
 
-When no people match the active filter: a centred Zap icon + message prompting to check the Hidden Talent tab.
+When `filtered.length === 0`:
+- Centred, white bg, rounded-2xl, p-12
+- Zap icon (gray-200, 28px) + "No flight risk signals detected" (sm semibold, gray-400) + "Connect Revelio Labs to surface real-time job-switching propensity data." (xs, gray-400)
 
 ### 6.7 Footer note
 
-Shown when `filtered.length > 0`. Reminder that flight risk data is for managers only and is not shown to employees.
+Shown when `filtered.length > 0`. Info icon + full text:
+> "Flight risk scored by Revelio Labs job-switching propensity model. Factors include LinkedIn activity, tenure plateau, compensation gap, and engagement signals. For internal retention use only."
 
 ---
 
 ## 7. HiddenTalent — cross-department fit view
 
-**Component:** `HiddenTalent.tsx`
-**Activated by:** `activeTab === 'hidden-talent'`
+Rendered when `activeTab === 'hidden-talent'`. Wrapped in `<main className="flex-1 overflow-auto p-8">`.
 
-### 7.1 Overview
+### 7.1 Data population
 
-Surfaces employees whose LinkedIn-inferred skills suggest they would be a strong fit in a different department. Uses `getCrossDeptFitCandidates()` which computes both the person's readiness in their current role and their projected readiness in a candidate alternative role, then returns cases where the alternative fit is meaningfully higher.
+```
+allCandidates = getCrossDeptFitCandidates()   // memoized
+```
 
-### 7.2 Header
+`filtered` (memoized): applies dept filter + sort:
 
-- Title: "Hidden Talent"
-- **"LinkedIn-inferred" badge** (sky)
-- Description: "People whose inferred skills suggest a better-fit function. Flight risk signals from Revelio."
-- **Warning notice** — "For managers only · Not visible to employees"
+```
+dept = filterDept ?? (selectedDept === 'all' ? null : selectedDept)
+base = dept
+  ? allCandidates.filter(r => r.currentDept === dept || r.suggestedDept === dept)
+  : allCandidates
+
+// dept filter matches if the person's CURRENT or SUGGESTED dept matches
+// i.e. "show me everyone relevant to Engineering" includes people moving from or to Engineering
+
+sorted by:
+  urgency mode: urgencyScore(b) - urgencyScore(a)
+    where urgencyScore = FLIGHT_RISK_WEIGHT[flightRisk] + delta
+    FLIGHT_RISK_WEIGHT = { high: 100, medium: 50, low: 0 }
+  fit mode: b.delta - a.delta
+```
+
+`byDeptCounts` (memoized):
+```
+all: allCandidates.length
+per dept: allCandidates.filter(r => r.currentDept === dept || r.suggestedDept === dept).length
+```
+
+`highRiskCount` = `filtered.filter(r => r.flightRisk === 'high').length` — count within the **currently filtered** set, not all candidates.
+
+### 7.2 Page header
+
+**Left side:**
+- Sparkles icon (sky-500) + "Hidden Talent" (base bold, gray-900)
+- **"LinkedIn-inferred" badge**: `bg-sky-100 text-sky-700`, xs semibold, rounded-full
+- Description: "People whose inferred skills suggest a better-fit function. Flight risk signals from Revelio Labs show who needs a conversation now."
+
+**Right side:**
+- AlertTriangle icon (amber-500) + "For managers only · Not visible to employees" (11px, amber-700) in `bg-amber-50 border-amber-100 rounded-xl px-3 py-2`
 
 ### 7.3 High-risk alert banner
 
-Shown when `highRiskCount > 0` (count of high-flight-risk people in the current filtered set):
-> "X people flagged high flight risk — internal mobility conversations recommended this quarter"
-
-Amber background, AlertTriangle icon.
+Shown only when `highRiskCount > 0`:
+- `bg-red-50 border-red-100 rounded-xl px-4 py-2.5`
+- Zap icon (red-500) + "{N} person/people flagged high flight risk — internal mobility conversations recommended this quarter."
 
 ### 7.4 Department filter pills
 
-Shown only when `filterDept` prop is not set. Buttons for "All" + each department that has at least one candidate (current or suggested dept).
+Shown only when `filterDept` prop is **not** set. Department buttons are hidden if their count is 0.
 
-- Active: coloured background using `DEPT_COLORS[dept]`, white text.
-- "All" button: dark background when active.
-- Each dept button shows its candidate count in parentheses.
+**"All" button:**
+- Active (when `selectedDept === 'all'`): `bg-gray-900 text-white`
+- Inactive: `bg-gray-100 text-gray-500 hover:text-gray-800`
+- Label: `"All ({byDeptCounts.all})"`
 
-Clicking sets `selectedDept` state which filters the displayed candidates.
+**Per-dept buttons** (only for depts with `byDeptCounts[dept] > 0`):
+- Active: background = `DEPT_COLORS[dept]`, border = `DEPT_COLORS[dept]`, text = white
+- Inactive: `bg-gray-50 text-gray-500 border-gray-100 hover:text-gray-800`
+- Label: `"{dept} ({count})"`
+
+Clicking a dept button sets `selectedDept`. The filter applies to both current and suggested dept.
 
 ### 7.5 Sort toggle
 
-Two sort modes:
+A pill container (`bg-gray-100 rounded-lg p-0.5`) containing two inner buttons:
 
-| Button | Icon | Label | Sort logic |
+| Button | Icon | Label | Sort |
 |---|---|---|---|
-| Most urgent | Zap | "Most urgent" | `FLIGHT_RISK_WEIGHT[flightRisk] + delta` descending |
-| Best fit | ArrowUpDown | "Best fit" | `delta` descending |
+| Most urgent | Zap | "Most urgent" | `urgencyScore = FLIGHT_RISK_WEIGHT[risk] + delta`, desc |
+| Best fit | ArrowUpDown | "Best fit" | `delta` desc |
 
-```
-FLIGHT_RISK_WEIGHT = { high: 100, medium: 50, low: 0 }
-urgencyScore = FLIGHT_RISK_WEIGHT[flightRisk] + delta
-```
+- Active inner button: `bg-white text-gray-900 shadow-sm rounded-md`
+- Inactive: `text-gray-500 hover:text-gray-700`
 
-Active sort button: white background with shadow. Inactive: gray text, no background.
+Sort toggle is always visible (regardless of filter dept state) and positioned `ml-auto flex-shrink-0`.
 
 ### 7.6 Candidate cards
 
-Each card represents one person with one cross-department fit opportunity.
+Grid: `grid-cols-1 lg:grid-cols-2 gap-4`.
 
-**Card header (always visible):**
-- **Avatar** — 2-letter initials. Red dot if `flightRisk === 'high'`.
-- **Name** + **current dept pill** → **suggested dept pill** (arrow between them)
-- **Δ% delta badge** — shows `fitPct − currentFit`. Colour: emerald if delta ≥ 30%, sky if ≥ 20%, amber if < 20%.
-- **Expand button** (ChevronDown/ChevronUp)
-- **Flight risk badge** (risk level)
-- **Fit bars** — two side-by-side bars:
-  - "Current dept fit": `currentReadinessPct%` bar + label
-  - "Suggested dept fit": `fitPct%` bar + label
-- **Top inferred signal** — LinkedIn icon + first `topInferredSignals` entry
+Each `CandidateCard` has local `expanded` state (default: false).
 
-**Expanded state (additional content):**
-- **Flight risk drivers** (if `flightRiskDrivers` is non-empty): bulleted list
-- **LinkedIn signals** (if `linkedInSignals` is non-empty): bulleted list
-- **Inferred skills** section: list of skills with confidence badges (high/medium/low) driving the fit score
-- **Framework match** summary: "Meets X of Y criteria for [Level]"
-- **Amber disclaimer box**: "This is an opportunity signal, not a performance flag. Validate with manager before taking any action."
+**Card border:** `border-red-100` if `flightRisk === 'high'`; `border-gray-100` otherwise.
+
+**Always-visible section (px-6 py-4):**
+
+**Avatar (36×36, rounded-xl):** Background = `DEPT_COLORS[result.currentDept]`. Red dot indicator if high flight risk (same as FlightRiskTab).
+
+**Name + dept transition row:**
+- Name (sm bold, gray-900)
+- Current dept pill (coloured with `currentColor`)
+- ArrowRight icon (gray-300)
+- Suggested dept pill (coloured with `suggestedColor`)
+
+**Δ badge** (`DeltaBadge`): TrendingUp icon + `"+{delta}%"`. Colour:
+- `delta >= 30`: `bg-emerald-100 text-emerald-800`
+- `delta >= 20`: `bg-sky-100 text-sky-800`
+- `delta < 20`: `bg-amber-100 text-amber-700`
+
+**Expand button:** ChevronDown/ChevronUp (gray-400 → gray-700).
+
+**Flight risk badge** (`FlightRiskBadge`): coloured dot + label. Shown below the name row (`mt-3`).
+
+**Fit comparison bars** (`grid-cols-2 gap-4`, `mt-3`):
+- Left: "Current dept fit" label + `FitBar` at `result.currentReadinessPct%` in `currentColor`
+- Right: `"{result.suggestedDept} fit"` label + `FitBar` at `result.fitPct%` in `suggestedColor`
+
+`FitBar`: `bg-gray-100 rounded-full h-1.5`, filled at `pct%` with `background: color`, + `"{pct}%"` right-aligned.
+
+**Top inferred signal** (shown when `topInferredSignals.length > 0`): Linkedin icon (sky, #0A66C2) + `result.topInferredSignals[0].source` text. Always the first signal only.
+
+**Expanded section (border-t bg-gray-50/40, px-6 py-4):**
+
+Sections shown only when their data is non-empty:
+
+1. **Flight risk drivers** (when `flightRiskDrivers.length > 0`):
+   - "Revelio Labs · Flight risk drivers" header (`riskCfg.text`)
+   - Bulleted list of driver strings
+
+2. **LinkedIn history** (when `linkedInSignals.length > 0`):
+   - "LinkedIn history" header (gray-400)
+   - Bulleted list with LinkedIn-blue (#0A66C2) dots
+
+3. **Inferred skills driving fit** (when `topInferredSignals.length > 0`):
+   - "Inferred skills driving fit" header (gray-400)
+   - Each signal: confidence badge (`CONFIDENCE_COLORS[note.confidence]`) + source text
+   - `CONFIDENCE_COLORS`: high = `text-emerald-700 bg-emerald-50`; medium = `text-amber-700 bg-amber-50`; low = `text-gray-600 bg-gray-50`
+
+4. **Framework match** (always shown in expanded view):
+   - "Framework match" header (gray-400)
+   - "Meets **{matchedCriteria} of {totalCriteria}** criteria for {suggestedLevelLabel}"
+
+5. **Framing disclaimer** (always shown in expanded view):
+   - `bg-amber-50 border-amber-100 rounded-xl p-3`
+   - Info icon (amber-500)
+   - "This is an opportunity signal, not a performance flag. Share with the employee as a career conversation starter — not a directive."
 
 ### 7.7 Empty state
 
-When the filtered list is empty: empty state card with a message and suggestion to adjust the dept filter.
+When `filtered.length === 0`:
+- Centered, white bg, rounded-2xl, p-12
+- Sparkles icon (gray-200, 28px) + "No cross-fit candidates detected" (sm semibold, gray-400) + "Upload LinkedIn data for more employees to surface hidden strengths."
 
 ### 7.8 Footer note
 
-Shown when candidates are visible. Reminds that hidden talent analysis is based on inferred signals and should be validated.
+Shown when `filtered.length > 0`. Info icon + text:
+> "Fit scores use Revelio Labs LinkedIn data discounted one level for confidence. Flight risk from Revelio Labs job-switching propensity model. For internal use only."
 
 ---
 
-## 8. Export and download behaviour
+## 8. Export — download and email
 
-Both the org-level view and the department drill-down view have `ExportButtons` in their headers, each with a **Download** button and an **Email me** button.
+Both `PromotionPipeline` (org view) and `DeptPipelineView` render `ExportButtons` in their headers.
 
-### 8.1 Download
+### 8.1 Download button
 
-**Behaviour:** Generates a PDF file representing the user's current view and triggers a browser download.
+**Action:** Calls `buildContent()` to generate the report text, passes it to `buildPrintHtml(title, text)`, opens a new browser tab via `window.open('', '_blank')`, writes the HTML to it, and closes the document. The new tab renders styled HTML and auto-triggers `window.print()` via an `onload` script. After `window.print()` finishes, `window.close()` is called on the print window.
 
-- **Org-level download filename:** `progression-promotion-readiness-pipeline.pdf`
-- **Department download filename:** `progression-[dept-name]-pipeline.pdf`
+**User experience:** The browser opens its native print dialog (with "Save as PDF" as an option) in a new tab. The content is formatted as a clean, readable HTML document.
 
-**Org-level PDF content:**
+**Button states:**
+- Default: Download icon + "Download"; `bg-white border-gray-200 text-gray-500 hover:border-gray-300 hover:text-gray-700`
+- Post-click (2 seconds): Check icon + "Downloaded"; `bg-emerald-50 border-emerald-200 text-emerald-600`
+- Reverts automatically after 2 seconds
+
+**PDF content for org-level view (`buildExportContent` in PromotionPipeline):**
 ```
 PROMOTION READINESS PIPELINE — ACME CORP
 Generated: [date]
 ==================================================
+
 Total tracked: X
 Near ready (90%+): X
 Progressing (70-89%): X
@@ -505,47 +834,46 @@ Avg tenure in level: Xm
 BY DEPARTMENT
 --------------------------------------------------
 [Dept]: X people | X near-ready | X progressing | avg X%
-  Top candidate: [Name] (X%)
-...
+  Top candidate: [Name] (X%)         ← only if nearReady > 0
+...                                   ← depts with total === 0 are skipped
 ```
 
-**Department-level PDF content:**
+**PDF content for department view (`buildExportContent` in DeptPipelineView):**
 ```
-[DEPT] PIPELINE
+[DEPT UPPERCASE] — PROMOTION PIPELINE
 Generated: [date]
 ==================================================
-[CurrentLevel] → [NextLevel] (X people)
-  [Name] — X% ([tier]) · X/Y criteria
+
+People tracked: X across Y level transitions
+
+[CurrentLabel] → [NextLabel] (N people)
+  [Name] — X% ([tier]) | X/Y criteria
   ...
+
+(blank line between transition groups)
 ```
 
-**Download button states:**
-- Default: Download icon + "Download" text, white background, gray border.
-- Downloading: spinner animation.
-- Completed (2 seconds): green Check icon + "Downloaded" text, emerald background.
-- Reverts automatically after 2 seconds.
+**HTML rendering in `buildPrintHtml`:**
+- Lines of all-uppercase (length > 2, not starting with digit) → `<h2>` section headers
+- Lines starting with 2+ spaces → indented `<p>` (20px left padding)
+- `=...` / `-...` separator lines → `<hr>`
+- Blank lines → `<br/>`
+- All other lines → `<p>`
 
-### 8.2 Email me
+### 8.2 Email me button
 
-Clicking **Email me** opens a modal dialog:
+**Action:** Opens the `EmailModal`.
 
-**Modal content:**
-- Header: Mail icon + "Email this report"
-- X close button (top-right)
-- Report preview box showing the report title
-- Email address input (autoFocused, Enter key submits)
-- Disclaimer: "This opens your email client with the report pre-filled. Nothing is sent through Progression servers."
-- "Open email client" button (disabled until email is non-empty)
+**EmailModal behaviour:**
 
-**Send action:**
-1. Calls `buildContent()` to generate the report text.
-2. Opens `mailto:[email]?subject=Progression: [title]&body=[report text]` via `window.open()`.
-3. Shows confirmation state: green checkmark + "Your email client has opened" + confirmation message with recipient address.
-4. "Close" link appears to dismiss.
+1. Shows report title in a preview box
+2. Email input field (autoFocused; Enter key submits)
+3. "Open email client" button (disabled until email is non-empty)
+4. On submit: calls `buildContent()`, constructs `mailto:[email]?subject=Progression: [title]&body=[content]`, opens via `window.open()`; shows confirmation state
+5. **Post-send confirmation:** Green check icon + "Your email client has opened" + "The report is pre-filled in a new email to [email]. Review and send from your email client." + "Close" link
+6. **Closing:** X button (top-right), clicking the backdrop, or the post-send "Close" link
 
-**Closing the modal:** X button, clicking the backdrop, or the post-send "Close" link.
-
-**Privacy:** The report content is sent directly from the user's email client. No data passes through Progression servers.
+**Privacy note** displayed in modal: "This opens your email client with the report pre-filled. Nothing is sent through Progression servers."
 
 ---
 
@@ -553,37 +881,53 @@ Clicking **Email me** opens a modal dialog:
 
 ### 9.1 Source data
 
-All data is static mock data in `promotionData.ts`:
+**PEOPLE** (42 employees): Each `Person` has `id`, `name`, `department`, `team`, `location`, `currentLevelId`, `skills: Record<skillId, 1–5>`, `tenure` (months in current level), `lastCheckIn` (ISO date). Optional: `inferredSkills: Record<skillId, number>`, `inferredNotes: InferredSkillNote[]`, `linkedInSignals: string[]`, `flightRisk: FlightRisk`, `flightRiskDrivers: string[]`.
 
-- **PEOPLE** — 42 employees across 7 departments. Each person has: id, name, department, team, location, currentLevelId, skills (Record<skillId, 1–5>), tenure (months), lastCheckIn (ISO date). Optionally: inferredSkills, inferredNotes, linkedInSignals, flightRisk, flightRiskDrivers.
-- **LEVEL_DEFINITIONS** — level hierarchy per department and track (IC/Manager). Each level has: id, label, shortLabel, track, department, nextLevel (id or null if terminal).
-- **LEVEL_FRAMEWORKS** — per-level skill requirements. Each framework maps to one target levelId and contains an array of criteria: `{ skillId, skillName, category, requiredRating (1–5) }`.
+**LEVEL_DEFINITIONS** (23 entries): Level hierarchy per department and track. Each has `id`, `label` (e.g. "IC2 · Mid Engineer"), `shortLabel` (e.g. "IC2"), `track: 'IC' | 'Manager'`, `department`, `nextLevel: string | null`.
+
+Levels per department:
+- Engineering IC: eng-ic1 → eng-ic2 → eng-ic3 → eng-ic4 (terminal)
+- Engineering Manager: eng-m1 → eng-m2 (terminal)
+- Product: prod-ic1 → prod-ic2 → prod-ic3 → prod-ic4 (terminal)
+- Design: des-ic1 → des-ic2 → des-ic3 (terminal)
+- Data: dat-ic1 → dat-ic2 → dat-ic3 (terminal)
+- Marketing: mkt-ic1 → mkt-ic2 → mkt-ic3 (terminal)
+- Sales: sal-ic1 → sal-ic2 → sal-ic3 (terminal)
+- People Ops: ppl-ic1 → ppl-ic2 → ppl-m1 (terminal; note: IC → Manager track transition)
+
+**LEVEL_FRAMEWORKS** (10 entries): One per target level with a defined advancement criterion. Frameworks exist for: `eng-ic2`, `eng-ic3`, `eng-ic4`, `prod-ic3`, `prod-ic4`, `des-ic3`, `dat-ic3`, `mkt-ic3`, `sal-ic3`, `ppl-m1`. People whose next level has no framework are excluded from pipeline data.
 
 ### 9.2 `computeReadiness(person, framework, levelLabel)`
 
-For each criterion in the framework:
-```
-if person.skills[skillId] >= requiredRating:
-  → metSkills (includes: skillName, category, actualRating, requiredRating)
-else:
-  → gapSkills (includes: skillName, category, actualRating, requiredRating, gap = required - actual)
+```typescript
+for each criterion in framework.criteria:
+  actual = person.skills[criterion.skillId] ?? 0
+  if actual >= criterion.requiredRating:
+    → metSkills.push(criterion)
+  else:
+    → gapSkills.push({ ...criterion, actualRating: actual, gap: requiredRating - actual })
 
-readinessPct = Math.round(metSkills.length / criteria.length * 100)
-criteriaMet = metSkills.length
-criteriaTotal = criteria.length
+readinessPct = Math.round(metSkills.length / framework.criteria.length * 100)
 ```
+
+Returns `ReadinessResult`: `{ person, targetLevelId, targetLevelLabel, criteriaTotal, criteriaMet, readinessPct, metSkills, gapSkills }`.
+
+**Note:** Uses `person.skills` only (assessed ratings). Inferred skills are **not** used in `computeReadiness` — they are only used in `getCrossDeptFitCandidates` via `mergedSkills`.
 
 ### 9.3 `getAllReadiness()`
 
-For every person in PEOPLE:
-1. Looks up `currentLevelId` in LEVEL_DEFINITIONS for the person's department.
-2. If no `nextLevel` exists on the current level, the person is at the top of their track — skipped.
-3. Looks up the framework for `nextLevel`.
-4. If no framework exists for that level — skipped.
-5. Calls `computeReadiness(person, framework, nextLevelLabel)`.
-6. Returns the accumulated array of `ReadinessResult`.
+```typescript
+for each person in PEOPLE:
+  currentLevel = LEVEL_DEFINITIONS.find(l.id === person.currentLevelId)
+  if !currentLevel?.nextLevel → skip   // terminal level, no promotion path
+  nextLevel = LEVEL_DEFINITIONS.find(l.id === currentLevel.nextLevel)
+  if !nextLevel → skip
+  framework = LEVEL_FRAMEWORKS.find(f.levelId === nextLevel.id)
+  if !framework → skip                 // no criteria defined for this next level
+  → computeReadiness(person, framework, nextLevel.label)
+```
 
-People at the top of their level track, or in departments without defined frameworks for their next level, do not appear in pipeline data.
+People are excluded if: at a terminal level (e.g. Staff Engineer IC4), or their next level has no framework defined.
 
 ### 9.4 `getReadinessTier(pct)`
 
@@ -594,81 +938,98 @@ pct >= 50 → 'developing'
 else      → 'early'
 ```
 
-### 9.5 Flight risk computation (`getFlightRiskPeople(minRisk)`)
+Boundaries are **inclusive at the top** — 90% exactly is near-ready; 70% exactly is progressing.
 
-Reference date: **2026-05-08** (hardcoded constant `REFERENCE_DATE`).
+### 9.5 `groupByTier(results)`
+
+Returns `{ 'near-ready': N, 'progressing': N, 'developing': N, 'early': N }` by calling `getReadinessTier` on each result's `readinessPct`.
+
+### 9.6 `getFlightRiskPeople(minRisk)`
 
 ```
-daysSinceCheckIn = Math.floor((REFERENCE_DATE - lastCheckIn) / (1000 * 60 * 60 * 24))
-hasInternalOpportunity = person.inferredSkills exists and has at least one key
+riskOrder = { high: 2, medium: 1, low: 0 }
+minLevel = riskOrder[minRisk]
+
+filter: p.flightRisk exists AND riskOrder[p.flightRisk] >= minLevel
+map to FlightRiskPerson:
+  daysSinceCheckIn = Math.floor((REFERENCE_DATE - p.lastCheckIn) / 86_400_000)
+  hasInternalOpportunity = p.inferredSkills exists AND has at least 1 key
+
+sort: riskOrder[b.flightRisk] - riskOrder[a.flightRisk] (desc)
+  tie-break: b.daysSinceCheckIn - a.daysSinceCheckIn (desc)
 ```
 
-Filter: `p.flightRisk` is defined AND meets the minimum risk level threshold:
-- `minRisk = 'high'`: only `flightRisk === 'high'`
-- `minRisk = 'medium'`: `flightRisk === 'high'` OR `flightRisk === 'medium'`
+`REFERENCE_DATE = 2026-05-08` (hardcoded). Check-in colour thresholds: > 60 days = red, > 30 days = amber, ≤ 30 = gray.
 
-Sort: risk level descending (high before medium), then `daysSinceCheckIn` descending (longer since check-in first).
+### 9.7 `getCrossDeptFitCandidates()`
 
-Check-in recency colouring:
-- > 60 days since check-in: **red**
-- > 30 days: **amber**
-- ≤ 30 days: **gray**
+**Step 1 — for each person with `inferredSkills`:**
 
-### 9.6 Cross-department fit computation (`getCrossDeptFitCandidates()`)
-
-Constants:
 ```
-ROLE_FIT_MIN_SUGGESTED = 50   // minimum fit % in suggested dept to qualify
-ROLE_FIT_MIN_DELTA = 20       // minimum improvement over current fit to qualify
+currentReadinessResult = getAllReadiness().find(r.person.id === person.id)
+currentFit = Math.max(20, currentReadinessResult?.readinessPct ?? 20)
+  // baseline is next-level readiness in current dept; floored at 20
+
+personRank = icRank(person.currentLevelId)
+  // ic4 or m2 → 4; ic3 or m1 → 3; ic2 → 2; else → 1
 ```
 
-**Merged skills:** Before scoring, inferred skills are merged with assessed skills with a one-level discount:
+**Step 2 — score against every other IC framework:**
+
 ```
-for each inferredSkill not in assessed skills:
-  merged[skillId] = Math.max(1, inferredRating - 1)
+for each framework in LEVEL_FRAMEWORKS:
+  targetLevel = LEVEL_DEFINITIONS.find(l.id === framework.levelId)
+  skip if: targetLevel.department === person.department   // same dept
+  skip if: targetLevel.track !== 'IC'                    // managers only
+  targetRank = icRank(framework.levelId)
+  skip if: |targetRank - personRank| > 1                 // more than 1 level apart
+
+  fitPct = scorePerson(person, framework)     // uses mergedSkills
+  skip if: fitPct < 50                        // ROLE_FIT_MIN_SUGGESTED
+
+  delta = fitPct - currentFit
+  skip if: delta < 20                         // ROLE_FIT_MIN_DELTA
+
+  topSignals = inferredNotes matching framework skill IDs, first 3
 ```
 
-**Scoring a person against a framework:**
+**`mergedSkills(person)`:**
 ```
-met = count of criteria where merged[skillId] >= requiredRating
-score = Math.round(met / criteria.length * 100)
-```
-
-**Current dept fit:**
-```
-Max score of person against all IC frameworks in their current department
-Floored at 20 (minimum baseline)
+start with person.skills (assessed)
+for each [skillId, rating] in person.inferredSkills:
+  if skillId not already in assessed:
+    merged[skillId] = Math.max(1, rating - 1)   // discount by 1 level
 ```
 
-**Level rank (`icRank`):**
+**`scorePerson(person, framework)`:**
 ```
-ic4 or m2 → 4
-ic3 or m1 → 3
-ic2       → 2
-else      → 1
+skills = mergedSkills(person)
+met = count where skills[criterion.skillId] >= criterion.requiredRating
+return Math.round(met / framework.criteria.length * 100)
 ```
 
-**Candidate qualification:**
-- Must have `inferredSkills`
-- Target framework must be IC track, different department from current
-- Target level rank must be within ±1 of person's current rank
-- `fitPct >= ROLE_FIT_MIN_SUGGESTED`
-- `delta = fitPct - currentFit >= ROLE_FIT_MIN_DELTA`
+**Step 3 — deduplicate:** Keep only the highest-delta match per person.
 
-**Deduplication:** If a person qualifies for multiple target departments, only the highest-delta match is kept.
+**Step 4 — sort** descending by `delta`.
 
-**Final sort:** Descending by `delta`.
+### 9.8 `fmtCurrency(n)`
+
+```
+n >= 1_000_000 → "$X.XM"    (1 decimal place)
+n >= 1_000     → "$XK"      (0 decimal places)
+else           → "$X"
+```
 
 ---
 
-## 10. Readiness tiers
+## 10. Readiness tiers reference
 
-| Tier key | Label | Range | Dot colour | Bar colour | Badge bg |
-|---|---|---|---|---|---|
-| `near-ready` | Near Ready | 90%+ | Emerald | bg-emerald-500 | Emerald light |
-| `progressing` | Progressing | 70–89% | Sky | bg-sky-500 | Sky light |
-| `developing` | Developing | 50–69% | Amber | bg-amber-400 | Amber light |
-| `early` | Early Stage | <50% | Gray | bg-gray-300 | Gray light |
+| Tier key | Label | Range | Color class | Bg class | Border class | Badge class | Bar class |
+|---|---|---|---|---|---|---|---|
+| `near-ready` | Near Ready | 90%+ | text-emerald-700 | bg-emerald-50 | border-emerald-200 | bg-emerald-100 text-emerald-800 | bg-emerald-500 |
+| `progressing` | Progressing | 70–89% | text-sky-700 | bg-sky-50 | border-sky-200 | bg-sky-100 text-sky-800 | bg-sky-500 |
+| `developing` | Developing | 50–69% | text-amber-700 | bg-amber-50 | border-amber-200 | bg-amber-100 text-amber-800 | bg-amber-400 |
+| `early` | Early Stage | <50% | text-gray-500 | bg-gray-50 | border-gray-200 | bg-gray-100 text-gray-600 | bg-gray-300 |
 
 ---
 
@@ -676,12 +1037,14 @@ else      → 1
 
 | Constant | Value | Location | Purpose |
 |---|---|---|---|
-| `CHECKIN_CUTOFF` | 2026-04-29 | PromotionPipeline.tsx:32 | Baseline date for check-in coverage calculation |
-| `REFERENCE_DATE` | 2026-05-08 | promotionData.ts | Baseline date for `daysSinceCheckIn` calculation |
-| `ROLE_FIT_MIN_SUGGESTED` | 50 | promotionData.ts | Minimum fit % for a cross-dept match to qualify |
-| `ROLE_FIT_MIN_DELTA` | 20 | promotionData.ts | Minimum improvement over current fit to qualify |
-| `DEPT_SALARIES` | See §3.3 table | PromotionPipeline.tsx:22 | Per-dept salary assumption for total cost card |
-| `DEPT_COLORS` | Hex/RGB strings | promotionData.ts | Colour per department (used for cards, bars, pills) |
-| `TIER_CONFIG` | Object keyed by tier | promotionData.ts | Label, colour classes per readiness tier |
-| `TIER_RANGES` | Object keyed by tier | promotionData.ts | Range label string per tier (e.g. "90%+") |
-| `FLIGHT_RISK_WEIGHT` | `{high:100, medium:50, low:0}` | HiddenTalent.tsx:27 | Weight added to delta for urgency sort |
+| `CHECKIN_CUTOFF` | 2026-04-29 | PromotionPipeline.tsx:32 | Baseline for check-in coverage. Employees checked in within 30d of this date count as covered. |
+| `REFERENCE_DATE` | 2026-05-08 | promotionData.ts:291 | Baseline for `daysSinceCheckIn` calculation in flight risk |
+| `ROLE_FIT_MIN_SUGGESTED` | 50 | promotionData.ts:537 | Min fit % in suggested dept for cross-dept match to qualify |
+| `ROLE_FIT_MIN_DELTA` | 20 | promotionData.ts:538 | Min improvement over current fit for a match to qualify |
+| `DEPT_SALARIES` | See §3.3 | PromotionPipeline.tsx:22–30 | Per-dept salary assumption for total cost card |
+| `DEPT_COLORS` | Hex strings | mockData.ts (re-exported from promotionData.ts) | One colour per department; used for cards, bars, pills, avatars |
+| `TIER_CONFIG` | Keyed by ReadinessTier | promotionData.ts:350 | Label, color, bg, border, badge, barColor per tier |
+| `TIER_RANGES` | Keyed by ReadinessTier | promotionData.ts:337 | Display range string per tier (e.g. "90%+") |
+| `FLIGHT_RISK_WEIGHT` | `{high:100, medium:50, low:0}` | HiddenTalent.tsx:25 | Weight added to delta for urgency sort in Hidden Talent |
+| `RISK_CONFIG` | Keyed by FlightRisk | FlightRiskTab.tsx:13 | dot, bg, border, text, badgeBg colours per risk level |
+| `ORG_SUMMARY` | Computed object | PromotionPipeline.tsx:56 | Module-level constant. Computed once at load. headcount, totalCost, avgSalary, roleLevels, deptBreakdown, checkInCoverage. |
