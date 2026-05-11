@@ -106,18 +106,25 @@ export interface ExecSummary {
 
 function computeOrgHealth(
   criticalGapCount: number,
+  totalSkills: number,
   stalledCount: number,
+  totalHeadcount: number,
   managersNeedingSupport: number,
+  totalManagers: number,
   benchmarkPos: QuartilePosition,
   attritionRiskScore: number,
 ): number {
+  // All inputs converted to rates so the score is scale-invariant (works at 50 or 50,000 employees)
+  const gapRate = totalSkills > 0 ? criticalGapCount / totalSkills : 0;
+  const stalledRate = totalHeadcount > 0 ? stalledCount / totalHeadcount : 0;
+  const managerRate = totalManagers > 0 ? managersNeedingSupport / totalManagers : 0;
+
   let score = 100;
-  score -= Math.min(criticalGapCount * 4, 25);
-  score -= Math.min(stalledCount * 2, 20);
-  score -= managersNeedingSupport * 5;
+  score -= Math.round(gapRate * 25);           // up to 25 pts: share of skills that are critical
+  score -= Math.round(stalledRate * 20);        // up to 20 pts: share of headcount that is stalled
+  score -= Math.round(managerRate * 20);        // up to 20 pts: share of managers needing support
   const benchPenalty = { top: 0, 'above-median': 5, 'below-median': 12, bottom: 20 }[benchmarkPos];
   score -= benchPenalty;
-  // Attrition risk: scale 0–100 score to 0–15 penalty
   score -= Math.round((attritionRiskScore / 100) * 15);
   return Math.max(10, Math.min(100, Math.round(score)));
 }
@@ -177,6 +184,7 @@ export function computeExecSummary(): ExecSummary {
     .sort((a, b) => b.belowPct - a.belowPct);
 
   const criticalSkillGaps = criticalSkillsList.length;
+  const totalDistinctSkills = skillMap.size;
   const peopleWithSkillGaps = allReadiness.filter(r => r.readinessPct < 100).length;
 
   // ── Pipeline signals ───────────────────────────────────────────────
@@ -218,8 +226,11 @@ export function computeExecSummary(): ExecSummary {
   // ── Org health ─────────────────────────────────────────────────────
   const orgHealthScore = computeOrgHealth(
     criticalSkillGaps,
+    totalDistinctSkills,
     totalStalled,
+    allReadiness.length,
     managersNeedingSupport.length,
+    managerMetrics.length,
     benchSummary.overallPosition,
     attritionScore.score,
   );
