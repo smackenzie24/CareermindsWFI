@@ -54,7 +54,7 @@ All components below are **local to `ExecutiveSummary.tsx`** — they are define
 | `CheckInRow` | Same file | No |
 | `DeptRow` | Same file | No |
 | `buildKpiCards()` | Same file | No — helper function |
-| `ordinal()` | Same file | No — helper function |
+| `ordinal()` | Same file | No — converts integer to ordinal string (e.g. `ordinal(5)` → `"5th"`). Uses `(v-20)%10` for tens digits; handles 11th/12th/13th correctly because `v = n%100` falls into the `s[v]` → `'th'` slot for 11–13. |
 | `riskIcon/Bg/Title/etc.` | Same file | No — style helpers |
 
 ### Shared components consumed by this page
@@ -411,6 +411,8 @@ Colour:
 
 **Compute:** Count of people where `readinessPct < 100` (at least one skill criterion unmet).
 
+> **`readinessPct` definition** — `computeReadiness(person, framework, levelLabel)` in `promotionData.ts` iterates over every `SkillCriterion` in the target-level `LevelFramework`. A criterion is *met* when `mergedSkills(person)[criterion.skillId] >= criterion.requiredRating`. `readinessPct = Math.round(metSkills.length / framework.criteria.length * 100)`. It is always an integer 0–100. `mergedSkills` combines `person.skills` (assessed ratings) with `person.inferredSkills` discounted by one rating point. Each person is evaluated against the framework for their *next* level (the first `LEVEL_DEFINITIONS` entry one step above their `currentLevelId`). People with no defined next level are excluded from all readiness aggregates.
+
 ---
 
 #### Card 3 — Promotable Now
@@ -467,6 +469,10 @@ Colour:
 | > 1 | `text-orange-500` |
 
 **Compute:** Count of managers with `reports.length > 0` whose composite effectiveness score < 40. Score = `avgReadiness × 0.4 + avgFrameworkCompletion × 0.3 + (100 − stallRate%) × 0.3`.
+
+- `avgReadiness` — mean `readinessPct` across all of the manager's direct reports (see `readinessPct` definition above).
+- `avgFrameworkCompletion` — `Math.round(Σ (r.criteriaMet / r.criteriaTotal × 100) / n)` across reports. This differs from `readinessPct` only when all criteria happen to produce the same integer after rounding; numerically they track identically because both use `criteriaMet / criteriaTotal`. In practice `avgFrameworkCompletion` is the unrounded per-person average before the outer round, while `readinessPct` is rounded per-person first.
+- `stallRate%` — `(stalledCount / reports.length) × 100`, where `stalledCount` counts reports with `tenure > 24` AND `readinessPct < 50` — the same definition as `totalStalled` at org level.
 
 ---
 
@@ -559,7 +565,7 @@ Renders `summary.wins` — up to 3 items. Each win is a green card:
 | Win | Trigger condition |
 |---|---|
 | "N employees ready for promotion" | `totalNearReady > 0` |
-| "X departments skill in top quartile" | Any dept with `skillBenchmarks.position === 'top'` |
+| "X departments skill in top quartile" | Any dept where `getDeptSkillBenchmarks(SIMILAR_PEERS)` returns `position === 'top'`. `getDeptSkillBenchmarks` computes each dept's `ACME_SKILL_COMPETENCY[dept]` value and calls `getQuartilePosition()` against the same metric across all peer companies. `SIMILAR_PEERS` is the subset of `PEER_COMPANIES` filtered to the same size tier as Acme (Scaleup). The win title lists the matching dept names joined with commas. |
 | "[Name] is the highest-rated manager" | Always — top-scoring manager among those with `reports.length > 0` |
 
 Source badge labels: `Skills Heatmap`, `Industry Benchmark`, `Promotion Pipeline`, `Manager Effectiveness`.
@@ -795,6 +801,8 @@ Segment widths:
 - Red: `${Math.round((criticalCheckIns / totalHeadcount) * 100)}%`
 
 Legend below bar: three dot + label pairs for Current / Overdue / Critical with actual counts.
+
+> **Rounding note:** The emerald segment uses the pre-computed `checkInCoverage` integer (already rounded in `computeExecSummary`); amber and red apply their own independent `Math.round()`. The three widths are therefore computed separately and may sum to 99% or 101%. This is intentional — no segment absorbs a remainder. The visual error is at most 1px on a typical viewport and is not corrected.
 
 #### Flagged people list
 
@@ -1063,7 +1071,7 @@ Per-department composite in `computeExecSummary()`.
 
 | Input | Weight | Calculation |
 |---|---|---|
-| Skill competency | 30% | `(avgActual / 5) × 100` — weighted by headcount across all skill entries for the dept |
+| Skill competency | 30% | `(avgActual / 5) × 100` — `avgActual` is `totalBelowWeightedRating / totalHeadcount` across all `SKILLS_DATA` rows for the dept, where each row contributes `row.headcount` copies of `row.avgRating`. This is a headcount-weighted mean of per-skill average ratings, not a per-person average. Departments with more people in a given skill get proportionally more influence on the score. |
 | Avg readiness | 30% | Mean `readinessPct` across all people in the dept |
 | Benchmark score | 25% | top=90, above-median=70, below-median=45, bottom=20 |
 | Stall penalty | 15% | `max(0, 100 − (stalledCount / deptHeadcount × 100) × 3)` |
