@@ -187,7 +187,7 @@ Positioned in the top-right area of the header. Generates a plain-text report li
 #### Filters
 A filter bar sits below the title block. On the left: a Filter icon + "Filter" label, then two `FilterPill` dropdowns.
 
-**FilterPill component:** A custom select-style dropdown — a button showing "[Label]: [selected value or 'All']" with a ChevronDown icon. Clicking opens a positioned dropdown list. Selecting an option updates the filter. Selecting the first item resets to "All" (empty string).
+**FilterPill component:** A native `<select>` element styled to look like a pill, with a ChevronDown icon overlaid via absolute positioning (pointer-events disabled). The select shows "[Label]: All" when no value is selected, or "[option value]" when one is chosen. Changing the value updates the filter immediately. Selecting the first option ("All") resets to the unfiltered state (empty string).
 
 - **Location dropdown** — label "Location". Options: "All" + every location that has at least one data row for this department (dynamically derived from the filtered dataset, not a hardcoded list). Selecting a location restricts all data to that location only. When a location filter is active, the heatmap collapses to a single column.
 - **Level dropdown** — label "Level". Options: "All" + all levels from the `LEVELS` constant (IC1, IC2, IC3, IC4, M1, M2 — fixed list, not dynamically derived). Selecting a level restricts all data to that level only.
@@ -589,7 +589,7 @@ Both are currently placeholder buttons (no destination defined).
 
 ### 5.10 Actions footer (skill drilldown)
 
-A sticky footer at the bottom of the skill drilldown panel (not the check-in panel). Contains:
+A sticky footer at the bottom of the skill drilldown panel (not the check-in panel). The footer has a grey (`bg-gray-50`) background and is labelled "Suggested actions" in small grey text above the button stack. Contains:
 
 **Conditional primary button:**
 - If at least one promotion-ready candidate exists for this skill: **"View N promotion-ready in pipeline →"** — navigates to the Promotion Pipeline page filtered to this department
