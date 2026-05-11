@@ -916,6 +916,20 @@ A 3-step bottom sheet modal (`max-w-md`, centred, slides up from bottom).
 
 **Data is persisted** to the `feedback` Supabase table (see migration `create_feedback_table`). A single INSERT is made when the user reaches the `done` step — either via "Maybe later" (no call) or "Submit feedback" (with call). The insert is fire-and-forget; errors are swallowed so feedback submission never breaks the UI. The table has an anonymous INSERT RLS policy — no auth is required to submit.
 
+#### Feedback table schema
+
+| Form input | Column | Type | Nullable | Notes |
+|---|---|---|---|---|
+| Which page triggered it | `context` | `text NOT NULL` | No | e.g. `'Executive Summary'` — always set |
+| 1–5 rating buttons | `rating` | `smallint` | Yes | Required before step 1 Continue is enabled; `null` only if bypassed |
+| Free-text textarea | `feedback_text` | `text` | Yes | `null` if blank or step skipped |
+| "I'm in" / "Maybe later" | `wants_research_call` | `boolean NOT NULL DEFAULT false` | No | Always set |
+| Name field | `researcher_name` | `text` | Yes | `null` when `wants_research_call = false` |
+| Email field | `researcher_email` | `text` | Yes | `null` when `wants_research_call = false` |
+| — | `created_at` | `timestamptz DEFAULT now()` | Yes | Auto-set by the database |
+
+One row is inserted per completed feedback session. `context` and `rating` are always populated. `feedback_text` is optional (step 2 is skippable). The three research columns are only populated when the user chooses "I'm in" and submits their contact details. All submissions are visible in the Supabase dashboard under **Table Editor → feedback**.
+
 ---
 
 ### 4.10 Export Buttons
