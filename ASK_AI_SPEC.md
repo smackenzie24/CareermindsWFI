@@ -90,18 +90,19 @@ The checks run top-to-bottom in this order:
 | 8 | `restructure\|restructuring\|reorganize\|reorg\|team structure\|reshuffle\|span of control` | `handleTeamRestructure` |
 | 9 | `benchmark\|industry\|peer\|compare\|market\|competition\|competitive` + `strategy\|plan\|how\|close\|gap\|improve` | `handleBenchmarkStrategy` |
 | 10 | `recommend\|strategy\|strategic\|what should\|what can\|how do we\|how should\|fix\|address\|improve\|action` | `handleHiringStrategy` (if dept detected) or `handleActionPlan` |
-| 11 | `budget\|cost\|salary\|compensation\|pay\|spend\|expenditure\|total comp\|% of\|percent of\|afford\|expensive\|cheap\|save\|saving` | **→ AI (needsAI: true)** |
-| 12 | `misplaced\|wrong role\|hidden talent\|role fit\|career pivot\|internal transfer\|cross.dept\|misfit\|underperform` | `handleRoleFit` |
-| 13 | `overview\|summary\|snapshot\|stats\|how many\|how.s the\|overall` (without `skill\|gap`) | `handleOrgStats` |
-| 14 | `ready\|promote\|promotion\|near.ready\|90` (without `who need\|risk\|churn`) | `handlePromoReady` |
-| 15 | `progress\|on track\|close\|almost` | `handleProgressing` |
-| 16 | `churn\|risk\|stuck\|stall\|overdue\|flight\|leaving\|retention` | `handleChurnRisk` |
-| 17 | `skill\|gap\|missing\|weak\|strength\|competency\|competencies\|capabilities` | `handleSkillsGaps` |
-| 18 | `need\|develop\|behind\|low\|early\|struggling\|far from` | `handleNeedsWork` |
-| 19 | `everyone\|all\|pipeline\|show me\|list\|full\|entire` | `handleDeptPipeline` or `handleEveryone` |
-| 20 | Department name alone (any of 7 departments) | `handleEveryone` |
-| 21 | Person name tokens (≥3 chars, matched against PEOPLE) | `handlePersonSearch` |
-| 22 | No match | **→ AI (needsAI: true)** |
+| 11 | `/careerminds\|keystone\|how can.{0,20}(support\|help\|assist)\|partner support\|what support\|what services/i` | `handleCareermindsIntro` (or `handleCareermindsResult` if composed answer) |
+| 12 | `budget\|cost\|salary\|compensation\|pay\|spend\|expenditure\|total comp\|% of\|percent of\|afford\|expensive\|cheap\|save\|saving` | **→ AI (needsAI: true)** |
+| 13 | `misplaced\|wrong role\|hidden talent\|role fit\|career pivot\|internal transfer\|cross.dept\|misfit\|underperform` | `handleRoleFit` |
+| 14 | `overview\|summary\|snapshot\|stats\|how many\|how.s the\|overall` (without `skill\|gap`) | `handleOrgStats` |
+| 15 | `ready\|promote\|promotion\|near.ready\|90` (without `who need\|risk\|churn`) | `handlePromoReady` |
+| 16 | `progress\|on track\|close\|almost` | `handleProgressing` |
+| 17 | `churn\|risk\|stuck\|stall\|overdue\|flight\|leaving\|retention` | `handleChurnRisk` |
+| 18 | `skill\|gap\|missing\|weak\|strength\|competency\|competencies\|capabilities` | `handleSkillsGaps` |
+| 19 | `need\|develop\|behind\|low\|early\|struggling\|far from` | `handleNeedsWork` |
+| 20 | `everyone\|all\|pipeline\|show me\|list\|full\|entire` | `handleDeptPipeline` or `handleEveryone` |
+| 21 | Department name alone (any of 7 departments) | `handleEveryone` |
+| 22 | Person name tokens (≥3 chars, matched against PEOPLE) | `handlePersonSearch` |
+| 23 | No match | **→ AI (needsAI: true)** |
 
 ### Department detection
 
@@ -136,7 +137,46 @@ All handlers are in `chatEngine.ts`. They compute against static mock data and r
 | `handleTeamRestructure` | Returns `recommendation` + manager metrics analysis. |
 | `handleBenchmarkStrategy` | Returns `recommendation` using benchmark quartile data. |
 | `handleActionPlan` | Returns `recommendation` — synthesises top risks into a prioritised 90-day action plan. |
-| `handleHeadcountReduction` | Returns `reduction` — aggregate analysis only. See §10. |
+| `handleHeadcountReductionClarify` | Returns `clarification` (`composeKey: 'headcount-reduction'`) — gathers target %, timeline, and driver before running analysis. See §10. |
+| `handleHeadcountReduction` | Returns `reduction` — aggregate analysis only. Called after clarification is answered. See §10. |
+
+### 3.1 clarification + composeKey
+
+`ClarificationResult` has an optional `composeKey` field:
+
+```ts
+composeKey?: 'headcount-reduction' | 'careerminds'
+```
+
+When the user selects a chip on a `clarification` card, the UI composes a follow-up prompt string from the chip values and re-submits it to `query()`. `composeKey` tells the UI which composition template to use:
+
+| composeKey | What happens on chip selection |
+|---|---|
+| `'headcount-reduction'` | Chip answers are concatenated into a structured prompt (e.g. "Reduce by 15%, Q1 deadline, budget-driven"). Re-submitted to `query()` which matches `handleHeadcountReduction`. |
+| `'careerminds'` | Chip answers are combined into a partner-qualification prompt. Re-submitted to `query()` which matches `handleCareermindsResult`. |
+| `undefined` | Chip text is sent as-is as the next user message. |
+
+### 3.2 Careerminds / partner qualification flow
+
+Two handlers support a two-step partner recommendation flow:
+
+**`handleCareermindsIntro()`** — triggered by questions matching `/careerminds|keystone|how can.{0,20}(support|help|assist)|partner support|what support|what services/i`. Returns a `clarification` result with `composeKey: 'careerminds'` and three qualification questions (challenge type, team size, timeline). The intro text references the user's actual data (churn count, skill gap count, near-ready count) to make it contextual.
+
+**`handleCareermindsResult(query)`** — called after the user answers the clarification chips (the composed prompt is routed back through `query()`). Parses the composed string for signals (churn/skills/managers/pipeline/reduction, team size, urgency) and returns a `partner-recommendation` result.
+
+| Answer pattern | Service | Provider |
+|---|---|---|
+| Leaving / churn / headcount reduction | `outplacement` | Careerminds |
+| Skills gaps | `talent-development` | Careerminds |
+| Manager / coaching | `manager-coaching` | Keystone Partners |
+| Pipeline / promotion | `leadership-dev` | Keystone Partners |
+| Default | `retention-suite` | Careerminds |
+
+Add this dispatch entry to the `query()` router **before** the financial fallback:
+
+| Trigger | Handler |
+|---|---|
+| `/careerminds\|keystone\|how can.{0,20}(support\|help\|assist)\|partner support\|what support\|what services/i` | `handleCareermindsIntro` |
 
 ---
 
@@ -296,7 +336,7 @@ The right-hand panel shows the active `OutputEntry`. Export actions (download as
 
 ### Missing context detection
 
-After an AI response, `detectsMissingContext(text)` scans the response text against `MISSING_CONTEXT_PATTERNS` — a set of regex patterns matching phrases like "don't have financial data" or "please provide a budget document". If a match is found and no document is already attached, `needsMoreContext` is set to `true` and a `ContextRequestBanner` invites the user to upload a file.
+After an AI response, `detectsMissingContext(text)` scans the response text against `MISSING_CONTEXT_PATTERNS` — a set of regex patterns matching phrases like "don't have financial data" or "please provide a budget document". If a match is found and no document is already attached, `needsMoreContext` is set to `true` in the `OutputEntry` and a `MissingContextNudge` component (defined locally in `AskAIPage.tsx`, not the same as `ContextRequestBanner` in `AITrustComponents.tsx`) is rendered below the answer. It offers two actions: "Upload a file" and "Paste data".
 
 ---
 
@@ -328,10 +368,11 @@ Quick-reply chips at the top show a subset of `SUGGESTED_PROMPTS`. Clicking one 
 | `recommendation` | Full recommendation card — title, context, action buttons with `onNavigate` targets |
 | `scenario` | Scenario cards — current state, projected state, risk level |
 | `reduction` | Reduction analysis card — multi-tab (Alternatives / By Dept / Process / Legal). See §10. |
-| `clarification` | Clarification card — question text + quick-reply chips |
-| `labeled-people` | Grouped person list under a label (e.g. "High flight risk in Engineering") |
+| `clarification` | Clarification card — question text + quick-reply chips. `composeKey` controls what happens on chip selection. See §3.1. |
+| `labeled-people` | Grouped person list under a heading label. Optional `subLabel` renders below. `isChurn: true` switches to `ChurnCard` rendering and rose colouring; `false`/absent uses `PersonCard` and emerald. |
 | `decision` | Decision frame card — situation, question, 2–4 options with consequences |
 | `commitment-prompt` | Inline commitment capture — summary + save-to-journal button |
+| `partner-recommendation` | Partner service card (Careerminds or Keystone Partners). See §3.2. |
 | `role-fit-list` | Cross-dept fit cards — current role, suggested fit, readiness delta |
 
 Action buttons in `recommendation` and `reduction` cards call `onNavigate(target: ActionNavTarget)` which maps to:
@@ -358,7 +399,7 @@ These components are rendered alongside AI responses and are not optional — th
 | `EthicsBadge` | "Fairness checked" badge. Popover lists the signals used (readiness, tenure, skill ratings, check-in recency, manager scores, flight risk propensity) and explicitly states that age, gender, ethnicity, and all other protected characteristics are never factored in. |
 | `HumanDecisionBar` | Persistent footer on every AI response: "AI surfaces patterns — people make decisions. Final decisions must be reviewed by qualified HR professionals." |
 | `CareermindsCard` | Shown when `AIResponse.careermindsSuggestion` is non-null. Displays the product name and reason for relevance. |
-| `ContextRequestBanner` | Shown when `AIResponse.needsMoreContext` is true. Invites the user to upload a document or paste data. |
+| `ContextRequestBanner` | Defined in `AITrustComponents.tsx`. A compact banner that can be embedded inside structured result cards when the AI flags it needs more context. |
 
 ---
 
@@ -393,9 +434,13 @@ One document per conversation. Uploading a new file replaces the existing one.
 
 Headcount reduction queries trigger a dedicated flow in both Layer 1 and Layer 2 with hard constraints.
 
-### Layer 1 — handleHeadcountReduction
+### Layer 1 — two-step flow
 
-Returns a `reduction` `QueryResult` with:
+Reduction queries go through two steps:
+
+**Step 1 — `handleHeadcountReductionClarify()`** — the initial trigger. Returns a `clarification` result with `composeKey: 'headcount-reduction'` and three questions: target percentage, timeline, and driver (budget vs. strategic). The user answers via chips. Their answers are composed into a structured follow-up prompt and re-submitted to `query()`.
+
+**Step 2 — `handleHeadcountReduction(query)`** — receives the composed prompt. Returns a `reduction` `QueryResult` with:
 - `ReductionAnalysis` object — `totalHeadcount`, `reductionTarget` (absolute), `reductionPct`, `deptImpacts[]`, `alternativesToReduction[]`, `voluntaryAttritionRate`, `monthsToNaturalAttrition`
 - **No individual names are included.** `deptImpacts` contains aggregate dept-level data only.
 
@@ -427,10 +472,10 @@ After acknowledgement, a persistent red warning banner remains visible above the
 ### Reduction detection
 
 ```ts
-const REDUCTION_PATTERN = /\b(headcount reduction|layoff|redundan|rif|let.*go|dismiss|reduc.*staff|workforce reduction|cut.*jobs|job.*cut)\b/i
+const REDUCTION_PATTERN = /\b(redundan|layoff|lay.off|let.go|let go|retrench|downsize|down.size|headcount.reduc|reduc.headcount|who.should.we.cut|who.to.cut|who.should.be.cut|who.to.fire|who.should.we.fire|who.should.be.fired|cut.staff|staff.cut|workforce.reduc|reduc.workforce|reduction.in.force|rif\b|involuntary|termination.list|who.should.leave|who.can.we.lose)\b/i
 ```
 
-Applied both at submit time (to trigger the interstitial) and on each `OutputEntry` (to show the persistent banner).
+Applied at two points: (1) at submit time in `AskAIPage` — if the question matches, `ReductionInterstitial` fires before the query runs; (2) on each `OutputEntry` via `isReductionEntry()` — if either the question or answer matches, or the results contain a `reduction` kind, the persistent red banner is shown above the output.
 
 ---
 
@@ -469,19 +514,20 @@ interface AIResponse {
 
 ```ts
 type QueryResult =
-  | { kind: 'person-list';        items: PersonResult[] }
-  | { kind: 'skill-gap-list';     items: SkillGapResult[] }
-  | { kind: 'dept-summary';       items: DeptSummaryResult[] }
-  | { kind: 'churn-risk-list';    items: PersonResult[] }
-  | { kind: 'stat-cards';         items: StatCard[] }
-  | { kind: 'recommendation';     item: RecommendationResult }
-  | { kind: 'scenario';           items: ScenarioResult[] }
-  | { kind: 'reduction';          item: ReductionAnalysis }
-  | { kind: 'clarification';      item: ClarificationResult }
-  | { kind: 'labeled-people';     label: string; items: PersonResult[] }
-  | { kind: 'decision';           item: DecisionFrame }
-  | { kind: 'commitment-prompt';  item: CommitmentPrompt }
-  | { kind: 'role-fit-list';      items: RoleFitResult[] };
+  | { kind: 'person-list';           items: PersonResult[] }
+  | { kind: 'skill-gap-list';        items: SkillGapResult[] }
+  | { kind: 'dept-summary';          items: DeptSummaryResult[] }
+  | { kind: 'churn-risk-list';       items: PersonResult[] }
+  | { kind: 'stat-cards';            items: StatCard[] }
+  | { kind: 'recommendation';        items: RecommendationResult[] }   // plural items, array
+  | { kind: 'scenario';              items: ScenarioResult[] }
+  | { kind: 'reduction';             analysis: ReductionAnalysis }     // field is 'analysis'
+  | { kind: 'clarification';         data: ClarificationResult }       // field is 'data'
+  | { kind: 'labeled-people';        label: string; subLabel?: string; isChurn?: boolean; items: PersonResult[] }
+  | { kind: 'decision';              frame: DecisionFrame }            // field is 'frame'
+  | { kind: 'commitment-prompt';     data: CommitmentPrompt }          // field is 'data'
+  | { kind: 'partner-recommendation'; data: PartnerRecommendation }   // field is 'data'
+  | { kind: 'role-fit-list';         items: CrossDeptFitResult[] };   // from promotionData, not chatEngine
 ```
 
 ---
