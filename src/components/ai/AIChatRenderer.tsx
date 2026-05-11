@@ -581,6 +581,10 @@ function CommitmentCaptureCard({ data }: { data: CommitmentPrompt }) {
     setStatus('saved');
   }
 
+  const suggestions = data.suggestedDecisions ?? [];
+  const careermindsChips = suggestions.filter(s => /careerminds/i.test(s));
+  const actionChips = suggestions.filter(s => !/careerminds/i.test(s));
+
   return (
     <div className="mt-1 rounded-2xl border border-gray-200 bg-white overflow-hidden shadow-sm">
       <div className="px-4 py-3 border-b border-gray-100 flex items-center gap-2.5">
@@ -592,6 +596,42 @@ function CommitmentCaptureCard({ data }: { data: CommitmentPrompt }) {
           <p className="text-xs text-gray-500 mt-0.5">{data.insightSummary}</p>
         </div>
       </div>
+
+      {suggestions.length > 0 && (
+        <div className="px-3 pt-3 pb-1">
+          <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-2">Suggested decisions</p>
+          <div className="flex flex-col gap-1.5">
+            {actionChips.map((s, i) => (
+              <button
+                key={i}
+                onClick={() => setText(s)}
+                className={`text-left text-xs px-3 py-2 rounded-xl border transition-all ${
+                  text === s
+                    ? 'bg-emerald-50 border-emerald-200 text-emerald-800 font-medium'
+                    : 'bg-gray-50 border-gray-200 text-gray-700 hover:border-emerald-200 hover:bg-emerald-50 hover:text-emerald-800'
+                }`}
+              >
+                {s}
+              </button>
+            ))}
+            {careermindsChips.map((s, i) => (
+              <button
+                key={`cm-${i}`}
+                onClick={() => setText(s)}
+                className={`text-left text-xs px-3 py-2 rounded-xl border transition-all flex items-center gap-2 ${
+                  text === s
+                    ? 'bg-sky-50 border-sky-200 text-sky-800 font-medium'
+                    : 'bg-sky-50/60 border-sky-100 text-sky-700 hover:border-sky-200 hover:bg-sky-50 hover:text-sky-800'
+                }`}
+              >
+                <Sparkles size={10} className="text-sky-500 flex-shrink-0" />
+                {s}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
       <div className="p-3">
         {status === 'saved' ? (
           <div className="flex items-center gap-2 px-3 py-2.5 bg-emerald-50 rounded-xl border border-emerald-200">
@@ -604,7 +644,7 @@ function CommitmentCaptureCard({ data }: { data: CommitmentPrompt }) {
               value={text}
               onChange={e => setText(e.target.value)}
               onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); save(); } }}
-              placeholder="e.g. Schedule promotion reviews for the 4 near-ready people in Engineering this week"
+              placeholder="Type your decision, or pick one above…"
               rows={2}
               className="flex-1 text-sm text-gray-800 placeholder:text-gray-300 bg-gray-50 border border-gray-200 rounded-xl px-3 py-2.5 resize-none focus:outline-none focus:border-emerald-300 focus:bg-white focus:ring-1 focus:ring-emerald-100 transition-all leading-relaxed"
             />

@@ -9,6 +9,7 @@ import {
 } from 'lucide-react';
 import {
   query,
+  buildCommitmentPrompt,
   buildWorkforceContext,
   SUGGESTED_PROMPTS,
   PLANNING_PROMPTS,
@@ -877,13 +878,22 @@ export function AskAIPage({ initialQuestion, onNavigate }: Props) {
 
     const response = query(trimmed);
 
+    const withCommitmentPrompt = (text: string, results: QueryResult[]): QueryResult[] => {
+      const hasCommitment = results.some(r => r.kind === 'commitment-prompt');
+      if (hasCommitment) return results;
+      const prompt = buildCommitmentPrompt(trimmed, text);
+      prompt.sourceQuery = trimmed;
+      return [...results, { kind: 'commitment-prompt', data: prompt }];
+    };
+
     const finalize = (
       text: string,
       results: QueryResult[],
       opts: Partial<Pick<OutputEntry, 'needsMoreContext' | 'contextQuestion' | 'confidence' | 'reasoning' | 'sources' | 'assumptions' | 'ethicsNote' | 'careermindsSuggestion'>> = {}
     ) => {
-      const aiMsg: ChatMessage = { id: makeId(), role: 'assistant', text, results, timestamp: new Date() };
-      const output: OutputEntry = { id: outputId, question: trimmed, answer: text, results, timestamp: new Date(), ...opts };
+      const finalResults = withCommitmentPrompt(text, results);
+      const aiMsg: ChatMessage = { id: makeId(), role: 'assistant', text, results: finalResults, timestamp: new Date() };
+      const output: OutputEntry = { id: outputId, question: trimmed, answer: text, results: finalResults, timestamp: new Date(), ...opts };
       // When the AI needs more context, inject its clarifying question directly into the chat thread
       const clarifyMsg: ChatMessage | null = (opts.needsMoreContext && opts.contextQuestion)
         ? { id: makeId(), role: 'assistant', text: opts.contextQuestion, results: [], timestamp: new Date(), isClarifyQuestion: true }

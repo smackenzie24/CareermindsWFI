@@ -160,6 +160,143 @@ export interface CommitmentPrompt {
   insightKind: string;
   department?: string;
   sourceQuery?: string;
+  suggestedDecisions?: string[];
+}
+
+// ── Commitment prompt builder ─────────────────────────────────────────
+
+export function buildCommitmentPrompt(question: string, responseText: string): CommitmentPrompt {
+  const q = question.toLowerCase();
+  const r = responseText.toLowerCase();
+  const dept = detectDept(q);
+
+  const deptSuffix = dept ? ` in ${dept}` : '';
+
+  // Derive insight kind and contextual suggested decisions
+  if (/promot|near.?ready|ready for promo|promo.?pipeline/.test(q) || /ready for promotion|near.ready/.test(r)) {
+    return {
+      insightSummary: `Promotion readiness findings${deptSuffix}`,
+      insightKind: 'promotion',
+      department: dept ?? undefined,
+      suggestedDecisions: [
+        `Schedule promotion review meetings for near-ready employees${deptSuffix}`,
+        `Set up monthly check-ins with near-ready candidates to track progress`,
+        `Share readiness reports with relevant line managers${deptSuffix}`,
+        `Upgrade promotion pipeline management with CareerMinds Talent Development`,
+      ],
+    };
+  }
+
+  if (/churn|flight.?risk|attrition|retain|leaving|resign/.test(q) || /churn risk|flight risk|attrition/.test(r)) {
+    return {
+      insightSummary: `Retention risk findings${deptSuffix}`,
+      insightKind: 'churn-risk',
+      department: dept ?? undefined,
+      suggestedDecisions: [
+        `Schedule 1:1 stay interviews with all flagged employees${deptSuffix}`,
+        `Build tailored retention plans for high-flight-risk individuals`,
+        `Review compensation and progression paths for at-risk employees`,
+        `Engage CareerMinds outplacement readiness to reduce disruption if departures occur`,
+      ],
+    };
+  }
+
+  if (/skill.?gap|missing skill|skill deficit|upskill|training|develop/.test(q) || /skill gap|below target|skill deficit/.test(r)) {
+    return {
+      insightSummary: `Skills gap findings${deptSuffix}`,
+      insightKind: 'skills-gap',
+      department: dept ?? undefined,
+      suggestedDecisions: [
+        `Commission a focused upskilling programme for critical gap skills${deptSuffix}`,
+        `Identify internal mentors who can coach employees on priority gaps`,
+        `Add critical gap skills to the next hiring brief${deptSuffix}`,
+        `Explore CareerMinds Talent Development for structured skills programmes`,
+      ],
+    };
+  }
+
+  if (/hir|recruit|headcount|add.*role|open.*role|backfill/.test(q) || /hiring|recruit|headcount gap/.test(r)) {
+    return {
+      insightSummary: `Hiring strategy findings${deptSuffix}`,
+      insightKind: 'hiring',
+      department: dept ?? undefined,
+      suggestedDecisions: [
+        `Raise hiring requisitions for the highest-priority roles${deptSuffix}`,
+        `Share the prioritised hiring list with your talent acquisition team`,
+        `Review headcount budget allocation before opening new roles`,
+        `Use CareerMinds sourcing tools to accelerate critical hires`,
+      ],
+    };
+  }
+
+  if (/redund|lay.?off|downsize|reduce headcount|workforce reduction|rif/.test(q) || /redundan|reduction in force|headcount reduction/.test(r)) {
+    return {
+      insightSummary: `Workforce reduction findings${deptSuffix}`,
+      insightKind: 'reduction',
+      department: dept ?? undefined,
+      suggestedDecisions: [
+        `Present the reduction analysis to your leadership team for sign-off`,
+        `Engage legal / HR to review the proposed reduction approach`,
+        `Draft a communication plan for affected employees`,
+        `Activate CareerMinds outplacement support to manage transitions with care`,
+      ],
+    };
+  }
+
+  if (/manager|management|leadership|coach/.test(q) || /manager effectiveness|leadership gap/.test(r)) {
+    return {
+      insightSummary: `Manager effectiveness findings${deptSuffix}`,
+      insightKind: 'manager',
+      department: dept ?? undefined,
+      suggestedDecisions: [
+        `Share effectiveness data with managers in a 1:1 conversation`,
+        `Set development goals with underperforming managers${deptSuffix}`,
+        `Pair lower-scoring managers with high-performing peers for coaching`,
+        `Explore CareerMinds Manager Coaching to accelerate leadership development`,
+      ],
+    };
+  }
+
+  if (/bench|benchm|industry|peer|compan|compar/.test(q) || /benchmark|industry average|peer comparison/.test(r)) {
+    return {
+      insightSummary: `Benchmark comparison findings${deptSuffix}`,
+      insightKind: 'benchmark',
+      department: dept ?? undefined,
+      suggestedDecisions: [
+        `Share the benchmark report with your CHRO and leadership team`,
+        `Identify the two or three areas furthest behind peers and prioritise action`,
+        `Set a 6-month target to close the most critical gaps`,
+        `Consult CareerMinds on how peer-leading organisations closed these gaps`,
+      ],
+    };
+  }
+
+  if (/90.?day|action plan|roadmap|priorit|quarter|plan/.test(q) || /action plan|priority|roadmap/.test(r)) {
+    return {
+      insightSummary: `Workforce action plan`,
+      insightKind: 'action-plan',
+      department: dept ?? undefined,
+      suggestedDecisions: [
+        `Share the action plan with your leadership team for alignment`,
+        `Assign owners and deadlines to each priority action`,
+        `Schedule a 30-day progress review`,
+        `Engage CareerMinds to support delivery of key actions in the plan`,
+      ],
+    };
+  }
+
+  // Generic fallback
+  return {
+    insightSummary: `Workforce insight${deptSuffix}`,
+    insightKind: 'general',
+    department: dept ?? undefined,
+    suggestedDecisions: [
+      `Share this analysis with your leadership team`,
+      `Document the key findings and assign owners to follow-up actions`,
+      `Schedule a review in 30 days to track progress`,
+      `Contact CareerMinds to discuss tailored support for your workforce challenges`,
+    ],
+  };
 }
 
 export type PartnerService =
