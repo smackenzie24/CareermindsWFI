@@ -50,7 +50,7 @@ function AIPromptBar({ onAskAI }: { onAskAI: (q?: string) => void }) {
             value={input}
             onChange={e => setInput(e.target.value)}
             onKeyDown={e => e.key === 'Enter' && submit()}
-            placeholder="Ask a follow-up about these risks..."
+            placeholder="Ask anything about your workforce…"
             className="flex-1 bg-transparent text-xs text-gray-800 placeholder-gray-400 outline-none"
           />
           <button
