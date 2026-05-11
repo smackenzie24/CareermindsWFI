@@ -50,24 +50,27 @@ interface PopoverProps {
 
 function Popover({ open, onClose, anchorRef, children, minWidth = 260 }: PopoverProps) {
   const popoverRef = useRef<HTMLDivElement>(null);
-
-  // Position the popover below the anchor element
   const [coords, setCoords] = useState({ top: 0, left: 0 });
 
   useEffect(() => {
     if (!open || !anchorRef.current) return;
     const rect = anchorRef.current.getBoundingClientRect();
-    setCoords({
-      top: rect.bottom + window.scrollY + 6,
-      left: rect.left + window.scrollX,
-    });
-  }, [open, anchorRef]);
+    const viewportWidth = window.innerWidth;
+    // Default: open below and left-aligned to anchor
+    let left = rect.left;
+    const top = rect.bottom + 6;
+    // Clamp so it doesn't overflow the right edge
+    const popoverWidth = Math.max(minWidth, 260);
+    if (left + popoverWidth > viewportWidth - 12) {
+      left = viewportWidth - popoverWidth - 12;
+    }
+    setCoords({ top, left });
+  }, [open, anchorRef, minWidth]);
 
   if (!open) return null;
 
   return (
     <>
-      {/* Invisible backdrop to catch outside clicks */}
       <div
         className="fixed inset-0 z-40"
         onClick={onClose}
@@ -75,7 +78,7 @@ function Popover({ open, onClose, anchorRef, children, minWidth = 260 }: Popover
       />
       <div
         ref={popoverRef}
-        className="absolute z-50 bg-white border border-gray-200 rounded-2xl shadow-xl p-4 text-xs text-gray-600 leading-relaxed"
+        className="fixed z-50 bg-white border border-gray-200 rounded-2xl shadow-xl p-4 text-xs text-gray-600 leading-relaxed"
         style={{
           top: coords.top,
           left: coords.left,
