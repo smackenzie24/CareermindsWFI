@@ -185,22 +185,23 @@ All three numbers update live when filters are applied.
 Positioned in the top-right area of the header. Generates a plain-text report listing the department's summary stats followed by a per-skill breakdown (skill name, % below target, N of N people). See §3.8 for the format.
 
 #### Filters
-A filter bar sits below the title block. On the left:
+A filter bar sits below the title block. On the left: a Filter icon + "Filter" label, then two `FilterPill` dropdowns.
 
-- **Filter icon and label** ("Filter")
-- **Location dropdown** — options are "Location: All" plus each location that has at least one data row for this department (dynamically derived). Selecting a location restricts all data to that location only.
-- **Level dropdown** — options are "Level: All" plus all possible levels (IC1, IC2, IC3, IC4, M1, M2). Selecting a level restricts all data to that level only.
+**FilterPill component:** A custom select-style dropdown — a button showing "[Label]: [selected value or 'All']" with a ChevronDown icon. Clicking opens a positioned dropdown list. Selecting an option updates the filter. Selecting the first item resets to "All" (empty string).
 
-Both filters default to "All". They are independent and composable (both can be active simultaneously).
+- **Location dropdown** — label "Location". Options: "All" + every location that has at least one data row for this department (dynamically derived from the filtered dataset, not a hardcoded list). Selecting a location restricts all data to that location only. When a location filter is active, the heatmap collapses to a single column.
+- **Level dropdown** — label "Level". Options: "All" + all levels from the `LEVELS` constant (IC1, IC2, IC3, IC4, M1, M2 — fixed list, not dynamically derived). Selecting a level restricts all data to that level only.
 
-On the right side of the filter bar:
+Both filters default to "All". They are independent and composable — both can be active simultaneously with AND logic (a row must match both). There is no "clear all filters" button at the filter bar level (a clear button only appears in the empty-state — see §8A.4).
 
-**Group-by toggle** — a pill-style toggle with three options:
-- **By Location** (default) — map icon
-- **By Manager** — users icon
-- **Department** — grid icon
+On the right side of the filter bar (separated by a flex spacer):
 
-The active option has a white background with a subtle shadow; inactive options have a grey background.
+**Group-by toggle** — a three-button toggle rendered on a grey pill background:
+- **By Location** (default) — Map icon. Columns = all locations with data rows, or a single column if a location filter is active.
+- **By Manager** — Users icon. Columns = all managers in this department, each showing their team names in smaller grey text beneath. Managers without any data rows in the current filtered set still appear as columns but their cells are empty.
+- **Department** — LayoutGrid icon. Single column showing the entire department aggregated.
+
+The active option has a white background with a subtle drop shadow; inactive options are transparent with grey text. Changing the group-by does not reset either filter.
 
 ---
 
@@ -312,14 +313,16 @@ Changing group-by updates all column headers and recalculates all cell values im
 
 ### 3.7 Filter behaviour details
 
-Both Location and Level filters apply to the raw data rows before any aggregation. The effects propagate to:
+Both Location and Level filters apply to the raw data rows before any aggregation, via a single `useMemo` that returns the filtered subset of `SKILLS_DATA`. The filtered subset is the source of truth for everything downstream. The effects propagate to:
 
 - The three summary stats in the header (people below target, avg skill gap, skills tracked)
+- The set of skill rows displayed in the grid (skills with no rows in the filtered set disappear entirely)
+- The column keys (group-by options) available in the grid
 - All heatmap cell values
-- The critical gaps alert bar
-- All content inside the drilldown panel
+- The critical gaps alert bar (re-ranks on the filtered subset)
+- All content inside the drilldown panel (bar chart, candidate lists, stat counts)
 
-Neither filter resets when the group-by toggle changes. Neither resets when the drilldown panel is opened or closed.
+Neither filter resets when the group-by toggle changes. Neither resets when the drilldown panel is opened or closed. Neither resets on navigation away and back (they are component state and reset on unmount only).
 
 ---
 
