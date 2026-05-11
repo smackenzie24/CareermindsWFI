@@ -914,7 +914,7 @@ A 3-step bottom sheet modal (`max-w-md`, centred, slides up from bottom).
 
 **Animation:** Panel slides up (`translate-y-0`) and fades in (`opacity-100`) on mount with 350ms transition. Reverse on close, then `onClose()` called after 350ms.
 
-**No data is persisted** in the current implementation — feedback is not sent to any backend.
+**Data is persisted** to the `feedback` Supabase table (see migration `create_feedback_table`). A single INSERT is made when the user reaches the `done` step — either via "Maybe later" (no call) or "Submit feedback" (with call). The insert is fire-and-forget; errors are swallowed so feedback submission never breaks the UI. The table has an anonymous INSERT RLS policy — no auth is required to submit.
 
 ---
 
