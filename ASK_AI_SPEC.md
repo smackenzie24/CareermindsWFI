@@ -21,7 +21,8 @@
 9. [Document upload and context injection](#9-document-upload-and-context-injection)
 10. [Headcount reduction — special handling](#10-headcount-reduction--special-handling)
 11. [Data interfaces](#11-data-interfaces)
-12. [Adding a new intent](#12-adding-a-new-intent)
+12. [Decision register — commitment-prompt system](#12-decision-register--commitment-prompt-system)
+13. [Adding a new intent](#13-adding-a-new-intent)
 
 ---
 
@@ -126,7 +127,7 @@ All handlers are in `chatEngine.ts`. They compute against static mock data and r
 
 | Handler | Results emitted | navTargets / link-outs | Notes |
 |---|---|---|---|
-| `handlePromoReady` | `person-list`, `commitment-prompt` | — | Filters `readinessPct >= 90`. `commitment-prompt` summary = "N people are ready for promotion [in Dept]". Scoped by dept if detected. |
+| `handlePromoReady` | `person-list`, `commitment-prompt` | — | Filters `readinessPct >= 90`. `commitment-prompt` summary = "N people are ready for promotion [in Dept]". Scoped by dept if detected. Emits its own `commitment-prompt` — `withCommitmentPrompt()` detects this and skips appending a second one. |
 | `handleProgressing` | `person-list` | — | Filters `readinessPct` 70–89. No decision frame. |
 | `handleChurnRisk` | `churn-risk-list`, `decision` | `pipeline` (retain plan), implicit mobility + scenario prompts | People with tenure ≥ 18 months AND `readinessPct < 70`. Decision frame has 3 options: **Build a retention plan** (re-submits to `handleRetentionPlan`), **Explore internal mobility** (re-submits to `handleRoleFit`), **Model the impact of losing them** (re-submits to `handleScenarioPlanning`). |
 | `handleSkillsGaps` | `skill-gap-list`, `decision` | `gap-report` (upskill option), implicit mobility + hire prompts | Top 10 gaps by `belowTarget` count, filtered by dept. Decision frame has 3 options: **Upskilling path** (re-submits to `handleUpskillStrategy`), **Internal mobility** (re-submits to `handleRoleFit`), **Hiring cost** (→ AI, `needsAI: true`). |
@@ -586,7 +587,7 @@ Quick-reply chips at the top show a subset of `SUGGESTED_PROMPTS`. Clicking one 
 | `clarification` | Clarification card — question text + quick-reply chips. `composeKey` controls what happens on chip selection. See §3.1. |
 | `labeled-people` | Grouped person list under a heading label. Optional `subLabel` renders below. `isChurn: true` switches to `ChurnCard` rendering and rose colouring; `false`/absent uses `PersonCard` and emerald. |
 | `decision` | Decision frame card — situation, question, 2–4 options with consequences |
-| `commitment-prompt` | Inline commitment capture — summary + save-to-journal button |
+| `commitment-prompt` | Inline commitment capture — suggested decisions as clickable chips + free-text field + save-to-journal button. Always appended after every response. |
 | `partner-recommendation` | Partner service card (Careerminds or Keystone Partners). See §3.2. |
 | `role-fit-list` | Cross-dept fit cards — current role, suggested fit, readiness delta |
 
@@ -747,7 +748,111 @@ type QueryResult =
 
 ---
 
-## 12. Adding a new intent
+## 12. Decision register — commitment-prompt system
+
+Every AI response (local and AI-routed) ends with a `commitment-prompt` result. This is the decision register entry point — it lets the HR user record what they intend to do with the insight, saving it to the `commitments` Supabase table where it surfaces in the Decisions Journal.
+
+### Always-on behaviour
+
+`withCommitmentPrompt(text, results)` in `AskAIPage.tsx` is called inside `finalize()` before every message is committed. It checks whether a `commitment-prompt` result is already present in the results array. If one exists (emitted by the local handler — currently only `handlePromoReady`), it is left unchanged. If none exists, `buildCommitmentPrompt(question, responseText)` generates one and appends it.
+
+This means:
+- Every AI-routed response gets a commitment-prompt appended automatically.
+- Every local-handler response gets one unless it already emitted its own (only `handlePromoReady` currently does).
+- Clarification-only responses (where `needsMoreContext` fires and the response is a single clarify message) do **not** get a commitment-prompt — `finalize()` is not called for those paths.
+
+### `buildCommitmentPrompt(question, responseText)`
+
+**Location:** `chatEngine.ts`, exported.
+
+Derives the `insightKind`, `insightSummary`, and `suggestedDecisions` from the question and response text by keyword matching. Falls back to a generic "Workforce insight" prompt if no specific intent matches.
+
+**Intent detection:**
+
+| Pattern matched (question or response) | `insightKind` | Example summary |
+|---|---|---|
+| `promot\|near.?ready\|ready for promo\|promo.?pipeline` | `promotion` | "Promotion readiness findings in Engineering" |
+| `churn\|flight.?risk\|attrition\|retain\|leaving\|resign` | `churn-risk` | "Retention risk findings in Sales" |
+| `skill.?gap\|missing skill\|skill deficit\|upskill\|training\|develop` | `skills-gap` | "Skills gap findings in Data" |
+| `hir\|recruit\|headcount\|add.*role\|open.*role\|backfill` | `hiring` | "Hiring strategy findings in Engineering" |
+| `redund\|lay.?off\|downsize\|reduce headcount\|workforce reduction\|rif` | `reduction` | "Workforce reduction findings" |
+| `manager\|management\|leadership\|coach` | `manager` | "Manager effectiveness findings" |
+| `bench\|benchm\|industry\|peer\|compan\|compar` | `benchmark` | "Benchmark comparison findings" |
+| `90.?day\|action plan\|roadmap\|priorit\|quarter\|plan` | `action-plan` | "Workforce action plan" |
+| *(no match)* | `general` | "Workforce insight" |
+
+Department is extracted via `detectDept(question)` and appended to the summary when present.
+
+### `CommitmentPrompt` interface
+
+```ts
+interface CommitmentPrompt {
+  insightSummary: string;        // shown as subtitle in the card
+  insightKind: string;           // used for Supabase `insight_kind` column
+  department?: string;           // scopes the commitment to a dept
+  sourceQuery?: string;          // the user's original question (stamped by query())
+  suggestedDecisions?: string[]; // 3–4 contextual action chips shown in the card
+}
+```
+
+`sourceQuery` is always stamped by `query()` on any `commitment-prompt` that comes through the local engine. For AI-routed responses, `withCommitmentPrompt` sets it directly from the `trimmed` question.
+
+### `suggestedDecisions` content
+
+Each `buildCommitmentPrompt` call produces four suggested decisions:
+- **Three action chips** — concrete HR actions the user could take, contextual to the intent (e.g. "Schedule 1:1 stay interviews with all flagged employees in Sales").
+- **One CareerMinds upsell chip** — a contextually relevant product recommendation displayed in sky blue with a Sparkles icon to visually distinguish it (e.g. "Engage CareerMinds outplacement support to manage transitions with care").
+
+The upsell chip is always last in the `suggestedDecisions` array and is rendered separately from the action chips via a `/careerminds/i` regex filter in `CommitmentCaptureCard`.
+
+### `CommitmentCaptureCard` rendering
+
+**Location:** `AIChatRenderer.tsx`
+
+```
+┌─────────────────────────────────────────────────────────┐
+│  [✏] What will you do about this?                       │
+│      Retention risk findings in Sales                   │
+├─────────────────────────────────────────────────────────┤
+│  Suggested decisions                                     │
+│  ┌──────────────────────────────────────────────────┐   │
+│  │ Schedule 1:1 stay interviews with flagged...     │   │
+│  └──────────────────────────────────────────────────┘   │
+│  ┌──────────────────────────────────────────────────┐   │
+│  │ Build tailored retention plans for high-risk...  │   │
+│  └──────────────────────────────────────────────────┘   │
+│  ┌──────────────────────────────────────────────────┐   │
+│  │ Review compensation and progression paths...     │   │
+│  └──────────────────────────────────────────────────┘   │
+│  ┌──[✦]───────────────────────────────────────────────┐ │
+│  │ Engage CareerMinds outplacement readiness...     │   │
+│  └──────────────────────────────────────────────────┘   │
+├─────────────────────────────────────────────────────────┤
+│  [Text area — "Type your decision, or pick one above…"] │
+│                                                    [Log] │
+└─────────────────────────────────────────────────────────┘
+```
+
+Clicking a chip sets the textarea value to that chip's text. The selected chip highlights (emerald for action chips, sky for CareerMinds chips). The user can edit the populated text before logging. Pressing Enter (without Shift) also submits.
+
+On save, the commitment is inserted to Supabase `commitments` with:
+
+```ts
+{
+  text:         // the typed or selected decision text
+  context:      // insightSummary
+  insight_kind: // insightKind
+  department:   // department or null
+  source_query: // sourceQuery or null
+  status: 'open'
+}
+```
+
+After save, the card shows a confirmation: "Commitment logged — you'll see it in your Decisions journal."
+
+---
+
+## 13. Adding a new intent
 
 To add a new local intent (handled without an AI call):
 
