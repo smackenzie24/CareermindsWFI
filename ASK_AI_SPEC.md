@@ -78,33 +78,37 @@ query(input: string): { text: string; results: QueryResult[]; needsAI?: boolean 
 
 ### Dispatch order
 
-The checks run top-to-bottom in this order:
+The checks run top-to-bottom in this exact order (order matters — earlier checks win):
 
 | Priority | Trigger pattern | Handler |
 |---|---|---|
-| 1 | `headcount reduction` or `layoff` or `redundanc` or `rif` or `let.*go` or `dismiss` | `handleHeadcountReduction` |
-| 2 | `(reduce\|cut\|trim\|shrink)` + `\d+\s*%` | `handleHeadcountReduction` |
-| 3 | `90.day\|action plan\|roadmap\|plan\|playbook\|priorities` + `workforce\|org\|team\|plan\|upskill\|quarter` | `handleActionPlan` |
-| 4 | `what if\|scenario\|lose\|lost\|leave\|leaves\|if we\|imagine\|suppose\|project` | `handleScenarioPlanning` |
-| 5 | `retention\|retain\|keep\|flight risk\|prevent\|attrition` + `plan\|strategy\|how\|help\|fix\|address` | `handleRetentionPlan` |
-| 6 | `upskill\|close the gap\|training\|learning\|l&d\|develop\|curriculum\|program` + `strategy\|plan\|how\|recommend\|should\|fix` | `handleUpskillStrategy` |
-| 7 | `hire\|hiring\|recruit\|headcount\|add\|staffing\|backfill\|open role` + `strategy\|plan\|should\|how\|recommend\|need` | `handleHiringStrategy` |
-| 8 | `restructure\|restructuring\|reorganize\|reorg\|team structure\|reshuffle\|span of control` | `handleTeamRestructure` |
-| 9 | `benchmark\|industry\|peer\|compare\|market\|competition\|competitive` + `strategy\|plan\|how\|close\|gap\|improve` | `handleBenchmarkStrategy` |
-| 10 | `recommend\|strategy\|strategic\|what should\|what can\|how do we\|how should\|fix\|address\|improve\|action` | `handleHiringStrategy` (if dept detected) or `handleActionPlan` |
-| 11 | `/careerminds\|keystone\|how can.{0,20}(support\|help\|assist)\|partner support\|what support\|what services/i` | `handleCareermindsIntro` (or `handleCareermindsResult` if composed answer) |
-| 12 | `budget\|cost\|salary\|compensation\|pay\|spend\|expenditure\|total comp\|% of\|percent of\|afford\|expensive\|cheap\|save\|saving` | **→ AI (needsAI: true)** |
-| 13 | `misplaced\|wrong role\|hidden talent\|role fit\|career pivot\|internal transfer\|cross.dept\|misfit\|underperform` | `handleRoleFit` |
-| 14 | `overview\|summary\|snapshot\|stats\|how many\|how.s the\|overall` (without `skill\|gap`) | `handleOrgStats` |
-| 15 | `ready\|promote\|promotion\|near.ready\|90` (without `who need\|risk\|churn`) | `handlePromoReady` |
-| 16 | `progress\|on track\|close\|almost` | `handleProgressing` |
-| 17 | `churn\|risk\|stuck\|stall\|overdue\|flight\|leaving\|retention` | `handleChurnRisk` |
-| 18 | `skill\|gap\|missing\|weak\|strength\|competency\|competencies\|capabilities` | `handleSkillsGaps` |
-| 19 | `need\|develop\|behind\|low\|early\|struggling\|far from` | `handleNeedsWork` |
-| 20 | `everyone\|all\|pipeline\|show me\|list\|full\|entire` | `handleDeptPipeline` or `handleEveryone` |
-| 21 | Department name alone (any of 7 departments) | `handleEveryone` |
-| 22 | Person name tokens (≥3 chars, matched against PEOPLE) | `handlePersonSearch` |
-| 23 | No match | **→ AI (needsAI: true)** |
+| 1 | `careerminds\|keystone\|how can.{0,20}(support\|help\|assist)\|partner support\|what support\|what services` | `handleCareermindsIntro` |
+| 2 | `^careerminds support —` (composed follow-up prefix) | `handleCareermindsResult` |
+| 3 | `redund\|lay.?off\|layoff\|downsize\|cut headcount\|reduce headcount\|headcount reduction\|headcount by\|rif\|reduction in force\|let.*go\|make.*redundant\|cost.cutting\|workforce reduction\|reduce.*by.*%\|cut.*%` | `handleHeadcountReduction` |
+| 4 | `headcount.{0,10}reduction` | `handleHeadcountReduction` |
+| 5 | `(reduce\|cut\|trim\|shrink)` + `\d+\s*%` | `handleHeadcountReduction` |
+| 6 | `90.day\|action plan\|roadmap\|plan\|playbook\|priorities` + `workforce\|org\|team\|plan\|upskill\|quarter` | `handleActionPlan` |
+| 7 | `what if\|scenario\|lose\|lost\|leave\|leaves\|if we\|imagine\|suppose\|project` | `handleScenarioPlanning` |
+| 8 | `retention\|retain\|keep\|flight risk\|prevent\|attrition` + `plan\|strategy\|how\|help\|fix\|address` | `handleRetentionPlan` |
+| 9 | `upskill\|close the gap\|training\|learning\|l&d\|develop\|curriculum\|program` + `strategy\|plan\|how\|recommend\|should\|fix` | `handleUpskillStrategy` |
+| 10 | `hire\|hiring\|recruit\|headcount\|add\|staffing\|backfill\|open role` + `strategy\|plan\|should\|how\|recommend\|need` | `handleHiringStrategy` |
+| 11 | `restructure\|restructuring\|reorganize\|reorg\|team structure\|reshuffle\|span of control` | `handleTeamRestructure` |
+| 12 | `benchmark\|industry\|peer\|compare\|market\|competition\|competitive` + `strategy\|plan\|how\|close\|gap\|improve` | `handleBenchmarkStrategy` |
+| 13 | `recommend\|strategy\|strategic\|what should\|what can\|how do we\|how should\|fix\|address\|improve\|action` | `handleHiringStrategy` (if dept detected) or `handleActionPlan` |
+| 14 | `budget\|cost\|salary\|compensation\|pay\|spend\|expenditure\|total comp\|% of\|percent of\|afford\|expensive\|cheap\|save\|saving` | **→ AI (needsAI: true)** |
+| 15 | `misplaced\|wrong role\|hidden talent\|role fit\|career pivot\|internal transfer\|cross.dept\|misfit\|underperform` | `handleRoleFit` |
+| 16 | `overview\|summary\|snapshot\|stats\|how many\|how.s the\|overall` (without `skill\|gap`) | `handleOrgStats` |
+| 17 | `ready\|promote\|promotion\|near.ready\|90` (without `who need\|risk\|churn`) | `handlePromoReady` |
+| 18 | `progress\|on track\|close\|almost` | `handleProgressing` |
+| 19 | `churn\|risk\|stuck\|stall\|overdue\|flight\|leaving\|retention` | `handleChurnRisk` |
+| 20 | `skill\|gap\|missing\|weak\|strength\|competency\|competencies\|capabilities` | `handleSkillsGaps` |
+| 21 | `need\|develop\|behind\|low\|early\|struggling\|far from` | `handleNeedsWork` |
+| 22 | `everyone\|all\|pipeline\|show me\|list\|full\|entire` | `handleDeptPipeline` (if pipeline/summary intent detected) or `handleEveryone` |
+| 23 | Department name alone (any of 7 departments) | `handleEveryone` |
+| 24 | Person name tokens (≥3 chars, matched against PEOPLE) | `handlePersonSearch` |
+| 25 | No match | **→ AI (needsAI: true)** |
+
+> **Note on reduction dispatch:** Priorities 3–5 bypass the clarification step and go directly to `handleHeadcountReduction`. The clarification step (`handleHeadcountReductionClarify`) is triggered separately when the user asks a generic reduction question via the `PLANNING_PROMPTS` chip "Help me with a headcount reduction plan" — that specific phrasing matches priority 13 (`recommend\|strategy…`), which calls `handleActionPlan`, which in turn detects the reduction intent and delegates. If you want the clarification step to fire for a new entry point, add it explicitly to the dispatch table above priorities 3–5.
 
 ### Department detection
 
@@ -120,27 +124,76 @@ When `query()` returns `{ needsAI: true }`, the caller (`AskAIPage` or `ChatPane
 
 All handlers are in `chatEngine.ts`. They compute against static mock data and return `{ text: string; results: QueryResult[] }`.
 
-| Handler | What it does |
-|---|---|
-| `handlePromoReady` | Returns people with `readinessPct >= 90`. Filters by dept if detected. Returns `person-list`. |
-| `handleProgressing` | Returns people with `readinessPct` in 70–89 tier. Returns `person-list`. |
-| `handleChurnRisk` | Returns people flagged `flightRisk: 'high'` or `'medium'`, crossed with tenure and readiness data. Returns `churn-risk-list` or `person-list`. |
-| `handleSkillsGaps` | Returns `skill-gap-list` from `SKILLS_DATA`, optionally filtered by dept. |
-| `handleDeptPipeline` | Returns `dept-summary` cards for each dept (or a specific dept), showing tier counts. |
-| `handleEveryone` | Returns all people (or dept subset) as `person-list`. |
-| `handleNeedsWork` | Returns people with `readinessPct < 50`. Returns `person-list`. |
-| `handleOrgStats` | Returns `stat-cards` — total headcount, tier counts, manager count, stalled count. |
-| `handlePersonSearch` | Fuzzy token match against `PEOPLE[].name`. Returns `person-list` (1–3 results). |
-| `handleRoleFit` | Calls `getCrossDeptFitCandidates()`. Returns `role-fit-list`. |
-| `handleHiringStrategy` | Returns `recommendation` + `stat-cards` with action buttons navigating to `heatmap` / `pipeline` / `gap-report`. |
-| `handleUpskillStrategy` | Returns `recommendation` with upskill actions, top gap skills, L&D partners. |
-| `handleRetentionPlan` | Returns `recommendation` + flight risk `churn-risk-list`. |
-| `handleScenarioPlanning` | Returns `scenario` cards (2–3 what-if scenarios with current state and projected impact). |
-| `handleTeamRestructure` | Returns `recommendation` + manager metrics analysis. |
-| `handleBenchmarkStrategy` | Returns `recommendation` using benchmark quartile data. |
-| `handleActionPlan` | Returns `recommendation` — synthesises top risks into a prioritised 90-day action plan. |
-| `handleHeadcountReductionClarify` | Returns `clarification` (`composeKey: 'headcount-reduction'`) — gathers target %, timeline, and driver before running analysis. See §10. |
-| `handleHeadcountReduction` | Returns `reduction` — aggregate analysis only. Called after clarification is answered. See §10. |
+| Handler | Results emitted | navTargets / link-outs | Notes |
+|---|---|---|---|
+| `handlePromoReady` | `person-list`, `commitment-prompt` | — | Filters `readinessPct >= 90`. `commitment-prompt` summary = "N people are ready for promotion [in Dept]". Scoped by dept if detected. |
+| `handleProgressing` | `person-list` | — | Filters `readinessPct` 70–89. No decision frame. |
+| `handleChurnRisk` | `churn-risk-list`, `decision` | `pipeline` (retain plan), implicit mobility + scenario prompts | People with tenure ≥ 18 months AND `readinessPct < 70`. Decision frame has 3 options: **Build a retention plan** (re-submits to `handleRetentionPlan`), **Explore internal mobility** (re-submits to `handleRoleFit`), **Model the impact of losing them** (re-submits to `handleScenarioPlanning`). |
+| `handleSkillsGaps` | `skill-gap-list`, `decision` | `gap-report` (upskill option), implicit mobility + hire prompts | Top 10 gaps by `belowTarget` count, filtered by dept. Decision frame has 3 options: **Upskilling path** (re-submits to `handleUpskillStrategy`), **Internal mobility** (re-submits to `handleRoleFit`), **Hiring cost** (→ AI, `needsAI: true`). |
+| `handleDeptPipeline` | `dept-summary` | — | Shows total, near-ready count, avg readiness per dept. Filtered to specific dept if detected. |
+| `handleEveryone` | `person-list` | — | All people sorted by `readinessPct` descending. Dept-filtered if detected. |
+| `handleNeedsWork` | `person-list` | — | Filters `readinessPct < 70` (developing + early tiers), sorted ascending. |
+| `handleOrgStats` | `stat-cards` | — | 6 cards: near-ready count, progressing count, developing count, average readiness %, churn risk count, total headcount. |
+| `handlePersonSearch` | `person-list` | — | Token match (≥3 chars) against `PEOPLE[].name`. Returns empty + AI fallback if no match. |
+| `handleRoleFit` | `role-fit-list` | — | Calls `getCrossDeptFitCandidates()` from `promotionData.ts`. Returns top cross-dept fit candidates with current dept, suggested dept, readiness delta. |
+| `handleHiringStrategy` | `recommendation`, optionally `labeled-people` (churn, isChurn=true), `labeled-people` (near-ready, isChurn=false) | `pipeline` (View pipeline), `gap-report` (Open skills report) | Actions: hire for top gaps, backfill from near-ready pipeline, retain at-risk. Includes up to 5 churn risks + up to 3 near-ready people as labeled sub-lists. |
+| `handleUpskillStrategy` | `recommendation` | `gap-report` (View full skills report) | Top 4 skill gaps by gap severity. Each action includes the skill name, estimated impact, and timeframe. |
+| `handleRetentionPlan` | `recommendation`, `churn-risk-list` | `pipeline` (View at-risk pipeline), `gap-report` (Address skill gaps), `managers` (Review manager effectiveness) | Churn population = tenure ≥ 18 months AND `readinessPct < 70`. Top 5 churn risks shown as a card list below the recommendation. |
+| `handleScenarioPlanning` | `scenario` | — | Two scenarios: (1) lose the top N churn risks — capacity loss + skill gaps; (2) skill gap widens without intervention — readiness decline projection. |
+| `handleTeamRestructure` | `recommendation`, optionally `labeled-people` (structurally at-risk, isChurn=true) | `managers` (Review manager effectiveness), `pipeline` (View promotion pipeline), `gap-report` (Identify skill gaps) | Analyses span-of-control and manager effectiveness scores. At-risk people (stalled + low-effectiveness manager) shown as labeled sub-list. |
+| `handleBenchmarkStrategy` | `recommendation` | — | Uses `PEER_COMPANIES` benchmark data. Actions cover hiring, upskilling, and monitoring relative to peer quartiles. |
+| `handleActionPlan` | `recommendation`, `labeled-people` (churn risks, isChurn=true), `labeled-people` (near-ready, isChurn=false) | `pipeline` (View promotion pipeline), `gap-report` (Address skills gaps), `heatmap` (View heatmap), `managers` (Review managers) | 3-phase 90-day plan: Phase 1 stop the bleeding (churn), Phase 2 build the pipeline (promotions), Phase 3 fill the gaps (skills). Includes up to 5 churn risks + up to 3 near-ready people as labeled sub-lists. |
+| `handleHeadcountReductionClarify` | `clarification` (composeKey: `'headcount-reduction'`) | — | 3 questions: savings target / reduction %, timeline, driver (budget vs strategic). See §10. |
+| `handleHeadcountReduction` | `reduction` | — | Aggregate analysis only — no individual names. See §10. Called after clarify answers are composed. |
+| `handleCareermindsIntro` | `clarification` (composeKey: `'careerminds'`) | — | 3 questions: challenge type, team size, timeline. Intro references live data (churn count, gap count, near-ready count). See §3.2. |
+| `handleCareermindsResult` | `partner-recommendation` | — | Routes to service based on composed answers. See §3.2. |
+
+### Suggested prompts
+
+Two prompt arrays are exported and used to populate empty-state chips in both `AskAIPage` and `ChatPanel`:
+
+**`SUGGESTED_PROMPTS`** (shown in the Ask mode empty state, 8 items):
+```
+'Who is ready for promotion?'
+'Who is at risk of churn?'
+'Where are our biggest skills gaps?'
+'Show me the Engineering pipeline'
+'Who needs the most development?'
+'Which skills are missing org-wide?'
+'How many people are near-ready in Product?'
+'Who might be better suited to a different role?'
+```
+
+**`PLANNING_PROMPTS`** (shown in the Plan mode empty state, 9 items):
+```
+'Recommend a hiring strategy for Engineering'
+'How do we close the skills gaps in Data?'
+'Which teams need restructuring?'
+'Build a retention plan for churn risks'
+'What if we lose 3 Staff Engineers?'
+'Prioritize upskilling across the org'
+'How does our bench compare to industry?'
+'Create a 90-day workforce action plan'
+'Help me with a headcount reduction plan'
+```
+
+### Decision frame options detail
+
+Two handlers emit a `decision` result. The options are submitted as the next user message when selected, routing through `query()` again:
+
+**`handleChurnRisk` decision frame** (accent: frame context is churn):
+| Option id | Label | Icon | Accent | Prompt submitted |
+|---|---|---|---|---|
+| `retain-plan` | Build a retention plan | `retain` | `rose` | `Build a retention plan for churn risks [in Dept]` |
+| `mobility` | Explore internal mobility | `move` | `amber` | `What internal mobility options exist for people at churn risk [in Dept]?` |
+| `scenario` | Model the impact of losing them | `monitor` | `sky` | `What happens if we lose the N people most at churn risk [in Dept]?` |
+
+**`handleSkillsGaps` decision frame** (accent: frame context is skill gap):
+| Option id | Label | Icon | Accent | Prompt submitted |
+|---|---|---|---|---|
+| `upskill` | Upskilling path | `upskill` | `teal` | `How do we close the [TopSkill] skills gap [in Dept]?` |
+| `mobility` | Internal mobility | `move` | `amber` | `Who internally has strong [TopSkill] skills and could move [into Dept]?` |
+| `hire` | Hiring cost | `hire` | `sky` | `What would it cost to hire for [TopSkill] [in Dept]?` → AI (needsAI: true) |
 
 ### 3.1 clarification + composeKey
 
