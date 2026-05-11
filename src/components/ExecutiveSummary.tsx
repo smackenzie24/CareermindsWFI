@@ -1,8 +1,8 @@
-import { useMemo, useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { ChevronDown, ChevronUp } from 'lucide-react';
 import { AlertTriangle, CheckCircle2, TrendingUp, Users, BarChart3, Globe, Star, ArrowRight, Zap, Shield, Clock, CalendarX, Sparkles, SendHorizontal as SendHorizonal, RefreshCw, LogOut } from 'lucide-react';
 import {
-  computeExecSummary,
+  computeExecSummaryAsync,
   type ExecSummary,
   type OrgRisk,
   type DeptHealthSnapshot,
@@ -444,54 +444,71 @@ function nextScheduledRun(): string {
 }
 
 export function ExecutiveSummary({ onNavigate, onAskAI }: Props) {
-  const [refreshKey, setRefreshKey] = useState(0);
+  const [summary, setSummary] = useState<ExecSummary | null>(null);
   const [lastRefreshed, setLastRefreshed] = useState<Date>(() => new Date());
   const [isRefreshing, setIsRefreshing] = useState(false);
-
-  const summary = useMemo(() => computeExecSummary(), [refreshKey]);
   const [kpiExpanded, setKpiExpanded] = useState(false);
+  const [checkInsExpanded, setCheckInsExpanded] = useState(false);
+  const CHECK_IN_PAGE_SIZE = 20;
+
+  useEffect(() => {
+    let cancelled = false;
+    computeExecSummaryAsync().then(result => {
+      if (!cancelled) setSummary(result);
+    });
+    return () => { cancelled = true; };
+  }, []);
 
   const handleRefresh = useCallback(() => {
     setIsRefreshing(true);
-    // Small delay so the spinner is visible and user feels the refresh
-    setTimeout(() => {
-      setRefreshKey(k => k + 1);
+    computeExecSummaryAsync().then(result => {
+      setSummary(result);
       setLastRefreshed(new Date());
       setIsRefreshing(false);
-    }, 600);
+    });
   }, []);
 
+  if (!summary) {
+    return (
+      <div className="flex flex-col min-h-screen bg-gray-50 font-sans items-center justify-center gap-3">
+        <div className="w-8 h-8 rounded-full border-2 border-gray-200 border-t-sky-500 animate-spin" />
+        <p className="text-xs text-gray-400">Calculating workforce signals…</p>
+      </div>
+    );
+  }
+
   function buildExportContent() {
+    const s = summary!;
     const lines = [
       'PROGRESSION — WORKFORCE HEALTH DASHBOARD',
-      `Generated: ${summary.asOf}`,
-      `Organisation: Acme Corp · ${summary.totalHeadcount} employees`,
+      `Generated: ${s.asOf}`,
+      `Organisation: Acme Corp · ${s.totalHeadcount} employees`,
       '',
       '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━',
       '',
       'KEY METRICS',
       '─────────────────────────────────────',
-      `Org Health Score:       ${summary.orgHealthScore}/100`,
-      `Below Expected Level:   ${summary.peopleWithSkillGaps} people`,
-      `Promotable Now:         ${summary.totalNearReady} near-ready`,
-      `Stalled 24M+:           ${summary.totalStalled}`,
-      `Managers Needing Support: ${summary.managersNeedingSupport}`,
-      `Industry Rank:          ${ordinal(summary.benchmarkRank)} of ${summary.benchmarkTotal}`,
-      `Check-in Coverage:      ${summary.checkInCoverage}%`,
+      `Org Health Score:       ${s.orgHealthScore}/100`,
+      `Below Expected Level:   ${s.peopleWithSkillGaps} people`,
+      `Promotable Now:         ${s.totalNearReady} near-ready`,
+      `Stalled 24M+:           ${s.totalStalled}`,
+      `Managers Needing Support: ${s.managersNeedingSupport}`,
+      `Industry Rank:          ${ordinal(s.benchmarkRank)} of ${s.benchmarkTotal}`,
+      `Check-in Coverage:      ${s.checkInCoverage}%`,
       '',
       'HIGHLIGHTS',
       '─────────────────────────────────────',
-      ...summary.wins.map(w => `  • ${w.title}: ${w.detail}`),
+      ...s.wins.map(w => `  • ${w.title}: ${w.detail}`),
       '',
       'PRIORITY RISKS',
       '─────────────────────────────────────',
-      ...(summary.risks.length === 0
+      ...(s.risks.length === 0
         ? ['  No critical risks detected']
-        : summary.risks.map(r => `  [${r.level.toUpperCase()}] ${r.title} — ${r.detail}`)),
+        : s.risks.map(r => `  [${r.level.toUpperCase()}] ${r.title} — ${r.detail}`)),
       '',
       'DEPARTMENT HEALTH',
       '─────────────────────────────────────',
-      ...summary.deptSnapshots.map(d =>
+      ...s.deptSnapshots.map(d =>
         `  ${d.department.padEnd(14)} Score: ${d.overallScore}  Near-ready: ${d.nearReadyCount}  Stalled: ${d.stalledCount}`
       ),
       '',
@@ -714,10 +731,23 @@ export function ExecutiveSummary({ onNavigate, onAskAI }: Props) {
                   {summary.flaggedCheckIns.length} people need follow-up — sorted by days overdue
                 </p>
                 <div className="grid grid-cols-2 gap-2">
-                  {summary.flaggedCheckIns.map(flag => (
+                  {(checkInsExpanded
+                    ? summary.flaggedCheckIns
+                    : summary.flaggedCheckIns.slice(0, CHECK_IN_PAGE_SIZE)
+                  ).map(flag => (
                     <CheckInRow key={flag.person.id} flag={flag} />
                   ))}
                 </div>
+                {summary.flaggedCheckIns.length > CHECK_IN_PAGE_SIZE && (
+                  <button
+                    onClick={() => setCheckInsExpanded(e => !e)}
+                    className="mt-3 w-full text-xs text-gray-400 hover:text-gray-600 py-2 border border-gray-100 rounded-xl hover:border-gray-200 transition-all"
+                  >
+                    {checkInsExpanded
+                      ? 'Show fewer'
+                      : `Show all ${summary.flaggedCheckIns.length} overdue check-ins`}
+                  </button>
+                )}
               </div>
             )}
           </div>

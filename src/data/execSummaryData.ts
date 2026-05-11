@@ -104,6 +104,13 @@ export interface ExecSummary {
 
 // ── Compute all signals ─────────────────────────────────────────────────
 
+// Log-dampened rate: sensitive at small orgs (0–5% stall = meaningful penalty) but doesn't
+// compress toward zero as headcount grows. Maps a 0–1 raw rate to a 0–1 dampened rate via
+// log2(1 + rawRate × 10) / log2(11). At 0% raw → 0 dampened; at 5% raw → ~0.38; at 20% → ~0.72.
+function dampRate(rawRate: number): number {
+  return Math.log2(1 + rawRate * 10) / Math.log2(11);
+}
+
 function computeOrgHealth(
   criticalGapCount: number,
   totalSkills: number,
@@ -114,15 +121,15 @@ function computeOrgHealth(
   benchmarkPos: QuartilePosition,
   attritionRiskScore: number,
 ): number {
-  // All inputs converted to rates so the score is scale-invariant (works at 50 or 50,000 employees)
   const gapRate = totalSkills > 0 ? criticalGapCount / totalSkills : 0;
-  const stalledRate = totalHeadcount > 0 ? stalledCount / totalHeadcount : 0;
+  const rawStalledRate = totalHeadcount > 0 ? stalledCount / totalHeadcount : 0;
   const managerRate = totalManagers > 0 ? managersNeedingSupport / totalManagers : 0;
 
   let score = 100;
-  score -= Math.round(gapRate * 25);           // up to 25 pts: share of skills that are critical
-  score -= Math.round(stalledRate * 20);        // up to 20 pts: share of headcount that is stalled
-  score -= Math.round(managerRate * 20);        // up to 20 pts: share of managers needing support
+  score -= Math.round(gapRate * 25);
+  // Dampened stall rate so large orgs (10k+) with many stalled people still register a real penalty
+  score -= Math.round(dampRate(rawStalledRate) * 20);
+  score -= Math.round(managerRate * 20);
   const benchPenalty = { top: 0, 'above-median': 5, 'below-median': 12, bottom: 20 }[benchmarkPos];
   score -= benchPenalty;
   score -= Math.round((attritionRiskScore / 100) * 15);
@@ -423,13 +430,16 @@ export function computeExecSummary(): ExecSummary {
         }, 0) / deptManagers.length)
       : 0;
 
-    // Dept score: blend of skills, readiness, benchmark, manager
+    // Dept score: blend of skills, readiness, benchmark, stall penalty
     const benchScore = { top: 90, 'above-median': 70, 'below-median': 45, bottom: 20 }[benchPos];
     const avgReadiness = n > 0 ? deptReadinessResults.reduce((s, r) => s + r.readinessPct, 0) / n : 50;
     const skillScore = Math.round((avgActual / 5) * 100);
-    const stallPenalty = n > 0 ? (stalled / n) * 100 : 0;
+    // Dampened stall rate so large departments (1000+ people) don't get a near-zero penalty.
+    // At 3% stall rate: dampRate ≈ 0.34 → stall component ≈ 66. At 10%: ≈ 51. At 20%: ≈ 38.
+    const rawStallRate = n > 0 ? stalled / n : 0;
+    const stallComponent = Math.round((1 - dampRate(rawStallRate)) * 100);
     const overallScore = Math.round(
-      skillScore * 0.3 + avgReadiness * 0.3 + benchScore * 0.25 + Math.max(0, 100 - stallPenalty * 3) * 0.15
+      skillScore * 0.3 + avgReadiness * 0.3 + benchScore * 0.25 + stallComponent * 0.15
     );
 
     return {
@@ -489,4 +499,10 @@ export function computeExecSummary(): ExecSummary {
     deptSnapshots,
     wins: wins.slice(0, 3),
   };
+}
+
+// Async wrapper that yields to the main thread before the heavy compute, preventing UI freeze
+// at large headcounts. Returns a promise that resolves with the summary on the next event-loop tick.
+export function computeExecSummaryAsync(): Promise<ExecSummary> {
+  return new Promise(resolve => setTimeout(() => resolve(computeExecSummary()), 0));
 }
