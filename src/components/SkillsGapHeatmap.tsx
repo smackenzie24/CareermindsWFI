@@ -208,6 +208,7 @@ interface DrilldownPanelWrapperProps {
   collapsed: boolean;
   onToggleCollapse: () => void;
   onNavigateToPipeline?: () => void;
+  onAskAI?: (question: string) => void;
 }
 
 function DrilldownPanelWrapper(props: DrilldownPanelWrapperProps) {
@@ -299,10 +300,11 @@ interface DeptHeatmapProps {
   department: Department;
   onBack: () => void;
   onNavigateToPipeline?: () => void;
+  onAskAI?: (question: string) => void;
   tourActive?: boolean;
 }
 
-function DeptHeatmap({ department, onBack, onNavigateToPipeline, tourActive }: DeptHeatmapProps) {
+function DeptHeatmap({ department, onBack, onNavigateToPipeline, onAskAI, tourActive }: DeptHeatmapProps) {
   const [groupBy, setGroupBy] = useState<GroupBy>('location');
   const [filterLocation, setFilterLocation] = useState<string>('');
   const [filterLevel, setFilterLevel] = useState<string>('');
@@ -672,6 +674,7 @@ function DeptHeatmap({ department, onBack, onNavigateToPipeline, tourActive }: D
           collapsed={panelCollapsed}
           onToggleCollapse={() => setPanelCollapsed(c => !c)}
           onNavigateToPipeline={onNavigateToPipeline}
+          onAskAI={onAskAI}
         />
       )}
     </div>
@@ -680,11 +683,12 @@ function DeptHeatmap({ department, onBack, onNavigateToPipeline, tourActive }: D
 
 interface SkillsGapHeatmapProps {
   onNavigateToPipeline?: () => void;
+  onAskAI?: (question: string) => void;
   tourActive?: boolean;
   initialDepartment?: Department;
 }
 
-export function SkillsGapHeatmap({ onNavigateToPipeline, tourActive, initialDepartment }: SkillsGapHeatmapProps) {
+export function SkillsGapHeatmap({ onNavigateToPipeline, onAskAI, tourActive, initialDepartment }: SkillsGapHeatmapProps) {
   const [selectedDept, setSelectedDept] = useState<Department | null>(initialDepartment ?? null);
 
   if (selectedDept) {
@@ -693,6 +697,7 @@ export function SkillsGapHeatmap({ onNavigateToPipeline, tourActive, initialDepa
         department={selectedDept}
         onBack={() => setSelectedDept(null)}
         onNavigateToPipeline={onNavigateToPipeline}
+        onAskAI={onAskAI}
         tourActive={tourActive}
       />
     );

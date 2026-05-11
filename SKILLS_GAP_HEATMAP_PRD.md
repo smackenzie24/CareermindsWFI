@@ -593,8 +593,10 @@ A sticky footer at the bottom of the skill drilldown panel (not the check-in pan
 - If no promotion-ready candidates exist: **"Find mentors with this skill →"** — placeholder, no destination defined
 
 **Always-present buttons:**
-- "Set as team focus skill →" — placeholder, no destination defined
+- **"Ask AI about this skill gap →"** — navigates to the Ask AI page with a pre-populated question: "What should we do about the [Skill] skill gap in [Department]?" The AI page opens with this question already submitted so the user lands on an active response, not a blank prompt. The button has a Sparkles icon to signal it opens the AI assistant.
 - "Export gap report →" — placeholder, no destination defined
+
+Note: "Set as team focus skill" was removed. That interaction implies a full goal-setting and tracking workflow that does not yet exist in the product. Until that workflow is built, the slot is better used by the AI entry point, which can suggest focus actions contextually without requiring a separate feature surface.
 
 ---
 
@@ -612,7 +614,7 @@ A sticky footer at the bottom of the skill drilldown panel (not the check-in pan
 | Click a candidate chip (met or blocked) in the promotion pipeline section | Progression page with that person's panel open |
 | "View N promotion-ready in pipeline →" button | Promotion Pipeline page (current department) |
 | "Find mentors with this skill →" | No destination — placeholder |
-| "Set as team focus skill →" | No destination — placeholder |
+| "Ask AI about this skill gap →" | Ask AI page, pre-populated with a question about this specific skill and department |
 | "Export gap report →" | No destination — placeholder |
 | "Send reminder to overdue members →" | No destination — placeholder |
 | "Export check-in report →" | No destination — placeholder |

@@ -202,6 +202,7 @@ export default function App() {
         {nav.view === 'heatmap' && (
           <SkillsGapHeatmap
             onNavigateToPipeline={() => setView('pipeline')}
+            onAskAI={openAI}
             tourActive={tourActive}
             initialDepartment={nav.department}
           />

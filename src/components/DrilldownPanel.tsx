@@ -1,4 +1,4 @@
-import { X, TrendingDown, Target, AlertTriangle, TrendingUp, Star, ChevronDown, ChevronUp } from 'lucide-react';
+import { X, TrendingDown, Target, AlertTriangle, TrendingUp, Star, ChevronDown, ChevronUp, Sparkles } from 'lucide-react';
 import { useState } from 'react';
 import { SkillGapEntry } from '../data/mockData';
 import {
@@ -16,6 +16,7 @@ interface DrilldownPanelProps {
   department?: string; // present when viewing a specific dept heatmap
   onClose: () => void;
   onNavigateToPipeline?: () => void;
+  onAskAI?: (question: string) => void;
 }
 
 function getBarColor(pct: number): string {
@@ -61,7 +62,7 @@ function CandidateChip({ match, variant }: { match: SkillCandidateMatch; variant
   );
 }
 
-export function DrilldownPanel({ skill, entries, groupBy, department, onClose, onNavigateToPipeline }: DrilldownPanelProps) {
+export function DrilldownPanel({ skill, entries, groupBy, department, onClose, onNavigateToPipeline, onAskAI }: DrilldownPanelProps) {
   const [pipelineCollapsed, setPipelineCollapsed] = useState(false);
 
   const sorted = [...entries].sort((a, b) => {
@@ -277,8 +278,12 @@ export function DrilldownPanel({ skill, entries, groupBy, department, onClose, o
               Find mentors with this skill &rarr;
             </button>
           )}
-          <button className="w-full text-left text-sm text-gray-700 bg-white border border-gray-200 rounded-lg px-3 py-2.5 hover:border-gray-300 hover:bg-gray-50 transition-colors">
-            Set as team focus skill &rarr;
+          <button
+            onClick={() => onAskAI?.(`What should we do about the ${skill} skill gap${department ? ` in ${department}` : ''}?`)}
+            className="w-full text-left text-sm text-gray-700 bg-white border border-gray-200 rounded-lg px-3 py-2.5 hover:border-gray-300 hover:bg-gray-50 transition-colors flex items-center gap-2"
+          >
+            <Sparkles size={13} className="text-gray-400 flex-shrink-0" />
+            Ask AI about this skill gap &rarr;
           </button>
           <button className="w-full text-left text-sm text-gray-700 bg-white border border-gray-200 rounded-lg px-3 py-2.5 hover:border-gray-300 hover:bg-gray-50 transition-colors">
             Export gap report &rarr;
