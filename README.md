@@ -2,7 +2,7 @@
 
 [![Open in Bolt](https://bolt.new/static/open-in-bolt.svg)](https://bolt.new/~/sb1-ixvzkyhr)
 
-A production-grade workforce analytics platform built for Chief People Officers and HR leaders. CareermindsWFI (branded internally as **Progression**) gives people teams a unified view across promotion readiness, skills gaps, manager effectiveness, industry benchmarking, and churn risk — powered by an AI chat system backed by Anthropic Claude.
+A production-grade workforce analytics platform built for Chief People Officers and HR leaders. CareermindsWFI (branded internally as **Progression**) gives people teams a unified view across promotion readiness, skills gaps, manager effectiveness, industry benchmarking, and churn risk using an AI chat system backed by Anthropic Claude (uses Opus 4.7 currently).
 
 ---
 
