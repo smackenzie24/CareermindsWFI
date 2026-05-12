@@ -1,5 +1,5 @@
-import { useMemo, useState } from 'react';
-import { ChevronDown, ChevronRight, ChevronUp, Users, TrendingDown, AlertTriangle, CheckCircle, DollarSign, Building2, CalendarCheck } from 'lucide-react';
+import { useMemo } from 'react';
+import { ChevronRight, Users, TrendingDown, AlertTriangle, CalendarCheck } from 'lucide-react';
 import { SKILLS_DATA, DEPARTMENTS, DEPT_COLORS, type Department } from '../data/mockData';
 import { PEOPLE } from '../data/promotionData';
 import { FeedbackBanner } from './feedback/FeedbackBanner';
@@ -46,62 +46,6 @@ function fmtCurrency(n: number) {
   return `$${n}`;
 }
 
-function OrgExpandedCards() {
-  const max = ORG_SUMMARY.deptBreakdown[0]?.count ?? 1;
-  return (
-    <div className="grid grid-cols-4 gap-4 pt-4 border-t border-gray-100 mt-4">
-      <div className="bg-gray-50 rounded-xl p-4 border border-gray-100">
-        <div className="flex items-center gap-1.5 mb-2">
-          <CalendarCheck size={14} className={ORG_SUMMARY.checkInCoverage >= 80 ? 'text-emerald-500' : 'text-amber-500'} />
-          <span className="text-xs text-gray-500">Check-in Coverage</span>
-        </div>
-        <p className={`text-2xl font-bold ${ORG_SUMMARY.checkInCoverage >= 80 ? 'text-emerald-600' : 'text-amber-600'}`}>{ORG_SUMMARY.checkInCoverage}%</p>
-        <p className="text-[11px] text-gray-400 mt-0.5">checked in (30d)</p>
-      </div>
-
-      <div className="bg-gray-50 rounded-xl p-4 border border-gray-100">
-        <div className="flex items-center gap-1.5 mb-2">
-          <DollarSign size={14} className="text-gray-400" />
-          <span className="text-xs text-gray-500">Est. Total Cost</span>
-        </div>
-        <p className="text-2xl font-bold text-gray-900">{fmtCurrency(ORG_SUMMARY.totalCost)}</p>
-        <p className="text-[11px] text-gray-400 mt-0.5">annual salaries</p>
-      </div>
-
-      <div className="bg-gray-50 rounded-xl p-4 border border-gray-100">
-        <div className="flex items-center gap-1.5 mb-2">
-          <DollarSign size={14} className="text-gray-400" />
-          <span className="text-xs text-gray-500">Avg Salary</span>
-        </div>
-        <p className="text-2xl font-bold text-gray-900">{fmtCurrency(ORG_SUMMARY.avgSalary)}</p>
-        <p className="text-[11px] text-gray-400 mt-0.5">per employee</p>
-      </div>
-
-      <div className="bg-gray-50 rounded-xl p-4 border border-gray-100">
-        <div className="flex items-center gap-1.5 mb-2">
-          <Building2 size={14} className="text-gray-400" />
-          <span className="text-xs text-gray-500">Team Headcount</span>
-        </div>
-        <div className="space-y-2 mt-1">
-          {ORG_SUMMARY.deptBreakdown.map(({ dept, count }) => (
-            <div key={dept}>
-              <div className="flex items-center justify-between mb-0.5">
-                <span className="text-[10px] text-gray-500 truncate pr-2">{dept}</span>
-                <span className="text-[10px] font-bold text-gray-600 flex-shrink-0">{count}</span>
-              </div>
-              <div className="h-1 w-full bg-gray-200 rounded-full overflow-hidden">
-                <div
-                  className="h-full rounded-full"
-                  style={{ width: `${(count / max) * 100}%`, background: DEPT_COLORS[dept] }}
-                />
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-    </div>
-  );
-}
 
 interface DeptSummary {
   department: Department;
@@ -149,7 +93,6 @@ interface Props {
 }
 
 export function DepartmentOverview({ onSelectDepartment }: Props) {
-  const [orgExpanded, setOrgExpanded] = useState(false);
 
   function buildExportContent(): string {
     const lines: string[] = [
@@ -267,7 +210,7 @@ export function DepartmentOverview({ onSelectDepartment }: Props) {
             { label: 'Total headcount', value: orgStats.totalHead, sub: 'across all depts', color: 'text-gray-900', icon: <Users size={14} className="text-gray-400" /> },
             { label: 'Below target (org)', value: `${orgStats.pct}%`, sub: 'of workforce', color: 'text-red-600', icon: <TrendingDown size={14} className="text-red-400" /> },
             { label: 'Skills below target', value: orgStats.critical, sub: '60%+ of team below expected', color: 'text-orange-600', icon: <AlertTriangle size={14} className="text-orange-400" /> },
-            { label: 'Median gap score', value: orgStats.medGap, sub: 'across org (0–5)', color: 'text-gray-900', icon: <CheckCircle size={14} className="text-gray-400" /> },
+            { label: 'Check-in Coverage', value: `${ORG_SUMMARY.checkInCoverage}%`, sub: 'checked in (30d)', color: ORG_SUMMARY.checkInCoverage >= 80 ? 'text-emerald-600' : 'text-amber-600', icon: <CalendarCheck size={14} className={ORG_SUMMARY.checkInCoverage >= 80 ? 'text-emerald-500' : 'text-amber-500'} /> },
           ].map(({ label, value, sub, color, icon }) => (
             <div key={label} className="bg-gray-50 rounded-xl p-4 border border-gray-100">
               <div className="flex items-center gap-1.5 mb-2">{icon}<span className="text-xs text-gray-500">{label}</span></div>
@@ -277,17 +220,6 @@ export function DepartmentOverview({ onSelectDepartment }: Props) {
           ))}
         </div>
 
-        {orgExpanded && <OrgExpandedCards />}
-
-        <div className="flex justify-center mt-4">
-          <button
-            onClick={() => setOrgExpanded(e => !e)}
-            className="flex items-center gap-1.5 text-xs text-gray-400 hover:text-gray-600 transition-colors group"
-          >
-            {orgExpanded ? <ChevronUp size={13} className="group-hover:text-gray-600" /> : <ChevronDown size={13} className="group-hover:text-gray-600" />}
-            {orgExpanded ? 'Hide org summary' : 'Show org summary'}
-          </button>
-        </div>
       </header>
 
       {/* Department cards */}
