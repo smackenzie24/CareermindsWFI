@@ -34,9 +34,9 @@ function TourNudge({ onDismiss }: { onDismiss: () => void }) {
   if (!visible) return null;
 
   return (
-    <div className="absolute top-full right-0 mt-2 w-52 bg-gray-900 border border-sky-500/30 rounded-xl shadow-xl p-3 z-[300]">
-      <div className="absolute -top-1.5 right-5 w-3 h-3 bg-gray-900 border-l border-t border-sky-500/30 rotate-45" />
-      <p className="text-xs text-sky-300 font-semibold mb-1">New to Progression?</p>
+    <div className="absolute top-full right-0 mt-2 w-52 bg-gray-900 border border-white/10 rounded-xl shadow-xl p-3 z-[300]">
+      <div className="absolute -top-1.5 right-5 w-3 h-3 bg-gray-900 border-l border-t border-white/10 rotate-45" />
+      <p className="text-xs text-white font-semibold mb-1">New to Progression?</p>
       <p className="text-[11px] text-gray-400 leading-relaxed mb-2.5">Click <strong className="text-white">Tour</strong> for an annotated walkthrough of every screen.</p>
       <button onClick={dismiss} className="text-[11px] text-gray-500 hover:text-gray-300 transition-colors">Got it</button>
     </div>
@@ -122,10 +122,10 @@ export default function App() {
         <div className="relative flex-shrink-0 pr-2">
           <button
             onClick={() => setTourActive(t => !t)}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all whitespace-nowrap ${
+            className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all whitespace-nowrap ${
               tourActive
-                ? 'bg-sky-500 text-white shadow-lg shadow-sky-500/30'
-                : 'bg-sky-500/15 text-sky-400 border border-sky-500/40 hover:bg-sky-500/25 hover:text-sky-300'
+                ? 'bg-white/10 text-white'
+                : 'text-brand-accent-gray hover:text-white hover:bg-white/5'
             }`}
           >
             <BookOpen size={12} />
