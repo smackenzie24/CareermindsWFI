@@ -449,9 +449,9 @@ function DeptHeatmap({ department, onBack, onNavigateToPipeline, onAskAI, tourAc
     <div className="flex h-screen bg-gray-50 font-sans overflow-hidden">
       <div className={`flex flex-col flex-1 min-w-0 transition-all duration-300 ${selectedSkill ? (panelCollapsed ? 'mr-10' : 'mr-96') : ''}`}>
         {/* Top bar */}
-        <header className="bg-white border-b border-gray-100 px-8 py-5 flex-shrink-0">
+        <header className="bg-white border-b border-gray-100 px-8 pt-3 pb-4 flex-shrink-0">
           {/* Breadcrumb */}
-          <div className="flex items-center gap-3 mb-5">
+          <div className="flex items-center gap-3 mb-3">
             <button
               onClick={onBack}
               className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-900 transition-colors group"
@@ -468,7 +468,7 @@ function DeptHeatmap({ department, onBack, onNavigateToPipeline, onAskAI, tourAc
             </div>
           </div>
 
-          <div className="flex items-center justify-between mb-5">
+          <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-3">
               <div className="w-8 h-8 rounded-lg flex items-center justify-center text-white text-sm font-bold" style={{ background: deptColor }}>
                 {department[0]}
