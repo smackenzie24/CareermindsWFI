@@ -6,6 +6,7 @@ import {
   UserPlus, Zap, BookOpen, RefreshCw,
   Download, Mail, X, Check, Paperclip, FileText,
   ClipboardPaste, Upload, ShieldAlert, Scale, Lock,
+  History, MessageSquare,
 } from 'lucide-react';
 import {
   query,
@@ -776,6 +777,254 @@ function OutputPanel({
   );
 }
 
+// ── Mock history data ─────────────────────────────────────────────────
+
+interface HistoryConversation {
+  id: string;
+  title: string;
+  preview: string;
+  timestamp: Date;
+  mode: ChatMode;
+  messageCount: number;
+}
+
+const MOCK_HISTORY: HistoryConversation[] = [
+  {
+    id: 'h1',
+    title: 'Who is ready for promotion in Engineering?',
+    preview: '4 people are near-ready in Engineering. Sarah Chen leads with 96% readiness...',
+    timestamp: new Date(Date.now() - 1000 * 60 * 47),
+    mode: 'diagnose',
+    messageCount: 6,
+  },
+  {
+    id: 'h2',
+    title: 'Build a retention plan for churn risks',
+    preview: 'I recommend a 3-part retention strategy targeting the 8 high-risk employees...',
+    timestamp: new Date(Date.now() - 1000 * 60 * 60 * 5),
+    mode: 'plan',
+    messageCount: 9,
+  },
+  {
+    id: 'h3',
+    title: 'Where are our biggest skills gaps?',
+    preview: 'Data Science has the widest gaps — ML Engineering averages 2.1 vs 4.0 target...',
+    timestamp: new Date(Date.now() - 1000 * 60 * 60 * 22),
+    mode: 'diagnose',
+    messageCount: 4,
+  },
+  {
+    id: 'h4',
+    title: 'Recommend a hiring strategy for Data',
+    preview: 'Given the 3 near-ready promotions and 2 high flight risks, I suggest a two-track...',
+    timestamp: new Date(Date.now() - 1000 * 60 * 60 * 24 * 2),
+    mode: 'plan',
+    messageCount: 11,
+  },
+  {
+    id: 'h5',
+    title: 'Show me the Product pipeline',
+    preview: 'Product has 12 tracked employees. 2 are near-ready, 4 progressing, 3 developing...',
+    timestamp: new Date(Date.now() - 1000 * 60 * 60 * 24 * 4),
+    mode: 'diagnose',
+    messageCount: 5,
+  },
+  {
+    id: 'h6',
+    title: 'Which teams need restructuring?',
+    preview: 'Based on span-of-control ratios and readiness distribution, Customer Success and...',
+    timestamp: new Date(Date.now() - 1000 * 60 * 60 * 24 * 6),
+    mode: 'plan',
+    messageCount: 14,
+  },
+  {
+    id: 'h7',
+    title: 'Who is at churn risk in Sales?',
+    preview: 'Sales has 3 employees flagged as high churn risk. Marcus Rodriguez has been at...',
+    timestamp: new Date(Date.now() - 1000 * 60 * 60 * 24 * 9),
+    mode: 'diagnose',
+    messageCount: 7,
+  },
+  {
+    id: 'h8',
+    title: 'How do we close skills gaps in Data?',
+    preview: 'To close the ML Engineering and Python gaps in Data, I recommend a blended...',
+    timestamp: new Date(Date.now() - 1000 * 60 * 60 * 24 * 13),
+    mode: 'plan',
+    messageCount: 8,
+  },
+  {
+    id: 'h9',
+    title: 'Headcount reduction scenario — 10%',
+    preview: 'A 10% reduction from 42 employees means 4 roles. Voluntary buffer analysis shows...',
+    timestamp: new Date(Date.now() - 1000 * 60 * 60 * 24 * 18),
+    mode: 'plan',
+    messageCount: 12,
+  },
+  {
+    id: 'h10',
+    title: 'Compare Engineering readiness to benchmark',
+    preview: 'Engineering sits at the 3rd quartile for readiness velocity vs peer companies...',
+    timestamp: new Date(Date.now() - 1000 * 60 * 60 * 24 * 25),
+    mode: 'diagnose',
+    messageCount: 6,
+  },
+];
+
+function relativeTime(d: Date): string {
+  const diffMs = Date.now() - d.getTime();
+  const mins = Math.floor(diffMs / 60000);
+  const hours = Math.floor(mins / 60);
+  const days = Math.floor(hours / 24);
+  if (mins < 60) return `${mins}m ago`;
+  if (hours < 24) return `${hours}h ago`;
+  if (days === 1) return 'Yesterday';
+  if (days < 7) return `${days} days ago`;
+  if (days < 14) return 'Last week';
+  if (days < 28) return `${days} days ago`;
+  return d.toLocaleDateString([], { day: 'numeric', month: 'short', year: 'numeric' });
+}
+
+function groupByDate(items: HistoryConversation[]): { label: string; items: HistoryConversation[] }[] {
+  const now = Date.now();
+  const groups: Record<string, HistoryConversation[]> = {
+    Today: [],
+    Yesterday: [],
+    'This week': [],
+    'Last month': [],
+    Older: [],
+  };
+  for (const item of items) {
+    const diffDays = Math.floor((now - item.timestamp.getTime()) / 86400000);
+    if (diffDays < 1) groups['Today'].push(item);
+    else if (diffDays < 2) groups['Yesterday'].push(item);
+    else if (diffDays < 7) groups['This week'].push(item);
+    else if (diffDays < 30) groups['Last month'].push(item);
+    else groups['Older'].push(item);
+  }
+  return Object.entries(groups)
+    .filter(([, v]) => v.length > 0)
+    .map(([label, items]) => ({ label, items }));
+}
+
+// ── History panel ─────────────────────────────────────────────────────
+
+function HistoryPanel({
+  onClose,
+  onSelect,
+}: {
+  onClose: () => void;
+  onSelect: (conv: HistoryConversation) => void;
+}) {
+  const [search, setSearch] = useState('');
+  const filtered = search.trim()
+    ? MOCK_HISTORY.filter(h =>
+        h.title.toLowerCase().includes(search.toLowerCase()) ||
+        h.preview.toLowerCase().includes(search.toLowerCase())
+      )
+    : MOCK_HISTORY;
+  const groups = groupByDate(filtered);
+
+  return (
+    <div className="absolute inset-0 z-20 flex flex-col bg-gray-950 animate-in slide-in-from-left duration-200">
+      {/* Header */}
+      <div className="flex-shrink-0 px-5 pt-5 pb-4">
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-2">
+            <div className="w-6 h-6 rounded-lg bg-sky-500/20 border border-sky-500/30 flex items-center justify-center">
+              <History size={11} className="text-sky-400" />
+            </div>
+            <span className="text-sm font-bold text-white">Chat history</span>
+          </div>
+          <button
+            onClick={onClose}
+            className="w-6 h-6 rounded-md flex items-center justify-center text-gray-500 hover:text-white hover:bg-white/10 transition-all"
+          >
+            <X size={13} />
+          </button>
+        </div>
+
+        {/* Search */}
+        <div className="flex items-center gap-2 bg-white/5 border border-white/10 rounded-xl px-3 py-2 focus-within:border-sky-500/50 transition-all">
+          <Search size={11} className="text-gray-600 flex-shrink-0" />
+          <input
+            type="text"
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            placeholder="Search conversations…"
+            autoFocus
+            className="flex-1 bg-transparent text-xs text-gray-200 placeholder:text-gray-600 focus:outline-none"
+          />
+          {search && (
+            <button onClick={() => setSearch('')} className="text-gray-600 hover:text-gray-400 transition-colors">
+              <X size={10} />
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* List */}
+      <div className="flex-1 overflow-y-auto px-3 pb-4">
+        {groups.length === 0 ? (
+          <div className="flex flex-col items-center gap-3 py-12 text-center">
+            <div className="w-10 h-10 rounded-2xl bg-white/5 flex items-center justify-center">
+              <MessageSquare size={18} className="text-gray-600" />
+            </div>
+            <p className="text-xs text-gray-600">No conversations match your search</p>
+          </div>
+        ) : (
+          <div className="space-y-5">
+            {groups.map(group => (
+              <div key={group.label}>
+                <p className="text-[9px] font-bold text-gray-600 uppercase tracking-widest mb-2 px-2">
+                  {group.label}
+                </p>
+                <div className="space-y-0.5">
+                  {group.items.map(conv => (
+                    <button
+                      key={conv.id}
+                      onClick={() => { onSelect(conv); onClose(); }}
+                      className="w-full text-left px-3 py-2.5 rounded-xl hover:bg-white/5 transition-all group"
+                    >
+                      <div className="flex items-start justify-between gap-2 mb-1">
+                        <div className="flex items-center gap-1.5 min-w-0">
+                          <div className={`w-1.5 h-1.5 rounded-full flex-shrink-0 mt-0.5 ${
+                            conv.mode === 'plan' ? 'bg-amber-500' : 'bg-sky-500'
+                          }`} />
+                          <p className="text-xs font-medium text-gray-300 group-hover:text-white transition-colors truncate leading-snug">
+                            {conv.title}
+                          </p>
+                        </div>
+                        <span className="text-[10px] text-gray-600 flex-shrink-0 mt-0.5 group-hover:text-gray-500 transition-colors">
+                          {relativeTime(conv.timestamp)}
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-gray-600 leading-relaxed line-clamp-2 pl-3 group-hover:text-gray-500 transition-colors">
+                        {conv.preview}
+                      </p>
+                      <div className="flex items-center gap-1 mt-1.5 pl-3">
+                        <MessageSquare size={9} className="text-gray-700" />
+                        <span className="text-[10px] text-gray-700">{conv.messageCount} messages</span>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Footer */}
+      <div className="flex-shrink-0 px-5 py-3 border-t border-white/5">
+        <p className="text-[10px] text-gray-700 leading-relaxed text-center">
+          Conversations are available for the current session
+        </p>
+      </div>
+    </div>
+  );
+}
+
 // ── Component ─────────────────────────────────────────────────────────
 
 interface Props {
@@ -789,6 +1038,7 @@ export function AskAIPage({ initialQuestion, onNavigate }: Props) {
   const [input, setInput] = useState('');
   const [typing, setTyping] = useState(false);
   const [pasteOpen, setPasteOpen] = useState(false);
+  const [historyOpen, setHistoryOpen] = useState(false);
   const chatBottomRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -817,6 +1067,16 @@ export function AskAIPage({ initialQuestion, onNavigate }: Props) {
     const conv = makeConversation(mode);
     setConversations(prev => [conv, ...prev]);
     setActiveId(conv.id);
+    setInput('');
+    setHistoryOpen(false);
+  }
+
+  function handleSelectHistory(conv: HistoryConversation) {
+    // Design only: start a new conversation pre-titled with the history item's title
+    const newConv = makeConversation(conv.mode);
+    newConv.title = conv.title;
+    setConversations(prev => [newConv, ...prev]);
+    setActiveId(newConv.id);
     setInput('');
   }
 
@@ -1000,7 +1260,7 @@ export function AskAIPage({ initialQuestion, onNavigate }: Props) {
     <div className="flex h-full bg-gray-50 overflow-hidden">
 
       {/* ── Chat panel ────────────────────────────────────────────────── */}
-      <div className="w-72 flex-shrink-0 flex flex-col bg-gray-950 border-r border-white/5">
+      <div className="w-72 flex-shrink-0 flex flex-col bg-gray-950 border-r border-white/5 relative overflow-hidden">
 
         {/* Header */}
         <div className="px-5 pt-5 pb-0 flex-shrink-0">
@@ -1011,10 +1271,21 @@ export function AskAIPage({ initialQuestion, onNavigate }: Props) {
               </div>
               <span className="text-sm font-bold text-white">Workforce AI</span>
             </div>
-            <button onClick={newConversation} title="New conversation"
-              className="w-6 h-6 rounded-md flex items-center justify-center text-gray-500 hover:text-white hover:bg-white/10 transition-all">
-              <Plus size={13} />
-            </button>
+            <div className="flex items-center gap-1">
+              <button
+                onClick={() => setHistoryOpen(v => !v)}
+                title="Chat history"
+                className={`w-6 h-6 rounded-md flex items-center justify-center transition-all ${
+                  historyOpen ? 'text-sky-400 bg-sky-500/20' : 'text-gray-500 hover:text-white hover:bg-white/10'
+                }`}
+              >
+                <History size={13} />
+              </button>
+              <button onClick={newConversation} title="New conversation"
+                className="w-6 h-6 rounded-md flex items-center justify-center text-gray-500 hover:text-white hover:bg-white/10 transition-all">
+                <Plus size={13} />
+              </button>
+            </div>
           </div>
 
           {/* Mode tabs */}
@@ -1215,6 +1486,14 @@ export function AskAIPage({ initialQuestion, onNavigate }: Props) {
             </button>
           </div>
         </div>
+
+        {/* ── History overlay ──────────────────────────────────────── */}
+        {historyOpen && (
+          <HistoryPanel
+            onClose={() => setHistoryOpen(false)}
+            onSelect={handleSelectHistory}
+          />
+        )}
       </div>
 
       {/* ── Output panel ─────────────────────────────────────────────── */}
