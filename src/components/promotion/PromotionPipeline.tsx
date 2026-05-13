@@ -85,66 +85,6 @@ function StatCard({ label, value, sub, color, icon }: { label: string; value: st
   );
 }
 
-function OrgExpandedCards() {
-  const max = ORG_SUMMARY.deptBreakdown[0]?.count ?? 1;
-  return (
-    <div className="grid grid-cols-4 gap-4 pt-4 border-t border-gray-100 mt-4">
-      {/* Check-in coverage */}
-      <div className="bg-white rounded-2xl border border-gray-100 p-5 shadow-sm">
-        <div className="flex items-center gap-2 mb-3">
-          <CalendarCheck size={14} className={ORG_SUMMARY.checkInCoverage >= 80 ? 'text-emerald-500' : 'text-amber-500'} />
-          <span className="text-xs text-gray-500">Check-in Coverage</span>
-        </div>
-        <p className={`text-3xl font-black ${ORG_SUMMARY.checkInCoverage >= 80 ? 'text-emerald-600' : 'text-amber-600'}`}>{ORG_SUMMARY.checkInCoverage}%</p>
-        <p className="text-xs text-gray-400 mt-1">checked in (30d)</p>
-      </div>
-
-      {/* Total cost */}
-      <div className="bg-white rounded-2xl border border-gray-100 p-5 shadow-sm">
-        <div className="flex items-center gap-2 mb-3">
-          <DollarSign size={14} className="text-gray-400" />
-          <span className="text-xs text-gray-500">Est. Total Cost</span>
-        </div>
-        <p className="text-3xl font-black text-gray-900">{fmtCurrency(ORG_SUMMARY.totalCost)}</p>
-        <p className="text-xs text-gray-400 mt-1">annual salaries</p>
-      </div>
-
-      {/* Avg salary */}
-      <div className="bg-white rounded-2xl border border-gray-100 p-5 shadow-sm">
-        <div className="flex items-center gap-2 mb-3">
-          <DollarSign size={14} className="text-gray-400" />
-          <span className="text-xs text-gray-500">Avg Salary</span>
-        </div>
-        <p className="text-3xl font-black text-gray-900">{fmtCurrency(ORG_SUMMARY.avgSalary)}</p>
-        <p className="text-xs text-gray-400 mt-1">per employee</p>
-      </div>
-
-      {/* Headcount by dept */}
-      <div className="bg-white rounded-2xl border border-gray-100 p-5 shadow-sm">
-        <div className="flex items-center gap-2 mb-3">
-          <Building2 size={14} className="text-gray-400" />
-          <span className="text-xs text-gray-500">Team Headcount</span>
-        </div>
-        <div className="space-y-2 mt-1">
-          {ORG_SUMMARY.deptBreakdown.map(({ dept, count }) => (
-            <div key={dept}>
-              <div className="flex items-center justify-between mb-0.5">
-                <span className="text-[10px] text-gray-500 truncate pr-2">{dept}</span>
-                <span className="text-[10px] font-bold text-gray-600 flex-shrink-0">{count}</span>
-              </div>
-              <div className="h-1 w-full bg-gray-100 rounded-full overflow-hidden">
-                <div
-                  className="h-full rounded-full"
-                  style={{ width: `${(count / max) * 100}%`, background: DEPT_COLORS[dept] }}
-                />
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-    </div>
-  );
-}
 
 interface Props {
   initialDepartment?: Department;
@@ -162,7 +102,6 @@ export function PromotionPipeline({ initialDepartment, initialTab, selectedDept:
     setInternalDept(dept);
     onSelectDept?.(dept);
   };
-  const [orgExpanded, setOrgExpanded] = useState(true);
   const [activeTab, setActiveTab] = useState<'pipeline' | 'hidden-talent' | 'flight-risk'>(initialTab ?? 'pipeline');
   const hiddenTalentCount = useMemo(() => getCrossDeptFitCandidates().length, []);
   const flightRiskHighCount = useMemo(() => getFlightRiskPeople('high').length, []);
@@ -299,17 +238,6 @@ export function PromotionPipeline({ initialDepartment, initialTab, selectedDept:
           />
         </div>
 
-        {orgExpanded && <OrgExpandedCards />}
-
-        <div className="flex justify-center mt-4">
-          <button
-            onClick={() => setOrgExpanded(e => !e)}
-            className="flex items-center gap-1.5 text-xs text-gray-400 hover:text-gray-600 transition-colors group"
-          >
-            {orgExpanded ? <ChevronUp size={13} className="group-hover:text-gray-600" /> : <ChevronDown size={13} className="group-hover:text-gray-600" />}
-            {orgExpanded ? 'Hide org summary' : 'Show org summary'}
-          </button>
-        </div>
       </header>
 
       {/* Tabs */}
