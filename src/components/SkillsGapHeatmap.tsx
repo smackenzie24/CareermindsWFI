@@ -480,21 +480,21 @@ function DeptHeatmap({ department, onBack, onNavigateToPipeline, onAskAI, tourAc
             </div>
             <div className="flex items-center gap-4">
               <ExportButtons title={`${department} — Skills Gap`} buildContent={buildExportContent} />
-            <div className="flex items-center gap-6" data-tour="heatmap-header-stats">
+            <div className="flex items-center gap-5" data-tour="heatmap-header-stats">
               <div className="text-right">
-                <p className="text-xs text-gray-400">People below target</p>
-                <p className="text-xl font-bold text-red-600">
+                <p className="text-[10px] text-gray-400 uppercase tracking-wide">Below target</p>
+                <p className="text-sm font-bold text-red-600">
                   {overallStats.totalHead > 0 ? Math.round((overallStats.totalBelow / overallStats.totalHead) * 100) : 0}%
-                  <span className="text-sm font-normal text-gray-400 ml-1">({overallStats.totalBelow} of {overallStats.totalHead})</span>
+                  <span className="text-xs font-normal text-gray-400 ml-1">({overallStats.totalBelow}/{overallStats.totalHead})</span>
                 </p>
               </div>
               <div className="text-right">
-                <p className="text-xs text-gray-400">Avg skill gap</p>
-                <p className="text-xl font-bold text-orange-500">{overallStats.avgGap.toFixed(1)}</p>
+                <p className="text-[10px] text-gray-400 uppercase tracking-wide">Avg gap</p>
+                <p className="text-sm font-bold text-orange-500">{overallStats.avgGap.toFixed(1)}</p>
               </div>
               <div className="text-right">
-                <p className="text-xs text-gray-400">Skills tracked</p>
-                <p className="text-xl font-bold text-gray-900">{skills.length}</p>
+                <p className="text-[10px] text-gray-400 uppercase tracking-wide">Skills</p>
+                <p className="text-sm font-bold text-gray-900">{skills.length}</p>
               </div>
             </div>
             </div>
