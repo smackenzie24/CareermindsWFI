@@ -112,13 +112,10 @@ export default function App() {
   return (
     <div className="flex flex-col h-screen overflow-hidden font-sans">
       {/* Global nav strip */}
-      <nav className="bg-gray-950 flex-shrink-0 flex items-center h-11 z-50 min-w-0">
+      <nav className="bg-brand-navy flex-shrink-0 flex items-center h-11 z-50 min-w-0">
         {/* Logo — always visible */}
-        <div className="flex items-center gap-2 pl-4 pr-4 flex-shrink-0">
-          <div className="w-6 h-6 rounded bg-sky-500 flex items-center justify-center">
-            <LayoutGrid size={12} className="text-white" />
-          </div>
-          <span className="text-white text-sm font-bold tracking-tight">Progression</span>
+        <div className="flex items-center pl-4 pr-4 flex-shrink-0">
+          <img src="/Progression_by_careerminds.svg" alt="Progression by CareerMinds" className="h-6 w-auto" />
         </div>
 
         {/* Tour mode toggle — next to logo */}
@@ -137,7 +134,7 @@ export default function App() {
           {!tourActive && <TourNudge onDismiss={() => {}} />}
         </div>
 
-{/* Scrollable nav items — pushed to the right */}
+        {/* Scrollable nav items — pushed to the right */}
         <div className="flex items-center gap-0.5 px-2 overflow-x-auto flex-1 min-w-0 scrollbar-none justify-end">
           {NAV_ITEMS.map(item => {
             const isActive = nav.view === item.id;
@@ -148,8 +145,8 @@ export default function App() {
                   onClick={() => item.id === 'ask-ai' ? openAI() : setView(item.id)}
                   className={`flex-shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all whitespace-nowrap ${
                     isActive
-                      ? 'bg-sky-500 text-white'
-                      : 'bg-sky-500/10 text-sky-400 hover:bg-sky-500/20 hover:text-sky-300'
+                      ? 'bg-brand-blue text-white'
+                      : 'bg-brand-blue/10 text-brand-blue-accent hover:bg-brand-blue/20 hover:text-white'
                   }`}
                 >
                   <span>{item.icon}</span>
@@ -164,10 +161,10 @@ export default function App() {
                 className={`flex-shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all whitespace-nowrap ${
                   isActive
                     ? 'bg-white/10 text-white'
-                    : 'text-gray-400 hover:text-gray-200 hover:bg-white/5'
+                    : 'text-brand-mid-gray hover:text-white hover:bg-white/5'
                 }`}
               >
-                <span className={isActive ? 'text-sky-400' : 'text-gray-500'}>{item.icon}</span>
+                <span className={isActive ? 'text-brand-blue-accent' : 'text-brand-accent-gray'}>{item.icon}</span>
                 {item.label}
               </button>
             );
@@ -184,15 +181,15 @@ export default function App() {
         </div>
 
         {nav.view !== 'ask-ai' && returnToAI && (
-          <div className="flex items-center gap-3 px-5 py-2.5 bg-sky-950 border-b border-sky-800/60 flex-shrink-0">
+          <div className="flex items-center gap-3 px-5 py-2.5 bg-brand-navy border-b border-brand-blue/30 flex-shrink-0">
             <button
               onClick={backToAI}
-              className="flex items-center gap-1.5 text-xs font-semibold text-sky-300 hover:text-white transition-colors"
+              className="flex items-center gap-1.5 text-xs font-semibold text-brand-blue-accent hover:text-white transition-colors"
             >
               <ArrowLeft size={12} />
               Back to AI conversation
             </button>
-            <span className="text-sky-700 text-xs">You navigated here from the AI. Your conversation is waiting.</span>
+            <span className="text-brand-secondary text-xs">You navigated here from the AI. Your conversation is waiting.</span>
           </div>
         )}
 
