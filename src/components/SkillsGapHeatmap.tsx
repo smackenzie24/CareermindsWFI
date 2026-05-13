@@ -276,7 +276,7 @@ function CheckInRow({ department, selected, onSelect, colCount }: { department: 
         </div>
       </div>
       <div className={`col-span-${colCount} px-4 py-3 flex items-center gap-4`} style={{ gridColumn: `2 / span ${colCount}` }}>
-        <div className="flex-1 max-w-xs">
+        <div className="flex-1">
           <div className="flex items-center gap-2 mb-1">
             <div className="flex-1 bg-gray-100 rounded-full h-2 overflow-hidden flex">
               <div className="h-full bg-emerald-500" style={{ width: `${coveragePct}%` }} />
