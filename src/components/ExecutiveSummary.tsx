@@ -41,10 +41,10 @@ function AIPromptBar({ onAskAI }: { onAskAI: (q?: string) => void }) {
   return (
     <div className="bg-white border border-gray-100 rounded-2xl px-5 py-4 shadow-sm" data-tour="home-ai-hero">
       <div className="flex items-center gap-3">
-        <div className="w-7 h-7 rounded-lg bg-sky-50 border border-sky-100 flex items-center justify-center flex-shrink-0">
-          <Sparkles size={13} className="text-sky-500" />
+        <div className="w-7 h-7 rounded-lg bg-brand-blue-bg3 border border-brand-blue-bg2 flex items-center justify-center flex-shrink-0">
+          <Sparkles size={13} className="text-brand-blue" />
         </div>
-        <div className="flex-1 flex items-center gap-2 bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 focus-within:border-sky-400 focus-within:bg-white transition-all">
+        <div className="flex-1 flex items-center gap-2 bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 focus-within:border-brand-blue focus-within:bg-white transition-all">
           <input
             type="text"
             value={input}
@@ -56,7 +56,7 @@ function AIPromptBar({ onAskAI }: { onAskAI: (q?: string) => void }) {
           <button
             onClick={() => submit()}
             disabled={!input.trim()}
-            className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-sky-500 hover:bg-sky-400 disabled:opacity-30 disabled:cursor-not-allowed text-white text-[11px] font-semibold transition-all flex-shrink-0"
+            className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-brand-blue hover:bg-brand-blue-text disabled:opacity-30 disabled:cursor-not-allowed text-white text-[11px] font-semibold transition-all flex-shrink-0"
           >
             <SendHorizonal size={11} />
             Ask
@@ -68,7 +68,7 @@ function AIPromptBar({ onAskAI }: { onAskAI: (q?: string) => void }) {
           <button
             key={q}
             onClick={() => submit(q)}
-            className="text-[11px] font-medium px-2.5 py-1 rounded-full bg-gray-50 border border-gray-200 text-gray-500 hover:bg-sky-50 hover:text-sky-700 hover:border-sky-200 transition-all"
+            className="text-[11px] font-medium px-2.5 py-1 rounded-full bg-gray-50 border border-gray-200 text-gray-500 hover:bg-brand-blue-bg3 hover:text-brand-blue hover:border-brand-blue-bg2 transition-all"
           >
             {q}
           </button>
@@ -154,10 +154,10 @@ function buildKpiCards(
 
   const attritionColor = summary.attritionScore.score >= 70 ? 'text-red-600' :
     summary.attritionScore.score >= 45 ? 'text-amber-500' :
-    summary.attritionScore.score >= 25 ? 'text-sky-600' : 'text-emerald-600';
+    summary.attritionScore.score >= 25 ? 'text-brand-blue' : 'text-emerald-600';
   const attritionIconColor = summary.attritionScore.score >= 70 ? 'text-red-500' :
     summary.attritionScore.score >= 45 ? 'text-amber-500' :
-    summary.attritionScore.score >= 25 ? 'text-sky-500' : 'text-emerald-500';
+    summary.attritionScore.score >= 25 ? 'text-brand-blue' : 'text-emerald-500';
 
   const checkInColor = totalFlagged === 0 ? 'text-emerald-600' :
     summary.criticalCheckIns > 0 ? 'text-red-600' : 'text-amber-500';
@@ -471,7 +471,7 @@ export function ExecutiveSummary({ onNavigate, onAskAI }: Props) {
   if (!summary) {
     return (
       <div className="flex flex-col min-h-screen bg-gray-50 font-sans items-center justify-center gap-3">
-        <div className="w-8 h-8 rounded-full border-2 border-gray-200 border-t-sky-500 animate-spin" />
+        <div className="w-8 h-8 rounded-full border-2 border-gray-200 border-t-brand-blue animate-spin" />
         <p className="text-xs text-gray-400">Calculating workforce signals…</p>
       </div>
     );
