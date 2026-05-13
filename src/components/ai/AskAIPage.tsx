@@ -681,10 +681,10 @@ function OutputPanel({
       )}
 
       <div className="h-full overflow-y-auto flex flex-col">
-        <div className="flex-1 max-w-4xl mx-auto w-full px-12 py-10">
+        <div className="flex-1 max-w-3xl mx-auto w-full px-8 py-6">
           {/* Header */}
-          <div className="mb-6">
-            <div className="flex items-start justify-between gap-4 mb-3">
+          <div className="mb-4">
+            <div className="flex items-start justify-between gap-4 mb-2">
               <div className="flex items-center gap-2 flex-wrap">
                 <div className="w-5 h-5 rounded-md bg-sky-500 flex items-center justify-center flex-shrink-0">
                   <Sparkles size={10} className="text-white" />
@@ -766,7 +766,7 @@ function OutputPanel({
         </div>
 
         {/* Permanent human-in-the-loop footer — always visible, never dismissable */}
-        <div className="flex-shrink-0 max-w-4xl mx-auto w-full px-12">
+        <div className="flex-shrink-0 max-w-3xl mx-auto w-full px-8">
           <HumanDecisionBar />
         </div>
       </div>
