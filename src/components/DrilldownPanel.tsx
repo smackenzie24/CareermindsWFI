@@ -101,12 +101,12 @@ export function DrilldownPanel({ skill, entries, groupBy, department, onClose, o
       {/* Summary cards */}
       <div className="grid grid-cols-3 gap-2 px-4 py-3 border-b border-gray-100" data-tour="drilldown-stats">
         {isOverall ? (
-          <div className="bg-sky-50 rounded-lg px-2.5 py-2">
+          <div className="bg-brand-blue-bg4 rounded-lg px-2.5 py-2">
             <div className="flex items-center gap-1 mb-0.5">
-              <TrendingUp size={11} className="text-sky-500" />
-              <span className="text-[10px] text-sky-600 font-medium">Exceeding</span>
+              <TrendingUp size={11} className="text-brand-blue" />
+              <span className="text-[10px] text-brand-blue font-medium">Exceeding</span>
             </div>
-            <p className="text-base font-bold text-sky-600">
+            <p className="text-base font-bold text-brand-blue">
               +{(avgActual - (entries[0]?.expectedLevel ?? 0)).toFixed(1)}
             </p>
           </div>
@@ -247,8 +247,8 @@ export function DrilldownPanel({ skill, entries, groupBy, department, onClose, o
                     </div>
                   )}
                   {entryExceeding && (
-                    <div className="flex-1 bg-sky-200 rounded-full h-2 overflow-hidden">
-                      <div className="h-full rounded-full bg-sky-400" style={{ width: '100%' }} />
+                    <div className="flex-1 bg-brand-blue-bg rounded-full h-2 overflow-hidden">
+                      <div className="h-full rounded-full bg-brand-blue-accent" style={{ width: '100%' }} />
                     </div>
                   )}
                   <div className="flex justify-between mt-1">
@@ -269,7 +269,7 @@ export function DrilldownPanel({ skill, entries, groupBy, department, onClose, o
           {promoCandidates.length > 0 ? (
             <button
               onClick={onNavigateToPipeline}
-              className="w-full text-left text-sm text-sky-700 bg-sky-50 border border-sky-200 rounded-lg px-3 py-2.5 hover:bg-sky-100 hover:border-sky-300 transition-colors font-medium"
+              className="w-full text-left text-sm text-brand-blue bg-brand-blue-bg4 border border-brand-blue-bg2 rounded-lg px-3 py-2.5 hover:bg-brand-blue-bg3 hover:border-brand-blue-bg transition-colors font-medium"
             >
               View {promoCandidates.length} promotion-ready in pipeline &rarr;
             </button>
