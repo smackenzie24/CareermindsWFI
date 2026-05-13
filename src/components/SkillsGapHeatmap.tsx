@@ -468,7 +468,7 @@ function DeptHeatmap({ department, onBack, onNavigateToPipeline, onAskAI, tourAc
             </div>
           </div>
 
-          <div className="flex items-center justify-between mb-3">
+          <div className="flex items-start justify-between mb-3">
             <div className="flex items-center gap-3">
               <div className="w-8 h-8 rounded-lg flex items-center justify-center text-white text-sm font-bold" style={{ background: deptColor }}>
                 {department[0]}
@@ -478,7 +478,7 @@ function DeptHeatmap({ department, onBack, onNavigateToPipeline, onAskAI, tourAc
                 <p className="text-xs text-gray-400 mt-0.5">Skills Gap Heatmap &bull; Progression</p>
               </div>
             </div>
-            <div className="flex items-center gap-4">
+            <div className="flex items-start gap-4">
               <ExportButtons title={`${department} — Skills Gap`} buildContent={buildExportContent} />
             <div className="flex items-center gap-5" data-tour="heatmap-header-stats">
               <div className="text-right">
