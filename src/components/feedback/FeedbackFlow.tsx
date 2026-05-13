@@ -33,7 +33,7 @@ function ProgressBar({ step }: { step: Step }) {
   return (
     <div className="h-0.5 w-full bg-gray-100 rounded-full overflow-hidden">
       <div
-        className="h-full bg-gradient-to-r from-sky-400 via-teal-400 to-emerald-400 transition-all duration-500 ease-out"
+        className="h-full bg-gradient-to-r from-brand-blue via-brand-green-success to-brand-green transition-all duration-500 ease-out"
         style={{ width: `${pct}%` }}
       />
     </div>
@@ -120,7 +120,7 @@ export function FeedbackFlow({ onClose, context }: Props) {
         }`}
       >
         {/* Top accent bar */}
-        <div className="h-1 w-full bg-gradient-to-r from-sky-400 via-teal-400 to-emerald-400" />
+        <div className="h-1 w-full bg-gradient-to-r from-brand-blue via-brand-green-success to-brand-green" />
 
         {/* Header */}
         <div className="flex items-center justify-between px-6 pt-5 pb-3">

@@ -51,7 +51,7 @@ export function FeedbackBanner({ context, className = '' }: Props) {
             <p className="text-sm font-bold text-white leading-snug">
               {copy.question}
             </p>
-            <p className="text-xs text-sky-100 mt-0.5 hidden sm:block">
+            <p className="text-xs text-blue-100 mt-0.5 hidden sm:block">
               {copy.sub}
             </p>
           </div>
@@ -59,7 +59,7 @@ export function FeedbackBanner({ context, className = '' }: Props) {
 
         <button
           onClick={() => setOpen(true)}
-          className="relative flex-shrink-0 flex items-center gap-2 text-sm font-bold text-sky-700 bg-white hover:bg-sky-50 px-5 py-2.5 rounded-xl transition-all whitespace-nowrap shadow-md hover:shadow-lg hover:-translate-y-px"
+          className="relative flex-shrink-0 flex items-center gap-2 text-sm font-bold text-brand-blue bg-white hover:bg-brand-blue-bg4 px-5 py-2.5 rounded-xl transition-all whitespace-nowrap shadow-md hover:shadow-lg hover:-translate-y-px"
         >
           <MessageSquare size={13} />
           Share feedback
