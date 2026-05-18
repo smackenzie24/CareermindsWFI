@@ -672,134 +672,6 @@ function VariantA() {
   );
 }
 
-// Variant B — muted / washed cell
-function VariantB() {
-  return (
-    <FrameWithBreadcrumb dept="Design">
-      <div className="px-5 py-3.5 border-b border-gray-100 flex items-center justify-between">
-        <div>
-          <h1 className="text-base font-bold text-gray-900">Design</h1>
-          <p className="text-xs text-gray-400 mt-0.5">5 people · 5 skills tracked</p>
-        </div>
-        <div className="flex items-center gap-1.5">
-          <div className="w-3 h-3 rounded bg-gray-100 border border-dashed border-gray-300" />
-          <span className="text-[10px] text-gray-400 font-medium">Faded = limited sample (hover for details)</span>
-        </div>
-      </div>
-
-      <div className="p-4">
-        {/* Column headers */}
-        <div className="flex items-center gap-2 mb-1.5 pl-[120px]">
-          {PEOPLE.map(p => (
-            <span key={p} className="w-12 text-center text-[10px] text-gray-400 font-medium truncate">{p}</span>
-          ))}
-        </div>
-
-        <div className="space-y-1.5">
-          {LOW_SAMPLE_SKILLS.map(skill => (
-            <div key={skill} className="flex items-center gap-2">
-              <span className="text-[11px] text-gray-600 w-[116px] truncate text-right pr-2">{skill}</span>
-              <div className="flex gap-1">
-                {CELL_DATA[skill].map((cell, j) => {
-                  const isLow = cell.n < 3;
-                  return (
-                    <div
-                      key={j}
-                      title={isLow ? `Only ${cell.n === 1 ? '1 person has' : `${cell.n} people have`} this skill — interpret with caution` : undefined}
-                      className={`w-12 h-7 rounded text-[11px] font-semibold flex items-center justify-center cursor-default transition-opacity
-                        ${isLow
-                          ? 'opacity-35 bg-gray-200 text-gray-500 border border-dashed border-gray-300'
-                          : cellColor(cell.score)
-                        }`}
-                    >
-                      {cell.score}
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          ))}
-        </div>
-
-        {/* Legend */}
-        <div className="mt-4 pt-3 border-t border-gray-100 flex items-center gap-4">
-          <span className="text-[10px] text-gray-400 font-semibold uppercase tracking-widest">Legend</span>
-          <div className="flex items-center gap-1.5">
-            <div className="w-6 h-4 rounded bg-gray-200 border border-dashed border-gray-300 opacity-40" />
-            <span className="text-[10px] text-gray-500">Faded cell = fewer than 3 people assessed — hover to see count</span>
-          </div>
-        </div>
-      </div>
-    </FrameWithBreadcrumb>
-  );
-}
-
-// Variant C — replace with dash + tooltip
-function VariantC() {
-  return (
-    <FrameWithBreadcrumb dept="Design">
-      <div className="px-5 py-3.5 border-b border-gray-100 flex items-center justify-between">
-        <div>
-          <h1 className="text-base font-bold text-gray-900">Design</h1>
-          <p className="text-xs text-gray-400 mt-0.5">5 people · 5 skills tracked</p>
-        </div>
-        <div className="flex items-center gap-1.5">
-          <div className="w-5 h-4 rounded bg-gray-50 border border-gray-200 flex items-center justify-center">
-            <span className="text-[9px] text-gray-400 font-bold">–</span>
-          </div>
-          <span className="text-[10px] text-gray-400 font-medium">Dash = statistically insufficient (&lt;3 respondents)</span>
-        </div>
-      </div>
-
-      <div className="p-4">
-        {/* Column headers */}
-        <div className="flex items-center gap-2 mb-1.5 pl-[120px]">
-          {PEOPLE.map(p => (
-            <span key={p} className="w-12 text-center text-[10px] text-gray-400 font-medium truncate">{p}</span>
-          ))}
-        </div>
-
-        <div className="space-y-1.5">
-          {LOW_SAMPLE_SKILLS.map(skill => (
-            <div key={skill} className="flex items-center gap-2">
-              <span className="text-[11px] text-gray-600 w-[116px] truncate text-right pr-2">{skill}</span>
-              <div className="flex gap-1">
-                {CELL_DATA[skill].map((cell, j) => {
-                  const isLow = cell.n < 3;
-                  return (
-                    <div
-                      key={j}
-                      title={isLow ? `Only ${cell.n === 1 ? '1 person has' : `${cell.n} people have`} this skill — not enough for a reliable score` : undefined}
-                      className={`w-12 h-7 rounded text-[11px] font-semibold flex items-center justify-center cursor-default
-                        ${isLow
-                          ? 'bg-gray-50 border border-gray-200 text-gray-300'
-                          : cellColor(cell.score)
-                        }`}
-                    >
-                      {isLow ? '–' : cell.score}
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          ))}
-        </div>
-
-        {/* Legend */}
-        <div className="mt-4 pt-3 border-t border-gray-100 flex items-center gap-4">
-          <span className="text-[10px] text-gray-400 font-semibold uppercase tracking-widest">Legend</span>
-          <div className="flex items-center gap-1.5">
-            <div className="w-6 h-4 rounded bg-gray-50 border border-gray-200 flex items-center justify-center">
-              <span className="text-[9px] text-gray-400 font-bold">–</span>
-            </div>
-            <span className="text-[10px] text-gray-500">Fewer than 3 people assessed — hover to see count</span>
-          </div>
-        </div>
-      </div>
-    </FrameWithBreadcrumb>
-  );
-}
-
 // ── Main Page ─────────────────────────────────────────────────────────────────
 
 export function ZeroStatesDesign() {
@@ -1014,71 +886,17 @@ export function ZeroStatesDesign() {
           number="07"
           id="LOW SAMPLE SIZE"
           title="Skill Has Only 1 or 2 Respondents"
-          description="When a skill column contains very few assessments the displayed score is statistically unreliable — it may just be one person's self-rating. Three design options are shown below. Pick one approach and apply it consistently. The threshold used here is fewer than 3 respondents."
+          description="When a skill column contains very few assessments the displayed score is unreliable — it may just be one person's self-rating. The cell still shows the score and colour coding, but a small badge in the corner shows how many people contributed. The threshold is fewer than 3 respondents."
         />
-
-        {/* Context callout */}
-        <div className="mb-8 bg-sky-50 border border-sky-100 rounded-xl px-4 py-3.5">
-          <p className="text-xs text-sky-800 leading-relaxed">
-            <strong>Why this matters:</strong> A cell showing "2 / 5" when only 1 person has that skill means the score is just one person's self-assessment. It looks like data but it isn't actionable at scale. The three options below each make the low-confidence signal visible in a different way — from subtle (badge) to aggressive (suppress). The right choice depends on how much manager trust you want to protect vs. how much raw data you want to surface.
-          </p>
+        <div className="flex items-start gap-3 mb-6">
+          <Label color="sky">Score still visible</Label>
+          <Label color="gray">Colour coding preserved</Label>
+          <Label color="gray">Badge in cell corner</Label>
         </div>
-
-        {/* Variant A */}
-        <div className="mb-10">
-          <div className="flex items-center gap-3 mb-3">
-            <span className="text-xs font-bold text-gray-700 uppercase tracking-wider">Option A — person count badge</span>
-            <Label color="sky">Recommended</Label>
-          </div>
-          <p className="text-xs text-gray-500 leading-relaxed mb-4 max-w-2xl">
-            Score is displayed normally. A small pill in the top-right corner of the cell shows "1 person" or "2 people". The colour coding still applies so the manager gets the signal, but the badge flags that it should be taken with a grain of salt. No data is hidden.
-          </p>
-          <VariantA />
-          <div className="mt-3 bg-gray-50 border border-gray-200 rounded-xl px-4 py-3">
-            <p className="text-xs text-gray-500 leading-relaxed">
-              <strong className="text-gray-700">Pros:</strong> No data hidden, colour signal preserved, badge is unobtrusive when all cells have full data. <strong className="text-gray-700">Cons:</strong> Small badge may be missed on quick scans.
-            </p>
-          </div>
-        </div>
-
-        {/* Variant B */}
-        <div className="mb-10">
-          <div className="flex items-center gap-3 mb-3">
-            <span className="text-xs font-bold text-gray-700 uppercase tracking-wider">Option B — muted / washed cell</span>
-            <Label color="amber">Strong visual signal</Label>
-          </div>
-          <p className="text-xs text-gray-500 leading-relaxed mb-4 max-w-2xl">
-            Low-sample cells are rendered at reduced opacity with a dashed border. The score value is still visible on hover (via title attribute), but the visual de-emphasis makes it immediately obvious that something is different. High-n cells remain vibrant by contrast.
-          </p>
-          <VariantB />
-          <div className="mt-3 bg-gray-50 border border-gray-200 rounded-xl px-4 py-3">
-            <p className="text-xs text-gray-500 leading-relaxed">
-              <strong className="text-gray-700">Pros:</strong> Visually unmistakeable — managers cannot accidentally rely on low-n data. <strong className="text-gray-700">Cons:</strong> Muted cells break the colour language of the heatmap; the score is still there but harder to read quickly.
-            </p>
-          </div>
-        </div>
-
-        {/* Variant C */}
-        <div className="mb-6">
-          <div className="flex items-center gap-3 mb-3">
-            <span className="text-xs font-bold text-gray-700 uppercase tracking-wider">Option C — suppress to dash</span>
-            <Label color="gray">Cleanest grid</Label>
-          </div>
-          <p className="text-xs text-gray-500 leading-relaxed mb-4 max-w-2xl">
-            Cells with fewer than 3 people assessed show a neutral dash instead of a score. Hovering reveals how many people contributed. The heatmap stays uncluttered and unambiguous — every visible score meets a minimum quality bar. Data is not lost, just deferred to the tooltip.
-          </p>
-          <VariantC />
-          <div className="mt-3 bg-gray-50 border border-gray-200 rounded-xl px-4 py-3">
-            <p className="text-xs text-gray-500 leading-relaxed">
-              <strong className="text-gray-700">Pros:</strong> Grid is clean and every visible number is trustworthy. <strong className="text-gray-700">Cons:</strong> Data is hidden — managers may not notice the dash or understand why data is missing for certain people.
-            </p>
-          </div>
-        </div>
-
-        {/* Decision note */}
-        <div className="mt-6 bg-gray-900 rounded-xl px-5 py-4">
-          <p className="text-xs text-gray-300 leading-relaxed">
-            <strong className="text-white">Decision needed:</strong> Pick one option before implementation. Option A (badge) is recommended as the default — it surfaces all data while flagging reliability. If product decides the heatmap should only show "trustworthy" scores, go with Option C. Option B is a middle ground but adds visual noise that may conflict with the red/amber/green colour system.
+        <VariantA />
+        <div className="mt-4 bg-gray-50 border border-gray-200 rounded-xl px-4 py-3">
+          <p className="text-xs text-gray-500 leading-relaxed">
+            <strong className="text-gray-700">Key detail:</strong> The "1 person" / "2 people" badge appears only on cells below the threshold — cells with 3 or more respondents show no badge. The darker pill (single person) draws more attention than the lighter one (two people), reflecting the higher uncertainty.
           </p>
         </div>
       </div>
@@ -1087,7 +905,7 @@ export function ZeroStatesDesign() {
       <div className="mt-16 pt-8 border-t border-gray-100 flex items-center justify-between">
         <div className="flex items-center gap-2">
           <CheckCircle2 size={14} className="text-emerald-500" />
-          <span className="text-sm text-gray-500">7 states designed — Tickets 10–15 + Low Sample Size</span>
+          <span className="text-sm text-gray-500">7 states documented — Tickets 10–15 + Low Sample Size</span>
         </div>
         <div className="flex items-center gap-1.5 text-xs text-gray-400">
           <Sparkles size={11} className="text-sky-400" />
