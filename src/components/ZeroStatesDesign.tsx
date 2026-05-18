@@ -609,7 +609,7 @@ function cellColor(score: number) {
   return 'bg-emerald-100 text-emerald-700';
 }
 
-// Variant A — n badge in corner of cell
+// Variant A — person count badge in corner of cell
 function VariantA() {
   return (
     <FrameWithBreadcrumb dept="Design">
@@ -620,7 +620,7 @@ function VariantA() {
         </div>
         <div className="flex items-center gap-1.5">
           <div className="w-2 h-2 rounded-full bg-gray-200" />
-          <span className="text-[10px] text-gray-400 font-medium">n=1 or n=2 cells have limited data</span>
+          <span className="text-[10px] text-gray-400 font-medium">Cells with fewer than 3 responses show a count badge</span>
         </div>
       </div>
 
@@ -645,7 +645,7 @@ function VariantA() {
                     {cell.n < 3 && (
                       <span className={`absolute -top-1 -right-1 text-[8px] font-bold px-1 py-px rounded-full leading-none
                         ${cell.n === 1 ? 'bg-gray-600 text-white' : 'bg-gray-400 text-white'}`}>
-                        n={cell.n}
+                        {cell.n === 1 ? '1 person' : `${cell.n} people`}
                       </span>
                     )}
                   </div>
@@ -659,12 +659,12 @@ function VariantA() {
         <div className="mt-4 pt-3 border-t border-gray-100 flex items-center gap-4">
           <span className="text-[10px] text-gray-400 font-semibold uppercase tracking-widest">Legend</span>
           <div className="flex items-center gap-1.5">
-            <span className="inline-block text-[8px] font-bold bg-gray-600 text-white px-1 py-0.5 rounded-full leading-none">n=1</span>
-            <span className="text-[10px] text-gray-500">Score from 1 person — treat with caution</span>
+            <span className="inline-block text-[8px] font-bold bg-gray-600 text-white px-1 py-0.5 rounded-full leading-none">1 person</span>
+            <span className="text-[10px] text-gray-500">Only 1 response — treat with caution</span>
           </div>
           <div className="flex items-center gap-1.5">
-            <span className="inline-block text-[8px] font-bold bg-gray-400 text-white px-1 py-0.5 rounded-full leading-none">n=2</span>
-            <span className="text-[10px] text-gray-500">Score from 2 people</span>
+            <span className="inline-block text-[8px] font-bold bg-gray-400 text-white px-1 py-0.5 rounded-full leading-none">2 people</span>
+            <span className="text-[10px] text-gray-500">Only 2 responses — limited confidence</span>
           </div>
         </div>
       </div>
@@ -705,7 +705,7 @@ function VariantB() {
                   return (
                     <div
                       key={j}
-                      title={isLow ? `n=${cell.n} — limited sample, interpret with caution` : undefined}
+                      title={isLow ? `Only ${cell.n === 1 ? '1 person has' : `${cell.n} people have`} this skill — interpret with caution` : undefined}
                       className={`w-12 h-7 rounded text-[11px] font-semibold flex items-center justify-center cursor-default transition-opacity
                         ${isLow
                           ? 'opacity-35 bg-gray-200 text-gray-500 border border-dashed border-gray-300'
@@ -726,7 +726,7 @@ function VariantB() {
           <span className="text-[10px] text-gray-400 font-semibold uppercase tracking-widest">Legend</span>
           <div className="flex items-center gap-1.5">
             <div className="w-6 h-4 rounded bg-gray-200 border border-dashed border-gray-300 opacity-40" />
-            <span className="text-[10px] text-gray-500">Faded cell = fewer than 3 respondents — hover to see n</span>
+            <span className="text-[10px] text-gray-500">Faded cell = fewer than 3 people assessed — hover to see count</span>
           </div>
         </div>
       </div>
@@ -769,7 +769,7 @@ function VariantC() {
                   return (
                     <div
                       key={j}
-                      title={isLow ? `n=${cell.n} — not enough responses to display a reliable score` : undefined}
+                      title={isLow ? `Only ${cell.n === 1 ? '1 person has' : `${cell.n} people have`} this skill — not enough for a reliable score` : undefined}
                       className={`w-12 h-7 rounded text-[11px] font-semibold flex items-center justify-center cursor-default
                         ${isLow
                           ? 'bg-gray-50 border border-gray-200 text-gray-300'
@@ -792,7 +792,7 @@ function VariantC() {
             <div className="w-6 h-4 rounded bg-gray-50 border border-gray-200 flex items-center justify-center">
               <span className="text-[9px] text-gray-400 font-bold">–</span>
             </div>
-            <span className="text-[10px] text-gray-500">Fewer than 3 respondents — hover to see n count</span>
+            <span className="text-[10px] text-gray-500">Fewer than 3 people assessed — hover to see count</span>
           </div>
         </div>
       </div>
@@ -1020,23 +1020,23 @@ export function ZeroStatesDesign() {
         {/* Context callout */}
         <div className="mb-8 bg-sky-50 border border-sky-100 rounded-xl px-4 py-3.5">
           <p className="text-xs text-sky-800 leading-relaxed">
-            <strong>Why this matters:</strong> A cell showing "2 / 5" when n=1 means a single person rated themselves. It looks like data but it isn't actionable. The three options below each make the low-confidence signal visible in a different way — from subtle (badge) to aggressive (suppress). The right choice depends on how much manager trust you want to protect vs. how much raw data you want to surface.
+            <strong>Why this matters:</strong> A cell showing "2 / 5" when only 1 person has that skill means the score is just one person's self-assessment. It looks like data but it isn't actionable at scale. The three options below each make the low-confidence signal visible in a different way — from subtle (badge) to aggressive (suppress). The right choice depends on how much manager trust you want to protect vs. how much raw data you want to surface.
           </p>
         </div>
 
         {/* Variant A */}
         <div className="mb-10">
           <div className="flex items-center gap-3 mb-3">
-            <span className="text-xs font-bold text-gray-700 uppercase tracking-wider">Option A — n badge</span>
+            <span className="text-xs font-bold text-gray-700 uppercase tracking-wider">Option A — person count badge</span>
             <Label color="sky">Recommended</Label>
           </div>
           <p className="text-xs text-gray-500 leading-relaxed mb-4 max-w-2xl">
-            Score is displayed normally. A small pill in the top-right corner of the cell shows "n=1" or "n=2". The colour coding still applies so the manager gets the signal, but the badge flags that it should be taken with a grain of salt. No data is hidden.
+            Score is displayed normally. A small pill in the top-right corner of the cell shows "1 person" or "2 people". The colour coding still applies so the manager gets the signal, but the badge flags that it should be taken with a grain of salt. No data is hidden.
           </p>
           <VariantA />
           <div className="mt-3 bg-gray-50 border border-gray-200 rounded-xl px-4 py-3">
             <p className="text-xs text-gray-500 leading-relaxed">
-              <strong className="text-gray-700">Pros:</strong> No data hidden, colour signal preserved, badge is unobtrusive for high-n cells. <strong className="text-gray-700">Cons:</strong> Small badge may be missed on quick scans; manager must know what n means.
+              <strong className="text-gray-700">Pros:</strong> No data hidden, colour signal preserved, badge is unobtrusive when all cells have full data. <strong className="text-gray-700">Cons:</strong> Small badge may be missed on quick scans.
             </p>
           </div>
         </div>
@@ -1065,7 +1065,7 @@ export function ZeroStatesDesign() {
             <Label color="gray">Cleanest grid</Label>
           </div>
           <p className="text-xs text-gray-500 leading-relaxed mb-4 max-w-2xl">
-            Cells with fewer than 3 respondents show a neutral dash instead of a score. Hovering reveals the n count. The heatmap stays uncluttered and unambiguous — every visible score meets a minimum quality bar. Data is not lost, just deferred to the tooltip.
+            Cells with fewer than 3 people assessed show a neutral dash instead of a score. Hovering reveals how many people contributed. The heatmap stays uncluttered and unambiguous — every visible score meets a minimum quality bar. Data is not lost, just deferred to the tooltip.
           </p>
           <VariantC />
           <div className="mt-3 bg-gray-50 border border-gray-200 rounded-xl px-4 py-3">
