@@ -99,6 +99,12 @@ export function HeatmapCell({ data, onClick, selected }: HeatmapCellProps) {
         <span className="text-gray-400">Gap score</span>
         <span className="text-white font-medium">{exceeding ? `+${surplus}` : gap.toFixed(1)}</span>
       </div>
+      {data.headcount < 3 && (
+        <div className="flex justify-between gap-4 border-t border-gray-700 pt-1.5 mt-0.5">
+          <span className="text-amber-400">Low sample</span>
+          <span className="text-amber-300 font-medium">Only {data.headcount === 1 ? '1 person' : `${data.headcount} people`}</span>
+        </div>
+      )}
       {data.team && (
         <div className="flex justify-between gap-4">
           <span className="text-gray-400">Team</span>
@@ -108,12 +114,15 @@ export function HeatmapCell({ data, onClick, selected }: HeatmapCellProps) {
     </div>
   );
 
+  const isLowSample = data.headcount < 3;
+  const lowSampleLabel = data.headcount === 1 ? '1 person' : '2 people';
+
   return (
     <Tooltip content={tooltipContent}>
       <button
         onClick={onClick}
         className={`
-          w-full h-14 rounded-md border transition-all duration-150 cursor-pointer
+          relative w-full h-14 rounded-md border transition-all duration-150 cursor-pointer
           flex flex-col items-center justify-center gap-0.5
           ${colorClass}
           ${selected ? 'ring-2 ring-offset-1 ring-gray-900 scale-105 shadow-md' : 'hover:scale-105 hover:shadow-sm'}
@@ -132,6 +141,12 @@ export function HeatmapCell({ data, onClick, selected }: HeatmapCellProps) {
             <span className={`text-sm font-bold ${textColor}`}>{pct}%</span>
             <span className={`text-[10px] font-medium ${textColor} opacity-70`}>{label}</span>
           </>
+        )}
+        {isLowSample && (
+          <span className={`absolute -top-1.5 -right-1.5 text-[8px] font-bold px-1.5 py-0.5 rounded-full leading-none whitespace-nowrap shadow-sm
+            ${data.headcount === 1 ? 'bg-gray-700 text-white' : 'bg-gray-500 text-white'}`}>
+            {lowSampleLabel}
+          </span>
         )}
       </button>
     </Tooltip>

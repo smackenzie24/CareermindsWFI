@@ -252,6 +252,16 @@ export const SKILLS_DATA: SkillGapEntry[] = [
     ['New York', 'Product Design', 3.4, 5, 2],
     ['Remote', 'UX Research', 2.9, 4, 3],
   ]),
+  ...design('3D & Spatial Design', 'Craft', 'IC3', 4, [
+    ['London', 'Brand', 2.0, 1, 1],
+    ['New York', 'Product Design', 2.5, 2, 1],
+    ['Remote', 'UX Research', 1.5, 1, 1],
+  ]),
+  ...design('Design Ops', 'Operations', 'IC3', 3, [
+    ['London', 'Brand', 3.0, 2, 1],
+    ['New York', 'Product Design', 2.0, 1, 1],
+    ['Remote', 'UX Research', 3.5, 5, 2],
+  ]),
 
   // ── Data (11 skills) ────────────────────────────────────────────────
   ...data('ML Model Deployment', 'MLOps', 'IC3', 3, [
