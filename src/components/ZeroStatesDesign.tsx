@@ -689,7 +689,7 @@ function ErrorDeptCard({ dept }: { dept: string }) {
         </div>
         <div className="flex items-center gap-2 mb-3">
           <AlertCircle size={11} className="text-red-400 flex-shrink-0" />
-          <p className="text-xs text-red-500 leading-snug">Couldn't load {dept} data</p>
+          <p className="text-xs text-red-500 leading-snug">Couldn't load this department's data</p>
         </div>
         <button className="w-full flex items-center justify-center gap-1.5 text-xs font-semibold text-red-600 border border-red-200 rounded-lg py-1.5 hover:bg-red-50 transition-colors">
           <RotateCcw size={10} />
