@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { LayoutGrid, TrendingUp, Sparkles, BarChart3, Globe, Home, ArrowLeft, ClipboardList, BookOpen, HelpCircle } from 'lucide-react';
+import { LayoutGrid, TrendingUp, Sparkles, BarChart3, Globe, Home, ArrowLeft, ClipboardList, BookOpen, HelpCircle, Layers } from 'lucide-react';
 import { TourOverlay } from './components/tour/TourOverlay';
 import type { ActiveView as TourActiveView } from './components/tour/tourData';
 import { SkillsGapHeatmap } from './components/SkillsGapHeatmap';
@@ -11,6 +11,7 @@ import { ExecutiveSummary } from './components/ExecutiveSummary';
 import { AskAIPage } from './components/ai/AskAIPage';
 import { CommitmentsJournal } from './components/CommitmentsJournal';
 import { HowItWorks } from './components/HowItWorks';
+import { ZeroStatesDesign } from './components/ZeroStatesDesign';
 import { DeptGapReportPicker } from './components/DeptGapReportPicker';
 import { SkillGapReport } from './components/SkillGapReport';
 import type { Department } from './data/mockData';
@@ -18,7 +19,7 @@ import type { NavTarget } from './data/execSummaryData';
 import type { ActionNavTarget } from './data/chatEngine';
 import type { ManagerMetrics } from './data/managerData';
 
-type ActiveView = 'home' | 'heatmap' | 'pipeline' | 'managers' | 'benchmark' | 'ask-ai' | 'journal' | 'how-it-works' | 'gap-report';
+type ActiveView = 'home' | 'heatmap' | 'pipeline' | 'managers' | 'benchmark' | 'ask-ai' | 'journal' | 'how-it-works' | 'gap-report' | 'zero-states';
 
 function TourNudge({ onDismiss }: { onDismiss: () => void }) {
   const [visible, setVisible] = useState(() => {
@@ -51,6 +52,7 @@ const NAV_ITEMS: { id: ActiveView; label: string; icon: React.ReactNode; accent?
   { id: 'benchmark',    label: 'Benchmarks',   icon: <Globe size={13} /> },
   { id: 'journal',      label: 'Decisions',    icon: <ClipboardList size={13} /> },
   { id: 'how-it-works', label: 'How it works', icon: <HelpCircle size={13} /> },
+  { id: 'zero-states',  label: 'Zero States',  icon: <Layers size={13} /> },
   { id: 'ask-ai',       label: 'Ask AI',       icon: <Sparkles size={13} />, accent: true },
 ];
 
@@ -236,6 +238,7 @@ export default function App() {
               />
         )}
         {nav.view === 'journal' && <CommitmentsJournal onReviewSource={openAI} />}
+        {nav.view === 'zero-states' && <ZeroStatesDesign />}
         {nav.view === 'how-it-works' && (
           <HowItWorks onNavigate={(view) => {
             if (view === 'ask-ai') { openAI(); } else { setView(view as ActiveView); }
