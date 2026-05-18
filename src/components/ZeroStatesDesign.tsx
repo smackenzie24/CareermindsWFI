@@ -671,8 +671,25 @@ export function ZeroStatesDesign() {
           number="03"
           id="TICKET 12"
           title="No Check-in Data"
-          description="Skills are configured and the heatmap grid is visible, but no one in this department has ever completed a check-in. The check-in row and panel handle this gracefully — no red 0% bar, no misleading alerts."
+          description="Skills are configured and assessments have been completed — so the heatmap grid has real data to display. Check-ins are a separate engagement data source that tracks how recently each person has had a development 1:1. The two are independent: the heatmap shows skill scores from assessments; the check-in row and panel show a different signal entirely. This state represents the check-in feature being unused while everything else works normally."
         />
+
+        {/* Two-column explainer */}
+        <div className="grid grid-cols-2 gap-4 mb-7">
+          <div className="bg-emerald-50 border border-emerald-100 rounded-xl px-4 py-3">
+            <p className="text-[10px] font-bold text-emerald-600 uppercase tracking-widest mb-1.5">Has data — heatmap shows normally</p>
+            <p className="text-xs text-emerald-800 leading-relaxed">
+              <strong>Skill assessment scores</strong> — each person has rated themselves against the competency framework. Cells show averageActual vs expectedLevel. This data exists and is displayed as normal.
+            </p>
+          </div>
+          <div className="bg-amber-50 border border-amber-100 rounded-xl px-4 py-3">
+            <p className="text-[10px] font-bold text-amber-600 uppercase tracking-widest mb-1.5">No data — check-in row is zeroed</p>
+            <p className="text-xs text-amber-800 leading-relaxed">
+              <strong>Check-in coverage</strong> — tracks when each person last had a 1:1 development conversation. This is logged separately via the check-in feature. Nobody has used it yet, so this row and panel are empty.
+            </p>
+          </div>
+        </div>
+
         <div className="flex items-start gap-3 mb-6">
           <Label color="sky">Inline row zero state</Label>
           <Label color="emerald">Heatmap grid still shows</Label>
@@ -682,7 +699,7 @@ export function ZeroStatesDesign() {
         <Ticket12 />
         <div className="mt-4 bg-gray-50 border border-gray-200 rounded-xl px-4 py-3">
           <p className="text-xs text-gray-500 leading-relaxed">
-            <strong className="text-gray-700">Key detail:</strong> The check-in row cell uses neutral grey styling with dashed border — no red or amber colouring to avoid alarm. The panel's four stat tiles show em-dashes. The coverage bar is replaced by the explanation copy. "Export check-in report" is not rendered.
+            <strong className="text-gray-700">Key detail:</strong> The check-in row cell uses neutral grey with a dashed border — not red or amber, because this is not a problem, just a feature that hasn't been adopted yet. The skill cells above it show real assessment data as normal. The panel's four stat tiles show em-dashes. The coverage bar and overdue alerts are not rendered. "Export check-in report" is hidden until data exists.
           </p>
         </div>
       </div>
