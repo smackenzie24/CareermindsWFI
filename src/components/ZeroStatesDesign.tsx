@@ -609,12 +609,12 @@ export function ZeroStatesDesign() {
         {/* Quick nav */}
         <div className="flex flex-wrap gap-2 mt-6">
           {[
-            { id: 'ticket-10', label: 'TICKET 10 — No framework' },
-            { id: 'ticket-11', label: 'TICKET 11 — No dept skills' },
-            { id: 'ticket-12', label: 'TICKET 12 — No check-ins' },
-            { id: 'ticket-13', label: 'TICKET 13 — No assessments' },
-            { id: 'ticket-14', label: 'TICKET 14 — Partial setup' },
-            { id: 'ticket-15', label: 'TICKET 15 — No drilldown data' },
+            { id: 'ticket-10', label: 'No framework' },
+            { id: 'ticket-11', label: 'No dept skills' },
+            { id: 'ticket-12', label: 'No check-ins' },
+            { id: 'ticket-13', label: 'No assessments' },
+            { id: 'ticket-14', label: 'Partial setup' },
+            { id: 'ticket-15', label: 'No drilldown data' },
           ].map(({ id, label }) => (
             <a
               key={id}
