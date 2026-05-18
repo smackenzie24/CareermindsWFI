@@ -2,7 +2,7 @@ import {
   LayoutGrid, Settings, AlertTriangle, CalendarX, ChevronRight,
   ArrowLeft, Filter, BarChart2, Users, Target, Info, X,
   PanelRightClose, ClipboardList, Sparkles, CheckCircle2,
-  PlusCircle, Search, RefreshCw
+  PlusCircle, Search, RefreshCw, AlertCircle, WifiOff, RotateCcw
 } from 'lucide-react';
 
 // ── Shared primitives ─────────────────────────────────────────────────────────
@@ -672,6 +672,287 @@ function VariantA() {
   );
 }
 
+// ── ERROR STATES ─────────────────────────────────────────────────────────────
+
+// Error state for department overview cards
+function ErrorDeptCard({ dept }: { dept: string }) {
+  const color = DEPT_COLORS[dept] ?? '#6b7280';
+  return (
+    <div className="rounded-xl border border-red-100 bg-red-50/40">
+      <div className="p-4">
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center gap-2">
+            <div className="w-2 h-2 rounded-full" style={{ background: color }} />
+            <span className="text-sm font-bold text-gray-800">{dept}</span>
+          </div>
+          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-red-100 text-red-500 border border-red-200">Error</span>
+        </div>
+        <div className="flex items-center gap-2 mb-3">
+          <AlertCircle size={11} className="text-red-400 flex-shrink-0" />
+          <p className="text-xs text-red-500 leading-snug">Couldn't load {dept} data</p>
+        </div>
+        <button className="w-full flex items-center justify-center gap-1.5 text-xs font-semibold text-red-600 border border-red-200 rounded-lg py-1.5 hover:bg-red-50 transition-colors">
+          <RotateCcw size={10} />
+          Retry
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// Error state for the full department overview page
+function ErrorDeptOverview() {
+  const depts = [
+    { dept: 'Engineering', state: 'ok' as const },
+    { dept: 'Product', state: 'error' as const },
+    { dept: 'Design', state: 'ok' as const },
+    { dept: 'Data', state: 'error' as const },
+    { dept: 'Marketing', state: 'ok' as const },
+    { dept: 'Sales', state: 'ok' as const },
+    { dept: 'People Ops', state: 'ok' as const },
+  ];
+
+  return (
+    <Frame>
+      <div className="px-5 py-4 border-b border-gray-100">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-base font-bold text-gray-900">Skills Gap Heatmap</h1>
+            <p className="text-xs text-gray-400 mt-0.5">Stats calculated from 5 loaded departments</p>
+          </div>
+          <div className="flex items-center gap-5">
+            <div className="text-center">
+              <p className="text-base font-bold text-red-500">34%</p>
+              <p className="text-[10px] text-gray-400">% below target</p>
+            </div>
+            <div className="text-center">
+              <p className="text-base font-bold text-gray-700">−0.8</p>
+              <p className="text-[10px] text-gray-400">Avg gap</p>
+            </div>
+          </div>
+        </div>
+        <div className="mt-3 flex items-center gap-2 bg-red-50 border border-red-100 rounded-lg px-3 py-2">
+          <AlertCircle size={12} className="text-red-400 flex-shrink-0" />
+          <p className="text-[11px] text-red-700">
+            2 departments failed to load. Org-level stats are incomplete. Retry or refresh the page.
+          </p>
+          <button className="ml-auto flex items-center gap-1 text-[11px] font-semibold text-red-600 hover:text-red-700 flex-shrink-0">
+            <RotateCcw size={10} /> Retry all
+          </button>
+        </div>
+      </div>
+      <div className="p-5">
+        <div className="grid grid-cols-4 gap-3">
+          {depts.map(d =>
+            d.state === 'error'
+              ? <ErrorDeptCard key={d.dept} dept={d.dept} />
+              : <DeptCard key={d.dept} dept={d.dept} configured />
+          )}
+        </div>
+      </div>
+    </Frame>
+  );
+}
+
+// Error state for the full heatmap grid
+function ErrorHeatmapGrid() {
+  return (
+    <FrameWithBreadcrumb dept="Engineering">
+      <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
+        <div>
+          <h1 className="text-base font-bold text-gray-900">Engineering</h1>
+          <p className="text-xs text-gray-400 mt-0.5">Skills Gap Heatmap</p>
+        </div>
+        <div className="flex items-center gap-4">
+          {['% below target', 'Avg gap', 'Skills'].map(l => (
+            <div key={l} className="text-center">
+              <p className="text-base font-bold text-gray-200">—</p>
+              <p className="text-[10px] text-gray-300 mt-0.5">{l}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div className="flex flex-col items-center justify-center py-16 px-8 text-center min-h-[360px] bg-red-50/20">
+        <div className="w-16 h-16 rounded-2xl bg-white border-2 border-red-100 flex items-center justify-center mb-5 shadow-sm">
+          <WifiOff size={26} className="text-red-300" />
+        </div>
+        <h2 className="text-lg font-bold text-gray-900 mb-1.5">
+          Couldn't load Engineering data
+        </h2>
+        <p className="text-sm text-gray-500 leading-relaxed max-w-sm mb-6">
+          There was a problem fetching this department's skills data. This is usually temporary — try again or refresh the page.
+        </p>
+        <div className="flex items-center gap-3">
+          <button className="flex items-center gap-2 px-4 py-2 rounded-xl bg-red-500 text-white text-sm font-semibold hover:bg-red-600 transition-colors shadow-sm">
+            <RotateCcw size={13} />
+            Try again
+          </button>
+          <button className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white text-gray-600 text-sm font-semibold border border-gray-200 hover:bg-gray-50 transition-colors">
+            <ArrowLeft size={13} />
+            Back to overview
+          </button>
+        </div>
+        <p className="mt-5 text-[11px] text-red-300">Error: Failed to fetch skill assessments (503)</p>
+      </div>
+    </FrameWithBreadcrumb>
+  );
+}
+
+// Error state for individual heatmap cells mixed with a working grid
+function ErrorHeatmapCells() {
+  const skills = ['Design Systems', 'User Research', 'Prototyping', 'Visual Design', 'Motion Design'];
+  const cellState: Record<string, ('ok' | 'error')[]> = {
+    'Design Systems': ['ok', 'ok', 'ok'],
+    'User Research':  ['ok', 'error', 'ok'],
+    'Prototyping':    ['ok', 'ok', 'ok'],
+    'Visual Design':  ['error', 'ok', 'ok'],
+    'Motion Design':  ['ok', 'ok', 'error'],
+  };
+  const scores: Record<string, number[]> = {
+    'Design Systems': [4, 2, 3],
+    'User Research':  [3, 0, 4],
+    'Prototyping':    [5, 3, 2],
+    'Visual Design':  [0, 3, 4],
+    'Motion Design':  [3, 2, 0],
+  };
+  const people = ['Alex M.', 'Jamie L.', 'Priya R.'];
+
+  return (
+    <FrameWithBreadcrumb dept="Design">
+      <div className="px-5 py-3.5 border-b border-gray-100 flex items-center justify-between">
+        <div>
+          <h1 className="text-base font-bold text-gray-900">Design</h1>
+          <p className="text-xs text-gray-400 mt-0.5">5 people · 5 skills tracked</p>
+        </div>
+        <div className="flex items-center gap-2">
+          <AlertTriangle size={11} className="text-amber-400" />
+          <span className="text-[10px] text-amber-600 font-medium">Some cells failed to load</span>
+        </div>
+      </div>
+
+      <div className="p-4">
+        {/* Column headers */}
+        <div className="flex items-center gap-2 mb-1.5 pl-[120px]">
+          {people.map(p => (
+            <span key={p} className="w-12 text-center text-[10px] text-gray-400 font-medium truncate">{p}</span>
+          ))}
+        </div>
+
+        <div className="space-y-1.5">
+          {skills.map(skill => (
+            <div key={skill} className="flex items-center gap-2">
+              <span className="text-[11px] text-gray-600 w-[116px] truncate text-right pr-2">{skill}</span>
+              <div className="flex gap-1">
+                {cellState[skill].map((state, j) =>
+                  state === 'error' ? (
+                    <div key={j} className="relative w-12 h-7 group">
+                      <div className="w-full h-full rounded bg-red-50 border border-dashed border-red-200 flex items-center justify-center">
+                        <AlertCircle size={11} className="text-red-300" />
+                      </div>
+                      {/* Tooltip hint */}
+                      <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 hidden group-hover:block z-10">
+                        <div className="bg-gray-900 text-white text-[9px] font-medium px-2 py-1 rounded-lg whitespace-nowrap">
+                          Failed to load — retry
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <div key={j} className={`w-12 h-7 rounded text-[11px] font-semibold flex items-center justify-center ${cellColor(scores[skill][j])}`}>
+                      {scores[skill][j]}
+                    </div>
+                  )
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Legend */}
+        <div className="mt-4 pt-3 border-t border-gray-100 flex items-center gap-4">
+          <span className="text-[10px] text-gray-400 font-semibold uppercase tracking-widest">Legend</span>
+          <div className="flex items-center gap-1.5">
+            <div className="w-8 h-5 rounded bg-red-50 border border-dashed border-red-200 flex items-center justify-center">
+              <AlertCircle size={9} className="text-red-300" />
+            </div>
+            <span className="text-[10px] text-gray-500">Cell failed to load — hover to retry</span>
+          </div>
+        </div>
+      </div>
+    </FrameWithBreadcrumb>
+  );
+}
+
+// Error state for the drilldown sidebar panel
+function ErrorDrilldownPanel() {
+  return (
+    <FrameWithBreadcrumb dept="Sales">
+      <div className="flex">
+        {/* Main grid */}
+        <div className="flex-1 p-4">
+          <div className="space-y-1.5">
+            {['Negotiation', 'CRM Tools', 'Pipeline Mgmt', 'Closing Techniques'].map((skill, i) => (
+              <div key={skill} className="flex items-center gap-2">
+                <span className="text-[11px] text-gray-600 w-32 truncate">{skill}</span>
+                <div className="flex gap-1">
+                  {[0,1,2].map(j => (
+                    <div key={j} className={`w-10 h-6 rounded text-[10px] font-semibold flex items-center justify-center ${
+                      (i + j) % 3 === 0 ? 'bg-red-100 text-red-600' : (i + j) % 3 === 1 ? 'bg-amber-100 text-amber-600' : 'bg-emerald-100 text-emerald-700'
+                    }`}>
+                      {2 + ((i + j) % 3)}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
+            {/* Selected row */}
+            <div className="flex items-center gap-2 bg-sky-50 rounded-lg px-1">
+              <span className="text-[11px] text-sky-700 font-semibold w-32">Cold Outreach</span>
+              <div className="flex gap-1">
+                {[2,3,4].map((s, j) => (
+                  <div key={j} className={`w-10 h-6 rounded text-[10px] font-semibold flex items-center justify-center ${cellColor(s)}`}>{s}</div>
+                ))}
+              </div>
+              <span className="text-[10px] text-sky-500 ml-1">selected</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Drilldown panel — error state */}
+        <div className="w-72 border-l border-gray-100 flex flex-col">
+          <div className="px-4 py-3 border-b border-gray-100 flex items-center justify-between">
+            <div>
+              <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">Skill detail</p>
+              <h3 className="text-sm font-bold text-gray-900 mt-0.5">Cold Outreach</h3>
+            </div>
+            <button className="w-6 h-6 rounded flex items-center justify-center text-gray-400 hover:bg-gray-100">
+              <X size={12} />
+            </button>
+          </div>
+
+          {/* Error state */}
+          <div className="flex-1 flex flex-col items-center justify-center text-center px-5 py-10 gap-4">
+            <div className="w-12 h-12 rounded-2xl bg-red-50 border border-red-100 flex items-center justify-center">
+              <AlertCircle size={20} className="text-red-300" />
+            </div>
+            <div>
+              <p className="text-sm font-semibold text-gray-700 mb-1.5">Couldn't load skill details</p>
+              <p className="text-[11px] text-gray-400 leading-relaxed">
+                The breakdown for Cold Outreach failed to load. The summary cell data above is still valid.
+              </p>
+            </div>
+            <button className="flex items-center gap-1.5 text-xs font-semibold text-red-600 border border-red-200 rounded-xl px-3 py-1.5 hover:bg-red-50 transition-colors">
+              <RotateCcw size={11} />
+              Try again
+            </button>
+            <p className="text-[10px] text-gray-300">Error: Request timed out (408)</p>
+          </div>
+        </div>
+      </div>
+    </FrameWithBreadcrumb>
+  );
+}
+
 // ── Main Page ─────────────────────────────────────────────────────────────────
 
 export function ZeroStatesDesign() {
@@ -700,6 +981,7 @@ export function ZeroStatesDesign() {
             { id: 'ticket-14', label: 'Partial setup' },
             { id: 'ticket-15', label: 'No drilldown data' },
             { id: 'low-sample', label: 'Low sample size' },
+            { id: 'error-states', label: 'Error states' },
           ].map(({ id, label }) => (
             <a
               key={id}
@@ -901,11 +1183,100 @@ export function ZeroStatesDesign() {
         </div>
       </div>
 
+      <Divider />
+
+      {/* ERROR STATES */}
+      <div id="error-states">
+        <SectionHeader
+          number="08"
+          id="ERROR STATES"
+          title="Data Load Failures"
+          description="When data fails to fetch — due to a network error, timeout, or server fault — each surface has a distinct error state. Error states are visually separate from both zero states (no data configured) and gap states (data exists but performance is poor). They always include a retry action and preserve the surrounding chrome so users maintain context."
+        />
+
+        {/* Design principles callout */}
+        <div className="grid grid-cols-3 gap-3 mb-8">
+          {[
+            { title: 'Preserve layout', body: 'Failed cards/panels maintain their position in the grid. The page does not collapse or reflow around errors.' },
+            { title: 'Distinct from zero states', body: 'Red tint + AlertCircle icon signal a technical failure. Grey dashed = no data. Red dashed = load failure.' },
+            { title: 'Always retryable', body: 'Every error state includes a retry action. The error code is shown in small text for support escalation.' },
+          ].map(({ title, body }) => (
+            <div key={title} className="bg-red-50/40 border border-red-100 rounded-xl px-4 py-3">
+              <p className="text-[10px] font-bold text-red-500 uppercase tracking-widest mb-1">{title}</p>
+              <p className="text-xs text-gray-600 leading-relaxed">{body}</p>
+            </div>
+          ))}
+        </div>
+
+        <div className="flex items-start gap-3 mb-6">
+          <Label color="red">3 surfaces</Label>
+          <Label color="gray">Layout preserved</Label>
+          <Label color="red">Always retryable</Label>
+          <Label color="gray">Error code shown</Label>
+        </div>
+
+        {/* Variant A — Dept overview with failed cards */}
+        <div className="mb-4">
+          <div className="flex items-center gap-2 mb-3">
+            <span className="text-xs font-bold text-gray-500 uppercase tracking-wider">Variant A</span>
+            <span className="text-xs text-gray-400">— Department overview: some cards fail to load</span>
+          </div>
+          <ErrorDeptOverview />
+          <div className="mt-3 bg-gray-50 border border-gray-200 rounded-xl px-4 py-3">
+            <p className="text-xs text-gray-500 leading-relaxed">
+              <strong className="text-gray-700">Key detail:</strong> Failed department cards stay in the grid at full size with a red-tinted background and a retry button. A banner at the top explains that org stats are incomplete. Working cards are unaffected.
+            </p>
+          </div>
+        </div>
+
+        {/* Variant B — Heatmap grid fails entirely */}
+        <div className="mt-8 mb-4">
+          <div className="flex items-center gap-2 mb-3">
+            <span className="text-xs font-bold text-gray-500 uppercase tracking-wider">Variant B</span>
+            <span className="text-xs text-gray-400">— Heatmap grid: entire department fails to load</span>
+          </div>
+          <ErrorHeatmapGrid />
+          <div className="mt-3 bg-gray-50 border border-gray-200 rounded-xl px-4 py-3">
+            <p className="text-xs text-gray-500 leading-relaxed">
+              <strong className="text-gray-700">Key detail:</strong> The grid area is replaced with a full error state — layout matches the no-assessments zero state (Ticket 13) but uses red tones and a WifiOff icon to signal a technical failure, not a data absence. The error code is shown in small muted text.
+            </p>
+          </div>
+        </div>
+
+        {/* Variant C — Individual heatmap cells fail */}
+        <div className="mt-8 mb-4">
+          <div className="flex items-center gap-2 mb-3">
+            <span className="text-xs font-bold text-gray-500 uppercase tracking-wider">Variant C</span>
+            <span className="text-xs text-gray-400">— Heatmap grid: individual cells fail while others load</span>
+          </div>
+          <ErrorHeatmapCells />
+          <div className="mt-3 bg-gray-50 border border-gray-200 rounded-xl px-4 py-3">
+            <p className="text-xs text-gray-500 leading-relaxed">
+              <strong className="text-gray-700">Key detail:</strong> Failed cells use a red-dashed border with a small AlertCircle icon — visually distinct from grey-dashed empty cells (Ticket 15). Successful cells in the same row and column are unaffected. A warning note appears in the header. Hovering a failed cell shows a "retry" tooltip.
+            </p>
+          </div>
+        </div>
+
+        {/* Variant D — Drilldown sidebar fails */}
+        <div className="mt-8">
+          <div className="flex items-center gap-2 mb-3">
+            <span className="text-xs font-bold text-gray-500 uppercase tracking-wider">Variant D</span>
+            <span className="text-xs text-gray-400">— Drilldown sidebar: skill detail fails to load</span>
+          </div>
+          <ErrorDrilldownPanel />
+          <div className="mt-3 bg-gray-50 border border-gray-200 rounded-xl px-4 py-3">
+            <p className="text-xs text-gray-500 leading-relaxed">
+              <strong className="text-gray-700">Key detail:</strong> The panel stays open — closing it would lose the user's selection context. The panel header (skill name + X) remains. The body shows the error with a retry button. The heatmap cell that was clicked still shows its summary score normally since that data loaded independently.
+            </p>
+          </div>
+        </div>
+      </div>
+
       {/* Footer */}
       <div className="mt-16 pt-8 border-t border-gray-100 flex items-center justify-between">
         <div className="flex items-center gap-2">
           <CheckCircle2 size={14} className="text-emerald-500" />
-          <span className="text-sm text-gray-500">7 states documented — Tickets 10–15 + Low Sample Size</span>
+          <span className="text-sm text-gray-500">11 states documented — Tickets 10–15, Low Sample Size, Error States (A–D)</span>
         </div>
         <div className="flex items-center gap-1.5 text-xs text-gray-400">
           <Sparkles size={11} className="text-sky-400" />
