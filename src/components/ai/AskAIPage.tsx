@@ -560,14 +560,14 @@ function ReductionInterstitial({ onConfirm }: { onConfirm: () => void }) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
       <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full overflow-hidden">
-        {/* Red header bar */}
-        <div className="bg-red-600 px-6 py-5 flex items-start gap-4">
-          <div className="flex-shrink-0 w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center mt-0.5">
+        {/* Header bar */}
+        <div className="bg-sky-800 px-6 py-5 flex items-start gap-4">
+          <div className="flex-shrink-0 w-10 h-10 rounded-xl bg-white/15 flex items-center justify-center mt-0.5">
             <ShieldAlert size={20} className="text-white" />
           </div>
           <div>
             <p className="text-white font-bold text-base leading-snug">Headcount Reduction Analysis</p>
-            <p className="text-red-100 text-sm mt-0.5 leading-snug">Legal and HR review required before any action</p>
+            <p className="text-sky-200 text-sm mt-0.5 leading-snug">Legal and HR review required before any action</p>
           </div>
         </div>
 
@@ -595,7 +595,7 @@ function ReductionInterstitial({ onConfirm }: { onConfirm: () => void }) {
             <div
               onClick={() => setChecked(v => !v)}
               className={`flex-shrink-0 w-5 h-5 rounded border-2 flex items-center justify-center mt-0.5 transition-colors ${
-                checked ? 'bg-red-600 border-red-600' : 'border-gray-300 group-hover:border-red-400'
+                checked ? 'bg-sky-700 border-sky-700' : 'border-gray-300 group-hover:border-sky-500'
               }`}
             >
               {checked && <Check size={11} className="text-white" />}
@@ -612,7 +612,7 @@ function ReductionInterstitial({ onConfirm }: { onConfirm: () => void }) {
             disabled={!checked}
             className={`w-full py-3 rounded-xl font-semibold text-sm transition-all ${
               checked
-                ? 'bg-red-600 text-white hover:bg-red-700 shadow-sm'
+                ? 'bg-sky-700 text-white hover:bg-sky-800 shadow-sm'
                 : 'bg-gray-100 text-gray-400 cursor-not-allowed'
             }`}
           >
