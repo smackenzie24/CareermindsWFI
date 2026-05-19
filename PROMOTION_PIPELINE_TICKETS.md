@@ -609,11 +609,39 @@ A framework has 8 criteria. A person meets 6 of them.
 A framework has 10 criteria. A person meets 9.
 `9 ÷ 10 × 100 = 90%` → Near Ready tier.
 
+A framework has 10 criteria. A person meets 4.
+`4 ÷ 10 × 100 = 40%` → Early Stage tier.
+
+The same framework produces all four tiers. The tier a person lands in depends entirely on their score — there is no separate set of criteria for Developing or Early Stage. See PP-17 for full detail on this point.
+
 ---
 
 ## PP-17 Pipeline inclusion rules
 
 **Summary:** Not every employee appears in the pipeline. This ticket defines who is included, who is excluded, and why.
+
+### The four tiers are outcomes of one calculation — not separate categories
+
+This is an important clarification: **Near Ready, Progressing, Developing, and Early Stage are not separate groups with separate frameworks.** They are all the result of the same readiness calculation (see PP-16) run against the same framework for a person's target level.
+
+Every person who is included in the pipeline goes through the same process:
+1. Their target level's framework is looked up (a list of skill criteria with required ratings)
+2. Their assessed skill ratings are compared against every criterion
+3. A percentage is produced: criteria met ÷ total criteria × 100
+4. That percentage is then classified into one of the four tiers
+
+The tier a person lands in is purely a consequence of their score. A person with a score of 45% is Early Stage. The same person, if they improved their skills and rescored at 75%, would be Progressing. The framework itself does not change — only the score does.
+
+**Frameworks defined in the current dataset:**
+
+| Target level | Department |
+|---|---|
+| IC2 | Engineering |
+| IC3 | Engineering, Product, Design, Data, Marketing, Sales |
+| IC4 | Engineering, Product |
+| M1 | People Ops |
+
+People assessed against these frameworks will be distributed across all four tiers based on how their skills measure up. A framework with 10 strict criteria will naturally produce more Early Stage and Developing people than one with fewer, easier-to-meet criteria.
 
 ### Included
 
@@ -627,11 +655,11 @@ A person is included in the pipeline if:
 | Reason | Example |
 |---|---|
 | At a terminal level (top of their track) | A Staff Engineer at IC4 — there is no IC5 |
-| Next level exists but has no framework yet | Some entry-level positions where criteria have not been defined |
+| Next level exists but has no framework yet | Entry-level positions (e.g. IC1) and most manager levels where criteria have not yet been defined |
 
 ### Implication for stats
 
-All counts in the pipeline (tracked total, near-ready count, etc.) refer only to included people. Employees who are not in the pipeline are not counted.
+All counts in the pipeline (tracked total, near-ready count, etc.) refer only to included people. Employees who are not in the pipeline are not counted. A department appearing to have zero Developing or Early Stage candidates simply means all their tracked people happen to score above 50% — it does not mean those tiers are unavailable to that department.
 
 ---
 
