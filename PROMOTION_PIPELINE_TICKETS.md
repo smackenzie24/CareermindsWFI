@@ -55,8 +55,7 @@
 - Live data indicator: a small pulsing dot (green) followed by the organisation name ("Acme Corp"). This signals that the data is live and company-specific.
 
 ### Behaviour
-- The header is sticky — it remains at the top of the viewport as the user scrolls through department cards.
-- The export controls are always accessible from this header, meaning a user can export an org-level report without scrolling.
+- The header scrolls with the page. To export, the user must scroll back to the top if they have scrolled down past the header.
 
 ---
 
@@ -563,6 +562,27 @@ The dots are coloured as follows:
 ## PP-16 Readiness calculation
 
 **Summary:** This ticket defines the calculation that produces the readiness percentage shown throughout the pipeline. It is a foundational rule — every number in the pipeline derives from it.
+
+### Where the next-level career step data comes from
+
+Every person in the pipeline is assessed against a defined target level — the level immediately above their current one. Two configuration sources provide this:
+
+**1. Level hierarchy (`LEVEL_DEFINITIONS`)**
+
+A static configuration list that defines every level in the organisation and chains them together. Each entry specifies:
+- The level's ID, display label (e.g. "IC3 · Senior Engineer"), and short code (e.g. "IC3")
+- Which department and track (IC or Manager) it belongs to
+- The ID of the next level up, or null if this is a terminal level
+
+The system looks up the person's current level in this list, then follows the `nextLevel` pointer to find their target level. This is the level shown in the person panel header and used for all readiness comparisons.
+
+**2. Skills frameworks (`LEVEL_FRAMEWORKS`)**
+
+For each target level that has been defined, a corresponding framework specifies the skill criteria that must be met to be considered ready for promotion to that level. Each criterion names a skill, its category, and the minimum rating required (on a 1–5 scale).
+
+Not every level has a framework yet — some entry-level transitions and terminal levels are excluded. A person can only appear in the pipeline if their target level has a framework. See PP-17.
+
+**In the current product:** Both `LEVEL_DEFINITIONS` and `LEVEL_FRAMEWORKS` are configuration managed by Progression (not editable by end users in this version). When connected to a live HRIS, the level hierarchy will be sourced from the customer's career framework data.
 
 ### Inputs
 
