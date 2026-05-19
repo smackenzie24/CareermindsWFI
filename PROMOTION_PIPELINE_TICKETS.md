@@ -65,6 +65,12 @@
 | 3 | Progressing (70–89%) | Count of people scoring 70–89% | "on track, closing gaps" | Sky blue |
 | 4 | Avg readiness score | Average readiness percentage across all pipeline-tracked people | "avg Xm in current level" (months) | Neutral |
 
+### Data
+
+`promotionData.ts` · `Person` object
+- `person.tenure` — `number` — months in current level (used for avg tenure sub-label)
+- `getAllReadiness()` — returns `ReadinessResult[]`, each with `{ person, readinessPct, metSkills, gaps, currentLevel, targetLevel }`
+
 ### Calculation rules
 
 **Who is "tracked for promotion"?**
@@ -91,6 +97,14 @@ Four equal-width cards in a row. Refer to interactive design for the card style.
 ## T-03 Expandable org summary section
 
 **Summary:** A collapsible section below the stat cards containing four additional org-level data points: check-in coverage, estimated salary cost, average salary, and a headcount bar chart. Expanded by default.
+
+### Data
+
+`promotionData.ts` · `Person` object
+- `person.lastCheckIn` — `string` (ISO date, e.g. `"2026-04-15"`) — date of last recorded check-in
+- `person.department` — `string` — used to look up salary assumption
+
+Salary assumptions and the cutoff date (`CHECKIN_CUTOFF = new Date('2026-04-29')`) are hardcoded constants in the component. When connected to live data the cutoff becomes `new Date()`.
 
 ### Toggle control
 
@@ -233,6 +247,12 @@ Each entry shows a small filled circle in the tier colour, the tier label, and t
 ## T-06 Department cards
 
 **Summary:** The main content area of the Pipeline tab. One card per department, laid out in a responsive grid. Each card is the entry point to the department drill-down and contains the pipeline breakdown bar and tier count grid.
+
+### Data
+
+`promotionData.ts` · `getAllReadiness()` returns `ReadinessResult[]`. Group by `result.person.department` to build per-department stats.
+
+**Top candidate:** the single person with the highest `readinessPct` in the department — not necessarily a Near Ready person. Display label switches based on whether anyone in the department is Near Ready, but the person shown is always the highest scorer.
 
 ### Grid behaviour
 - Cards are arranged in a multi-column grid that adjusts to screen width (1 column on small screens, up to 3 columns on large screens).
@@ -382,6 +402,14 @@ The panel has three vertical sections:
 
 The criteria section scrolls independently; the header and score block remain visible while scrolling.
 
+### Data / state
+
+Panel receives two props from the kanban:
+- `selection: { result: ReadinessResult, peers: ReadinessResult[], index: number }` — the opened person plus all others in the same tier column, sorted highest readiness first
+- `onClose: () => void`
+
+Peer navigation updates `index` and swaps `result` to `peers[newIndex]`.
+
 ### Peer navigation
 
 When there are multiple people in the same tier column:
@@ -474,6 +502,13 @@ Five dots in a row representing skill rating levels 1–5 (left to right).
 
 **Summary:** The foundational calculation that produces the readiness percentage shown throughout the pipeline. Every number in the pipeline derives from it.
 
+### Data
+
+`promotionData.ts`
+- `person.skills` — `Record<skillId: string, rating: number>` — assessed skill ratings (1–5). A missing skill is treated as 0.
+- `LEVEL_FRAMEWORKS` — static constant mapping `levelId → LevelFramework`. Each framework has `criteria: SkillCriterion[]`, each with `{ skillId, name, category, requiredRating }`.
+- `computeReadiness(person, framework)` — the canonical function. Returns `{ readinessPct, metSkills, gaps }`.
+
 ### Where the next-level career step data comes from
 
 **1. Level hierarchy (`LEVEL_DEFINITIONS`)**
@@ -517,6 +552,13 @@ Readiness percentage = `criteria met ÷ total criteria × 100`, rounded to the n
 
 **Summary:** Defines who is included in the pipeline and who is excluded.
 
+### Data
+
+`promotionData.ts`
+- `LEVEL_DEFINITIONS` — static array of `LevelDefinition` objects: `{ id, label, shortCode, department, track, nextLevel: string | null }`. A `null` nextLevel means terminal.
+- `LEVEL_FRAMEWORKS` — static map of `levelId → LevelFramework`. Only levels in this map can appear in the pipeline.
+- `getAllReadiness()` — applies both constants to the full `PEOPLE` array and returns all included people as `ReadinessResult[]`.
+
 ### The four tiers are outcomes of one calculation — not separate categories
 
 Near Ready, Progressing, Developing, and Early Stage are not separate groups with separate frameworks. They are all the result of the same readiness calculation (T-11) run against the same framework.
@@ -555,6 +597,15 @@ A person is included if:
 ## T-13 Flight Risk tab
 
 **Summary:** The Flight Risk tab surfaces employees who, based on external signals, are considered likely to leave. Data comes from Revelio Labs. All content is confidential and for managers only.
+
+### Data
+
+`promotionData.ts` · `Person` object — **mock data** (no live Revelio Labs connection in the current build)
+- `person.flightRisk` — `'high' | 'medium' | 'low' | undefined`
+- `person.flightRiskDrivers` — `string[]` — human-readable risk signals (e.g. "LinkedIn profile updated 6 times in 30 days")
+- `person.lastCheckIn` — `string` (ISO date) — used to compute days-since-check-in
+
+`getFlightRiskPeople(riskLevel?)` in `promotionData.ts` — filters to flight-risk people, computes `daysSinceCheckIn` and `hasInternalOpportunity` (true if `person.inferredSkills` is non-empty), and sorts: high risk first, then by `daysSinceCheckIn` descending.
 
 ### Header
 
@@ -626,6 +677,15 @@ If no people are flagged (or none match the active filter): "No flight risk sign
 ## T-14 Hidden Talent tab
 
 **Summary:** The Hidden Talent tab identifies people whose LinkedIn-inferred skills suggest they would perform better in a different function. All content is for managers only and should not be shared with employees.
+
+### Data
+
+`promotionData.ts` · `Person` object — **mock data** (no live LinkedIn or Revelio Labs connection in the current build)
+- `person.inferredSkills` — `Record<skillId: string, number>` — LinkedIn-inferred ratings (1–5), confidence-discounted before use
+- `person.inferredNotes` — `InferredSkillNote[]` — each `{ skillId, note }` e.g. "2 years as PM at Stripe"
+- `person.linkedInSignals` — `string[]` — career history items shown in the expanded card
+
+`getCrossDeptFitCandidates()` in `promotionData.ts` — returns `CrossDeptFitResult[]`, each with `{ person, suggestedDept, currentFit, suggestedFit, fitDelta, topSignal, flightRisk, ... }`. See T-15 for the algorithm.
 
 ### Header
 
@@ -700,6 +760,14 @@ When no candidates are found for the current filter: "No cross-fit candidates de
 ## T-15 Cross-dept fit calculation (Hidden Talent)
 
 **Summary:** Defines how the system identifies people who would be a better fit in a different department.
+
+### Data
+
+All inputs from `promotionData.ts`. Key implementation details:
+- Level distance is computed via `icRank()` which maps `IC1→1, IC2→2, IC3→3, IC4→4, M1→1, M2→2`. "Within one level" means `Math.abs(targetRank - personRank) <= 1`.
+- Confidence discount: `Math.max(1, inferredRating - 1)` — floors at 1, never 0.
+- Assessed skill takes precedence when both assessed and inferred ratings exist for the same skill.
+- Deduplication keeps the single `CrossDeptFitResult` with the largest `fitDelta` per person.
 
 ### Step 1 — Establish the person's current fit baseline
 
