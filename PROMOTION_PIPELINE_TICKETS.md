@@ -36,6 +36,7 @@
 - [PP-26 Cross-feature navigation links](#pp-26-cross-feature-navigation-links)
 - [PP-27 Empty and zero states](#pp-27-empty-and-zero-states)
 - [PP-28 Readiness tiers — colour and label reference](#pp-28-readiness-tiers--colour-and-label-reference)
+- [PP-29 Individual person panel: "Schedule check-in" action — DECISION REQUIRED](#pp-29-individual-person-panel-schedule-check-in-action--decision-required)
 
 ---
 
@@ -552,9 +553,16 @@ The dots are coloured as follows:
 | 2 | Find mentors for gap skills → |
 | 3 | Schedule check-in → |
 
+### Current state
+
+| Button | Status |
+|---|---|
+| View latest check-in → | Implemented — navigates to the Decisions Journal |
+| Ask AI → | Implemented — opens Ask AI pre-filled with the person's name and readiness context |
+| Schedule check-in → | Placeholder — no behaviour. See PP-29 for the decision required before this can be built. |
+
 ### Behaviour notes
-- These are placeholder buttons in the current version. They are shown to establish the interaction model and will be wired up in a subsequent ticket.
-- All three are always displayed, regardless of whether the person has gaps or not.
+- All three buttons are always displayed, regardless of whether the person has gaps or not.
 - The footer is pinned to the bottom of the panel and does not scroll away.
 
 ---
@@ -1146,3 +1154,110 @@ Check-in staleness colours (used on flight risk cards only):
 | High | Green |
 | Medium | Amber |
 | Low | Neutral / muted |
+
+---
+
+## PP-29 Individual person panel: "Schedule check-in" action — DECISION REQUIRED
+
+**Summary:** The "Schedule check-in" button in the person panel footer is currently a placeholder with no behaviour. Before it can be built, a product decision is needed on how check-ins should be scheduled from within Progression.
+
+**Status:** Blocked — awaiting decision from product/stakeholders.
+
+---
+
+### Context
+
+When a manager opens a person's readiness panel in the Promotion Pipeline, the panel surfaces three suggested actions. The first two are now implemented (View latest check-in, Ask AI). The third — Schedule check-in — is the most operationally significant: it prompts the manager to have a development conversation with the employee. There are three credible ways to implement it, each with meaningfully different build cost, infrastructure requirements, and user experience.
+
+---
+
+### Option A — Calendar handoff (external)
+
+**What it does:**
+Generates a pre-filled calendar invite link and opens it. The manager's calendar app (Google Calendar, Outlook, Apple Calendar) handles the actual scheduling.
+
+**How it works:**
+On click, Progression generates a `mailto:` or Google Calendar deep-link URL pre-populated with:
+- Meeting title: "Development check-in — [Employee Name]"
+- Suggested duration: 30 minutes
+- Suggested agenda in the body, derived from the employee's top gap skills (e.g. "Topics: close the gap on Strategic Communication, Data Analysis")
+- Attendees field pre-filled with the employee's email (if available in the employee record)
+
+**User experience:**
+A single click hands the manager off to their familiar calendar app with minimal friction. Nothing is recorded back in Progression.
+
+**Build cost:** Low — URL construction only, no backend.
+
+**Tradeoffs:**
+- No record of whether the check-in was actually scheduled or completed.
+- Requires the employee's email address to be present in the data model (currently not stored).
+- Deep-link format differs between Google Calendar and Outlook; would need to detect or ask which calendar the user uses.
+- Nothing feeds back into the check-in coverage metric (PP-03).
+
+---
+
+### Option B — In-app scheduling with journal record
+
+**What it does:**
+Opens an in-app modal that lets the manager set a date, add notes, and saves the scheduled check-in as a record in the Decisions Journal (`commitments` table).
+
+**How it works:**
+On click, a modal opens showing:
+- Employee name and readiness context (read-only)
+- A date picker: "Schedule for" (defaults to two weeks from today)
+- A notes field: "Agenda / focus areas" — pre-populated with the employee's top gap skills, editable
+- A "Save check-in" button
+
+On save:
+- A new row is written to the `commitments` table with `source_query` set to the person's name, `type` set to `"check-in"`, and the scheduled date and notes stored in the record.
+- The modal closes with a confirmation: "Check-in scheduled for [date]."
+- The scheduled check-in becomes visible in the Decisions Journal.
+- The check-in coverage metric (PP-03) could eventually draw from this table.
+
+**User experience:**
+Richer — creates an audit trail, feeds the journal, and closes the loop between pipeline data and manager action. The manager never leaves Progression.
+
+**Build cost:** Medium — requires a modal UI, a date picker, and a write to Supabase. The `commitments` table already exists; a `type` and `scheduled_date` column would need to be added.
+
+**Tradeoffs:**
+- More UI to build and maintain.
+- Progression becomes a scheduling record, which may overlap with tools the customer already uses for 1:1s (Lattice, Culture Amp, etc.).
+- No calendar integration means the manager still needs to create the calendar event separately.
+
+---
+
+### Option C — HRIS / calendar integration handoff
+
+**What it does:**
+Sends a scheduling request directly to the customer's existing HR or calendar system via an API integration (e.g. Workday, BambooHR, Google Calendar API, Microsoft Graph).
+
+**How it works:**
+On click, Progression calls a configured integration endpoint. The check-in is created directly in the customer's system of record — no separate action required from the manager.
+
+**User experience:**
+Seamless if configured — one click creates the event in the system the customer already uses. Check-in history can be read back into Progression for coverage metrics.
+
+**Build cost:** High — requires integration framework, OAuth flows per provider, per-customer configuration, and ongoing maintenance for each supported integration.
+
+**Tradeoffs:**
+- Significant engineering investment.
+- Each integration is a separate build and maintenance surface.
+- Only valuable to customers who have one of the supported integrations.
+- Likely out of scope for the near term unless a specific customer integration is being prioritised.
+
+---
+
+### Decision needed
+
+**Please confirm which option to build, or whether to defer this button to a later milestone.**
+
+Recommended default if no integration work is planned: **Option B**. It creates a record in Progression, builds towards the check-in coverage metric, and requires no external dependencies. Option A is a reasonable interim if Option B is too much scope for the current sprint.
+
+| | Option A (Calendar handoff) | Option B (In-app journal record) | Option C (HRIS integration) |
+|---|---|---|---|
+| Build cost | Low | Medium | High |
+| Creates record in Progression | No | Yes | Yes (read-back) |
+| Requires employee email in data | Yes | No | Depends |
+| Feeds check-in coverage metric | No | Yes (with schema change) | Yes |
+| Manager stays in Progression | No | Yes | Yes |
+| External dependencies | Calendar deep-link format | None | Per-provider OAuth |
