@@ -1,4 +1,4 @@
-import { X, Clock, MapPin, Users, CheckCircle, AlertCircle, ChevronLeft, ChevronRight } from 'lucide-react';
+import { X, Clock, MapPin, Users, CheckCircle, AlertCircle, ChevronLeft, ChevronRight, CalendarDays, Sparkles } from 'lucide-react';
 import { TIER_CONFIG, getReadinessTier, type ReadinessResult } from '../../data/promotionData';
 
 interface Props {
@@ -8,6 +8,8 @@ interface Props {
   currentIndex?: number;
   onPrev?: () => void;
   onNext?: () => void;
+  onViewCheckIn?: () => void;
+  onAskAI?: (question: string) => void;
 }
 
 function RatingDots({ actual, required }: { actual: number; required: number }) {
@@ -31,7 +33,7 @@ function RatingDots({ actual, required }: { actual: number; required: number }) 
   );
 }
 
-export function PersonPanel({ result, onClose, peers, currentIndex, onPrev, onNext }: Props) {
+export function PersonPanel({ result, onClose, peers, currentIndex, onPrev, onNext, onViewCheckIn, onAskAI }: Props) {
   const tier = getReadinessTier(result.readinessPct);
   const cfg = TIER_CONFIG[tier];
   const { person } = result;
@@ -182,11 +184,19 @@ export function PersonPanel({ result, onClose, peers, currentIndex, onPrev, onNe
 
         {/* Footer actions */}
         <div className="p-6 border-t border-gray-100 bg-gray-50 flex-shrink-0 space-y-2">
-          <button className="w-full text-left text-sm font-medium text-gray-700 bg-white border border-gray-200 rounded-xl px-4 py-3 hover:border-gray-300 hover:bg-white transition-colors">
-            Set as focus skills &rarr;
+          <button
+            onClick={onViewCheckIn}
+            className="w-full text-left text-sm font-medium text-gray-700 bg-white border border-gray-200 rounded-xl px-4 py-3 hover:border-gray-300 hover:bg-white transition-colors flex items-center gap-2"
+          >
+            <CalendarDays size={14} className="text-gray-400 flex-shrink-0" />
+            View latest check-in &rarr;
           </button>
-          <button className="w-full text-left text-sm font-medium text-gray-700 bg-white border border-gray-200 rounded-xl px-4 py-3 hover:border-gray-300 hover:bg-white transition-colors">
-            Find mentors for gap skills &rarr;
+          <button
+            onClick={() => onAskAI?.(`Tell me about ${person.name}'s promotion readiness and what they need to work on`)}
+            className="w-full text-left text-sm font-medium text-gray-700 bg-white border border-gray-200 rounded-xl px-4 py-3 hover:border-sky-200 hover:bg-sky-50 hover:text-sky-700 transition-colors flex items-center gap-2"
+          >
+            <Sparkles size={14} className="text-sky-400 flex-shrink-0" />
+            Ask AI &rarr;
           </button>
           <button className="w-full text-left text-sm font-medium text-gray-700 bg-white border border-gray-200 rounded-xl px-4 py-3 hover:border-gray-300 hover:bg-white transition-colors">
             Schedule check-in &rarr;

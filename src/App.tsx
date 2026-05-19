@@ -212,6 +212,8 @@ export default function App() {
             initialTab={nav.pipelineTab}
             onSelectDept={setPipelineDept}
             onNavigateToManagers={(managerId) => setNav({ view: 'managers', managerId })}
+            onViewCheckIn={() => setNav({ view: 'journal' })}
+            onAskAI={(question) => openAI(question)}
           />
         )}
         {nav.view === 'managers' && (

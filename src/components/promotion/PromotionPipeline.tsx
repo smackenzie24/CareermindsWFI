@@ -93,9 +93,11 @@ interface Props {
   onSelectDept?: (dept: Department | null) => void;
   onNavigateToGapReport?: (dept: Department) => void;
   onNavigateToManagers?: (managerId?: string) => void;
+  onViewCheckIn?: () => void;
+  onAskAI?: (question: string) => void;
 }
 
-export function PromotionPipeline({ initialDepartment, initialTab, selectedDept: selectedDeptProp, onSelectDept, onNavigateToGapReport, onNavigateToManagers }: Props) {
+export function PromotionPipeline({ initialDepartment, initialTab, selectedDept: selectedDeptProp, onSelectDept, onNavigateToGapReport, onNavigateToManagers, onViewCheckIn, onAskAI }: Props) {
   const [internalDept, setInternalDept] = useState<Department | null>(initialDepartment ?? null);
   const selectedDept = selectedDeptProp !== undefined ? selectedDeptProp : internalDept;
   const setSelectedDept = (dept: Department | null) => {
@@ -182,6 +184,8 @@ export function PromotionPipeline({ initialDepartment, initialTab, selectedDept:
         onBack={() => setSelectedDept(null)}
         onNavigateToGapReport={onNavigateToGapReport}
         onNavigateToManagers={onNavigateToManagers}
+        onViewCheckIn={onViewCheckIn}
+        onAskAI={onAskAI}
       />
     );
   }
