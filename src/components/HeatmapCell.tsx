@@ -48,9 +48,8 @@ function getTextColor(gap: number, exceeding: boolean): string {
 function getLabel(pct: number, exceeding: boolean): string {
   if (exceeding) return 'exceeding';
   if (pct < 30) return 'on track';
-  if (pct < 50) return 'mild gap';
-  if (pct < 70) return 'moderate';
-  if (pct < 85) return 'severe';
+  if (pct < 50) return 'developing';
+  if (pct < 70) return 'at risk';
   return 'critical';
 }
 
@@ -137,10 +136,7 @@ export function HeatmapCell({ data, onClick, selected }: HeatmapCellProps) {
             <span className="text-[10px] font-medium text-emerald-100">{label}</span>
           </>
         ) : (
-          <>
-            <span className={`text-sm font-bold ${textColor}`}>{pct}%</span>
-            <span className={`text-[10px] font-medium ${textColor} opacity-70`}>{label}</span>
-          </>
+          <span className={`text-[11px] font-semibold ${textColor} leading-none`}>{label}</span>
         )}
         {isLowSample && (
           <span className={`absolute -top-1.5 -right-1.5 text-[8px] font-bold px-1.5 py-0.5 rounded-full leading-none whitespace-nowrap shadow-sm
