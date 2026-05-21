@@ -128,15 +128,12 @@ export function HeatmapCell({ data, onClick, selected }: HeatmapCellProps) {
         `}
       >
         {exceeding ? (
-          <>
-            <div className="flex items-center gap-1">
-              <ArrowUp size={11} className="text-emerald-100 flex-shrink-0" />
-              <span className="text-sm font-bold text-white">+{surplus}</span>
-            </div>
-            <span className="text-[10px] font-medium text-emerald-100">{label}</span>
-          </>
+          <div className="flex items-center gap-1">
+            <ArrowUp size={11} className="text-emerald-100 flex-shrink-0" />
+            <span className="text-[11px] font-semibold text-white leading-none">Exceeding</span>
+          </div>
         ) : (
-          <span className={`text-[11px] font-semibold ${textColor} leading-none`}>{label}</span>
+          <span className={`text-[11px] font-semibold ${textColor} leading-none capitalize`}>{label}</span>
         )}
         {isLowSample && (
           <span className={`absolute -top-1.5 -right-1.5 text-[8px] font-bold px-1.5 py-0.5 rounded-full leading-none whitespace-nowrap shadow-sm
