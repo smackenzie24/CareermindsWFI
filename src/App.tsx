@@ -122,7 +122,7 @@ export default function App() {
 
         {/* Tour mode toggle — next to logo */}
         <div className="relative flex-shrink-0 pr-2">
-          <button
+          {false && <button
             onClick={() => setTourActive(t => !t)}
             className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all whitespace-nowrap ${
               tourActive
@@ -132,8 +132,8 @@ export default function App() {
           >
             <BookOpen size={12} />
             {tourActive ? 'Exit Tour' : 'Tour'}
-          </button>
-          {!tourActive && <TourNudge onDismiss={() => {}} />}
+          </button>}
+          {false && !tourActive && <TourNudge onDismiss={() => {}} />}
         </div>
 
         {/* Scrollable nav items — pushed to the right */}
@@ -252,7 +252,7 @@ export default function App() {
       <ChatPanel open={chatOpen} onClose={() => setChatOpen(false)} initialQuestion={chatInitialQuestion} onNavigate={navigateFromAI} />
 
       {/* Tour mode overlay */}
-      {tourActive && (
+      {false && tourActive && (
         <TourOverlay
           activeView={
             nav.view === 'pipeline' && pipelineDept ? 'pipeline-dept' :

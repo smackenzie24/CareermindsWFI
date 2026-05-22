@@ -185,13 +185,13 @@ export function ExportButtons({ title, buildContent, buildCsvContent }: Props) {
           {downloaded ? <Check size={12} /> : <Download size={12} />}
           {downloaded ? 'Downloaded' : 'Print'}
         </button>
-        <button
+        {false && <button
           onClick={() => setEmailOpen(true)}
           className="flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-lg border bg-white border-gray-200 text-gray-500 hover:border-gray-300 hover:text-gray-700 transition-all"
         >
           <Mail size={12} />
           Email me
-        </button>
+        </button>}
       </div>
 
       {emailOpen && (

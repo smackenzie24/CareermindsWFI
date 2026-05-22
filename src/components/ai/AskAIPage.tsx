@@ -712,7 +712,7 @@ function OutputPanel({
                   {exportsLocked ? <Lock size={12} /> : downloaded ? <Check size={12} /> : <Download size={12} />}
                   {downloaded && !exportsLocked ? 'Downloaded' : 'Download'}
                 </button>
-                <button
+                {false && <button
                   onClick={() => { if (!exportsLocked) setEmailOpen(true); }}
                   disabled={exportsLocked}
                   title={exportsLocked ? 'Acknowledge the legal notice to unlock exports' : undefined}
@@ -724,7 +724,7 @@ function OutputPanel({
                 >
                   {exportsLocked ? <Lock size={12} /> : <Mail size={12} />}
                   Email me
-                </button>
+                </button>}
               </div>
             </div>
             <h1 className="text-2xl font-bold text-gray-900 leading-snug mb-4">{entry.question}</h1>
