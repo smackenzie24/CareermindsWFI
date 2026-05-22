@@ -267,7 +267,8 @@ function daysSince(dateStr: string) {
 function CheckInDetail({ department }: { department: Department }) {
   const people = PEOPLE.filter(p => p.department === department);
   const flagged = people
-    .map(p => ({ person: p, days: daysSince(p.lastCheckIn) }))
+    .filter(p => p.lastCheckIn)
+    .map(p => ({ person: p, days: daysSince(p.lastCheckIn!) }))
     .filter(f => f.days > 30)
     .sort((a, b) => b.days - a.days);
 
@@ -453,7 +454,7 @@ export function SkillGapReport({ department, onBack, onNavigateToPipeline }: Pro
 
   const deptPeople = useMemo(() => PEOPLE.filter(p => p.department === department), [department]);
   const deptFlagged = useMemo(() =>
-    deptPeople.filter(p => Math.floor((TODAY.getTime() - new Date(p.lastCheckIn).getTime()) / (1000 * 60 * 60 * 24)) > 30),
+    deptPeople.filter(p => p.lastCheckIn && Math.floor((TODAY.getTime() - new Date(p.lastCheckIn).getTime()) / (1000 * 60 * 60 * 24)) > 30),
     [deptPeople]
   );
   const checkInCoveragePct = deptPeople.length > 0
@@ -559,7 +560,7 @@ export function SkillGapReport({ department, onBack, onNavigateToPipeline }: Pro
                   <div className="flex items-center gap-1.5 flex-shrink-0">
                     <div className={`w-2 h-2 rounded-full flex-shrink-0 ${
                       deptFlagged.length === 0 ? 'bg-emerald-400' :
-                      deptFlagged.some(p => daysSince(p.lastCheckIn) >= 90) ? 'bg-red-500' : 'bg-amber-400'
+                      deptFlagged.some(p => p.lastCheckIn && daysSince(p.lastCheckIn) >= 90) ? 'bg-red-500' : 'bg-amber-400'
                     }`} />
                     <ChevronRight size={11} className={selectedSkill === '__checkins__' ? 'text-gray-400' : 'text-gray-300 group-hover:text-gray-500'} />
                   </div>

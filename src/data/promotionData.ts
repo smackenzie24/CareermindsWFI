@@ -44,7 +44,7 @@ export interface Person {
   inferredSkills?: Record<string, number>; // skillId -> inferred rating from LinkedIn history
   inferredNotes?: InferredSkillNote[]; // provenance of inferred skills
   tenure: number; // months in current level
-  lastCheckIn: string; // ISO date string of most recent check-in
+  lastCheckIn?: string; // ISO date string of most recent check-in; absent for new customers
   linkedInSignals?: string[]; // previous roles / experiences that inform inferred skills
   flightRisk?: FlightRisk; // Revelio Labs likelihood-to-leave signal
   flightRiskDrivers?: string[]; // brief reasons surfaced by Revelio (e.g. "stalled tenure", "peer salary gap")
@@ -300,9 +300,9 @@ export function getFlightRiskPeople(minRisk: FlightRisk = 'high'): FlightRiskPer
       person: p,
       flightRisk: p.flightRisk!,
       flightRiskDrivers: p.flightRiskDrivers ?? [],
-      daysSinceCheckIn: Math.floor(
-        (REFERENCE_DATE.getTime() - new Date(p.lastCheckIn).getTime()) / (1000 * 60 * 60 * 24)
-      ),
+      daysSinceCheckIn: p.lastCheckIn
+        ? Math.floor((REFERENCE_DATE.getTime() - new Date(p.lastCheckIn).getTime()) / (1000 * 60 * 60 * 24))
+        : 0,
       hasInternalOpportunity: !!(p.inferredSkills && Object.keys(p.inferredSkills).length > 0),
     }))
     .sort((a, b) => {

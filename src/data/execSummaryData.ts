@@ -459,8 +459,9 @@ export function computeExecSummary(): ExecSummary {
   // ── Check-in coverage ─────────────────────────────────────────────────
   const today = new Date('2026-04-29');
   const flaggedCheckIns: CheckInFlag[] = PEOPLE
+    .filter(p => p.lastCheckIn)
     .map(p => {
-      const last = new Date(p.lastCheckIn);
+      const last = new Date(p.lastCheckIn!);
       const days = Math.floor((today.getTime() - last.getTime()) / (1000 * 60 * 60 * 24));
       return { person: p, daysSinceCheckIn: days };
     })

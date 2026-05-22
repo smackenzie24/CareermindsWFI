@@ -26,7 +26,8 @@ function daysSince(dateStr: string) {
 function CheckInPanel({ department }: { department: Department }) {
   const people = PEOPLE.filter(p => p.department === department);
   const flagged = people
-    .map(p => ({ person: p, days: daysSince(p.lastCheckIn) }))
+    .filter(p => p.lastCheckIn)
+    .map(p => ({ person: p, days: daysSince(p.lastCheckIn!) }))
     .filter(f => f.days > 30)
     .sort((a, b) => b.days - a.days);
   const critical = flagged.filter(f => f.days >= 90);
@@ -252,8 +253,30 @@ function DrilldownPanelWrapper(props: DrilldownPanelWrapperProps) {
 
 function CheckInRow({ department, selected, onSelect, colCount }: { department: Department; selected: boolean; onSelect: () => void; colCount: number }) {
   const people = PEOPLE.filter(p => p.department === department);
-  const flagged = people.filter(p => daysSince(p.lastCheckIn) > 30);
-  const critical = flagged.filter(p => daysSince(p.lastCheckIn) >= 90);
+  const hasData = people.some(p => p.lastCheckIn);
+
+  if (!hasData) {
+    return (
+      <div
+        className="grid border-b border-gray-100 cursor-default"
+        style={{ gridTemplateColumns: `220px 52px repeat(${colCount}, 1fr)` }}
+      >
+        <div className="px-4 py-3 flex items-center gap-2">
+          <CalendarX size={12} className="text-gray-300" />
+          <span className="text-sm font-medium text-gray-400">Check-in Coverage</span>
+        </div>
+        <div className="px-2 py-3 flex items-center justify-center border-l border-gray-50" />
+        <div className="px-4 py-3 flex items-center" style={{ gridColumn: `3 / span ${colCount}` }}>
+          <div className="flex-1 h-6 rounded bg-gray-50 border border-dashed border-gray-200 flex items-center px-2.5 gap-1.5">
+            <span className="text-[10px] text-gray-400 font-medium">No check-ins yet</span>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  const flagged = people.filter(p => p.lastCheckIn && daysSince(p.lastCheckIn) > 30);
+  const critical = flagged.filter(p => p.lastCheckIn && daysSince(p.lastCheckIn) >= 90);
   const coveragePct = Math.round(((people.length - flagged.length) / people.length) * 100);
   const hasCritical = critical.length > 0;
   const hasOverdue = flagged.length > 0;
@@ -275,7 +298,7 @@ function CheckInRow({ department, selected, onSelect, colCount }: { department: 
         </div>
       </div>
       <div className="px-2 py-3 flex items-center justify-center border-l border-gray-50" />
-      <div className={`col-span-${colCount} px-4 py-3 flex items-center gap-4`} style={{ gridColumn: `3 / span ${colCount}` }}>
+      <div className="px-4 py-3 flex items-center gap-4" style={{ gridColumn: `3 / span ${colCount}` }}>
         <div className="flex-1">
           <div className="flex items-center gap-2 mb-1">
             <div className="flex-1 bg-gray-100 rounded-full h-2 overflow-hidden flex">

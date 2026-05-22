@@ -31,7 +31,7 @@ function computeOrgSummary() {
     .sort((a, b) => b.count - a.count);
 
   const checkedIn = PEOPLE.filter(p =>
-    Math.floor((CHECKIN_CUTOFF.getTime() - new Date(p.lastCheckIn).getTime()) / (1000 * 60 * 60 * 24)) <= 30
+    p.lastCheckIn && Math.floor((CHECKIN_CUTOFF.getTime() - new Date(p.lastCheckIn).getTime()) / (1000 * 60 * 60 * 24)) <= 30
   ).length;
   const checkInCoverage = Math.round((checkedIn / headcount) * 100);
 
