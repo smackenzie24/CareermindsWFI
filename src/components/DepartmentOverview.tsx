@@ -59,6 +59,7 @@ interface DeptSummary {
   topGapPct: number;
   skillCount: number;
   // skill counts by severity bucket
+  skillsExceeding: number;
   skillsGood: number;
   skillsDeveloping: number;
   skillsRisk: number;
@@ -163,17 +164,22 @@ export function DepartmentOverview({ onSelectDepartment }: Props) {
       let criticalSkills = 0;
       let topGapSkill = '';
       let topGapPct = 0;
-      let skillsGood = 0, skillsDeveloping = 0, skillsRisk = 0, skillsCritical = 0;
+      let skillsExceeding = 0, skillsGood = 0, skillsDeveloping = 0, skillsRisk = 0, skillsCritical = 0;
       for (const skill of skills) {
         const skillEntries = entries.filter(e => e.skill === skill);
         const sh = skillEntries.reduce((s, e) => s + e.headcount, 0);
         const sb = skillEntries.reduce((s, e) => s + e.belowTarget, 0);
+        const sa = sh > 0 ? skillEntries.reduce((s, e) => s + e.averageActual * e.headcount, 0) / sh : 0;
+        const exp = skillEntries[0].expectedLevel;
         const pct = sh > 0 ? Math.round((sb / sh) * 100) : 0;
-        const sev = getSeverity(pct);
-        if (sev === 'critical') { criticalSkills++; skillsCritical++; }
-        else if (sev === 'risk') skillsRisk++;
-        else if (sev === 'developing') skillsDeveloping++;
-        else skillsGood++;
+        if (sa > exp) { skillsExceeding++; }
+        else {
+          const sev = getSeverity(pct);
+          if (sev === 'critical') { criticalSkills++; skillsCritical++; }
+          else if (sev === 'risk') skillsRisk++;
+          else if (sev === 'developing') skillsDeveloping++;
+          else skillsGood++;
+        }
         if (pct > topGapPct) { topGapPct = pct; topGapSkill = skill; }
       }
 
@@ -188,6 +194,7 @@ export function DepartmentOverview({ onSelectDepartment }: Props) {
         topGapSkill,
         topGapPct,
         skillCount: skills.length,
+        skillsExceeding,
         skillsGood,
         skillsDeveloping,
         skillsRisk,
@@ -352,6 +359,9 @@ export function DepartmentOverview({ onSelectDepartment }: Props) {
                   {dept.skillsGood > 0 && (
                     <span><span className="font-semibold text-gray-700">{dept.skillsGood}</span> on track</span>
                   )}
+                  {dept.skillsExceeding > 0 && (
+                    <span><span className="font-semibold text-emerald-700">{dept.skillsExceeding}</span> exceeding</span>
+                  )}
                 </div>
 
                 {/* Biggest gap callout */}
@@ -368,6 +378,7 @@ export function DepartmentOverview({ onSelectDepartment }: Props) {
         <div className="mt-6 flex items-center gap-1.5 flex-wrap" data-tour="heatmap-legend">
           <span className="text-xs text-gray-400 mr-2">Severity key:</span>
           {[
+            { label: 'Exceeding', badge: 'bg-gray-100 text-emerald-700' },
             { label: 'On Track', badge: 'bg-gray-100 text-gray-600' },
             { label: 'Developing', badge: 'bg-amber-50 text-amber-700 border border-amber-100' },
             { label: 'Critical', badge: 'bg-red-50 text-red-600 border border-red-100' },
