@@ -246,7 +246,7 @@ export function DepartmentOverview({ onSelectDepartment }: Props) {
             <h1 className="text-2xl font-bold text-gray-900 leading-tight">Skills Gap Heatmap</h1>
           </div>
           <div className="flex items-center gap-3">
-            <ExportButtons title="Skills Gap Heatmap" buildContent={buildExportContent} />
+            <ExportButtons title="Skills Gap Heatmap" buildContent={buildExportContent} buildCsvContent={buildCsvContent} />
             <div className="flex items-center gap-2 text-xs text-gray-400">
               <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
               Acme Corp

@@ -17,6 +17,7 @@ interface Props {
   onBack: () => void;
   onNavigateToGapReport?: (dept: Department) => void;
   onNavigateToManagers?: (managerId?: string) => void;
+  onViewCheckIn?: () => void;
   onAskAI?: (question: string) => void;
 }
 
@@ -74,7 +75,7 @@ interface Selection {
   index: number;
 }
 
-export function DeptPipelineView({ department, onBack, onNavigateToGapReport, onNavigateToManagers, onAskAI }: Props) {
+export function DeptPipelineView({ department, onBack, onNavigateToGapReport, onNavigateToManagers, onViewCheckIn, onAskAI }: Props) {
   const [selection, setSelection] = useState<Selection | null>(null);
 
   function buildExportContent(): string {
@@ -278,6 +279,7 @@ export function DeptPipelineView({ department, onBack, onNavigateToGapReport, on
           currentIndex={selection.index}
           onPrev={() => navigateTo(selection.index - 1)}
           onNext={() => navigateTo(selection.index + 1)}
+          onViewCheckIn={onViewCheckIn}
           onAskAI={onAskAI}
         />
       )}

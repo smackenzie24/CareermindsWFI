@@ -536,7 +536,7 @@ function DeptHeatmap({ department, onBack, onNavigateToPipeline, onAskAI, tourAc
               </div>
             </div>
             <div className="flex items-start gap-4">
-              <ExportButtons title={`${department} — Skills Gap`} buildContent={buildExportContent} />
+              <ExportButtons title={`${department} — Skills Gap`} buildContent={buildExportContent} buildCsvContent={buildCsvContent} />
             <div className="flex items-center gap-5" data-tour="heatmap-header-stats">
               <div className="text-right">
                 <p className="text-[10px] text-gray-400 uppercase tracking-wide">Below target</p>

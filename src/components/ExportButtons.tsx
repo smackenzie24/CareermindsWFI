@@ -4,6 +4,7 @@ import { Download, Mail, Check, X } from 'lucide-react';
 interface Props {
   title: string;
   buildContent: () => string;
+  buildCsvContent?: () => string;
 }
 
 function buildPrintHtml(title: string, content: string): string {
@@ -124,8 +125,9 @@ function EmailModal({ title, buildContent, onClose }: { title: string; buildCont
   );
 }
 
-export function ExportButtons({ title, buildContent }: Props) {
+export function ExportButtons({ title, buildContent, buildCsvContent }: Props) {
   const [downloaded, setDownloaded] = useState(false);
+  const [csvDownloaded, setCsvDownloaded] = useState(false);
   const [emailOpen, setEmailOpen] = useState(false);
 
   function handleDownload() {
@@ -140,19 +142,43 @@ export function ExportButtons({ title, buildContent }: Props) {
     setTimeout(() => setDownloaded(false), 2000);
   }
 
-return (
+  function handleCsvDownload() {
+    if (!buildCsvContent) return;
+    const csv = buildCsvContent();
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${title.replace(/[^a-z0-9]/gi, '_').toLowerCase()}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(() => URL.revokeObjectURL(url), 100);
+    setCsvDownloaded(true);
+    setTimeout(() => setCsvDownloaded(false), 2000);
+  }
+
+  return (
     <>
       <div className="flex items-center gap-2 flex-shrink-0">
+        {buildCsvContent && (
+          <button
+            onClick={handleCsvDownload}
+            className={`flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-lg border transition-all ${
+              csvDownloaded
+                ? 'bg-emerald-50 border-emerald-200 text-emerald-600'
+                : 'bg-white border-gray-200 text-gray-500 hover:border-gray-300 hover:text-gray-700'
+            }`}
+          >
+            {csvDownloaded ? <Check size={12} /> : <Download size={12} />}
+            {csvDownloaded ? 'Saved' : 'CSV'}
+          </button>
+        )}
         <button
-          onClick={handleDownload}
-          className={`flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-lg border transition-all ${
-            downloaded
-              ? 'bg-emerald-50 border-emerald-200 text-emerald-600'
-              : 'bg-white border-gray-200 text-gray-500 hover:border-gray-300 hover:text-gray-700'
-          }`}
+          className="flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-lg border bg-white border-gray-200 text-gray-500 hover:border-gray-300 hover:text-gray-700 transition-all"
         >
-          {downloaded ? <Check size={12} /> : <Download size={12} />}
-          {downloaded ? 'Saved' : 'Export report'}
+          <Download size={12} />
+          Export report
         </button>
         {false && <button
           onClick={() => setEmailOpen(true)}
