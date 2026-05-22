@@ -28,21 +28,21 @@ function isExceeding(actual: number, expected: number): boolean {
 }
 
 function getGapColor(gap: number, headcount: number, exceeding: boolean): string {
-  if (headcount === 0) return 'bg-gray-100 border-gray-200';
-  if (exceeding) return 'bg-emerald-600 border-emerald-700';
-  if (gap < 0.3) return 'bg-emerald-100 border-emerald-200';
-  if (gap < 0.8) return 'bg-amber-100 border-amber-200';
-  if (gap < 1.4) return 'bg-orange-200 border-orange-300';
-  if (gap < 2.0) return 'bg-red-300 border-red-400';
-  return 'bg-red-500 border-red-600';
+  if (headcount === 0) return 'bg-gray-50 border-gray-200';
+  if (exceeding) return 'bg-slate-700 border-slate-800';
+  if (gap < 0.3) return 'bg-gray-100 border-gray-200';
+  if (gap < 0.8) return 'bg-slate-100 border-slate-200';
+  if (gap < 1.4) return 'bg-slate-200 border-slate-300';
+  if (gap < 2.0) return 'bg-red-100 border-red-200';
+  return 'bg-red-200 border-red-300';
 }
 
 function getTextColor(gap: number, exceeding: boolean): string {
   if (exceeding) return 'text-white';
-  if (gap < 0.3) return 'text-emerald-700';
-  if (gap < 0.8) return 'text-amber-700';
-  if (gap < 1.4) return 'text-orange-800';
-  return 'text-red-900';
+  if (gap < 0.3) return 'text-gray-500';
+  if (gap < 0.8) return 'text-slate-600';
+  if (gap < 1.4) return 'text-slate-700';
+  return 'text-red-700';
 }
 
 function getLabel(pct: number, exceeding: boolean): string {

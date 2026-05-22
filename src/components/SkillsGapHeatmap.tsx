@@ -43,8 +43,8 @@ function CheckInPanel({ department }: { department: Department }) {
           <p className="text-sm text-gray-500 mt-0.5">{department}</p>
         </div>
         <span className={`text-xs font-bold px-2.5 py-1 rounded-full mt-1 ${
-          flagged.length === 0 ? 'bg-emerald-100 text-emerald-700' :
-          critical.length > 0 ? 'bg-red-100 text-red-700' : 'bg-amber-100 text-amber-700'
+          flagged.length === 0 ? 'bg-gray-100 text-gray-600' :
+          critical.length > 0 ? 'bg-red-100 text-red-700' : 'bg-slate-100 text-slate-600'
         }`}>
           {flagged.length === 0 ? 'All current' : critical.length > 0 ? 'Critical' : 'Overdue'}
         </span>
@@ -59,45 +59,45 @@ function CheckInPanel({ department }: { department: Department }) {
           </div>
           <p className="text-base font-bold text-gray-900">{people.length}</p>
         </div>
-        <div className={`rounded-lg px-2.5 py-2 border ${flagged.length === 0 ? 'bg-emerald-50 border-emerald-100' : 'bg-red-50 border-red-100'}`}>
+        <div className="rounded-lg px-2.5 py-2 border bg-gray-50 border-gray-100">
           <div className="flex items-center gap-1 mb-0.5">
-            <CalendarX size={11} className={flagged.length === 0 ? 'text-emerald-500' : 'text-red-400'} />
-            <span className={`text-[10px] font-medium ${flagged.length === 0 ? 'text-emerald-600' : 'text-red-500'}`}>Not checked in</span>
+            <CalendarX size={11} className="text-gray-400" />
+            <span className="text-[10px] font-medium text-gray-500">Not checked in</span>
           </div>
-          <p className={`text-base font-bold ${flagged.length === 0 ? 'text-emerald-600' : 'text-red-600'}`}>
+          <p className={`text-base font-bold ${flagged.length === 0 ? 'text-gray-700' : 'text-red-600'}`}>
             {flagged.length}<span className="text-xs font-normal ml-0.5 opacity-60">/ {people.length}</span>
           </p>
         </div>
-        <div className="bg-red-50 rounded-lg px-2.5 py-2 border border-red-100">
+        <div className="bg-gray-50 rounded-lg px-2.5 py-2 border border-gray-100">
           <div className="flex items-center gap-1 mb-0.5">
-            <AlertTriangle size={11} className="text-red-400" />
-            <span className="text-[10px] text-red-500 font-medium">Critical 90d+</span>
+            <AlertTriangle size={11} className="text-gray-400" />
+            <span className="text-[10px] text-gray-500 font-medium">Critical 90d+</span>
           </div>
-          <p className="text-base font-bold text-red-600">{critical.length}</p>
+          <p className={`text-base font-bold ${critical.length > 0 ? 'text-red-600' : 'text-gray-700'}`}>{critical.length}</p>
         </div>
-        <div className={`rounded-lg px-2.5 py-2 border ${coveragePct >= 80 ? 'bg-emerald-50 border-emerald-100' : 'bg-amber-50 border-amber-100'}`}>
+        <div className="rounded-lg px-2.5 py-2 border bg-gray-50 border-gray-100">
           <div className="flex items-center gap-1 mb-0.5">
-            <Target size={11} className={coveragePct >= 80 ? 'text-emerald-500' : 'text-amber-500'} />
-            <span className={`text-[10px] font-medium ${coveragePct >= 80 ? 'text-emerald-600' : 'text-amber-600'}`}>Coverage</span>
+            <Target size={11} className="text-gray-400" />
+            <span className="text-[10px] font-medium text-gray-500">Coverage</span>
           </div>
-          <p className={`text-base font-bold ${coveragePct >= 80 ? 'text-emerald-600' : 'text-amber-600'}`}>{coveragePct}%</p>
+          <p className={`text-base font-bold ${coveragePct >= 80 ? 'text-gray-700' : 'text-slate-600'}`}>{coveragePct}%</p>
         </div>
       </div>
 
       {/* Coverage bar */}
       <div className="px-6 py-4 border-b border-gray-100 flex-shrink-0">
         <div className="flex items-center gap-3 mb-1.5">
-          <div className="flex-1 bg-gray-100 rounded-full h-2.5 overflow-hidden flex">
-            <div className="h-full bg-emerald-500" style={{ width: `${coveragePct}%` }} />
-            {overdue.length > 0 && <div className="h-full bg-amber-400" style={{ width: `${Math.round((overdue.length / people.length) * 100)}%` }} />}
-            {critical.length > 0 && <div className="h-full bg-red-500" style={{ width: `${Math.round((critical.length / people.length) * 100)}%` }} />}
+          <div className="flex-1 bg-gray-100 rounded-full h-2 overflow-hidden flex">
+            <div className="h-full bg-slate-400" style={{ width: `${coveragePct}%` }} />
+            {overdue.length > 0 && <div className="h-full bg-slate-300" style={{ width: `${Math.round((overdue.length / people.length) * 100)}%` }} />}
+            {critical.length > 0 && <div className="h-full bg-red-300" style={{ width: `${Math.round((critical.length / people.length) * 100)}%` }} />}
           </div>
           <span className="text-xs font-bold text-gray-600 w-9 text-right">{coveragePct}%</span>
         </div>
         <div className="flex items-center gap-3 text-[10px] text-gray-400">
-          <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block" />Current ({people.length - flagged.length})</span>
-          <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-amber-400 inline-block" />Overdue ({overdue.length})</span>
-          <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-red-500 inline-block" />Critical ({critical.length})</span>
+          <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-slate-400 inline-block" />Current ({people.length - flagged.length})</span>
+          <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-slate-300 inline-block" />Overdue ({overdue.length})</span>
+          <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-red-300 inline-block" />Critical ({critical.length})</span>
         </div>
       </div>
 
@@ -105,8 +105,8 @@ function CheckInPanel({ department }: { department: Department }) {
       <div className="flex-1 overflow-y-auto p-6">
         {flagged.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-12 text-center">
-            <div className="w-12 h-12 rounded-full bg-emerald-50 border border-emerald-100 flex items-center justify-center mb-3">
-              <CalendarX size={20} className="text-emerald-500" />
+            <div className="w-12 h-12 rounded-full bg-gray-100 border border-gray-200 flex items-center justify-center mb-3">
+              <CalendarX size={20} className="text-gray-400" />
             </div>
             <p className="text-sm font-bold text-gray-700 mb-1">Everyone is up to date</p>
             <p className="text-xs text-gray-400">All {people.length} members checked in within 30 days.</p>
@@ -121,17 +121,17 @@ function CheckInPanel({ department }: { department: Department }) {
                 const isCritical = days >= 90;
                 const initials = person.name.split(' ').map((n: string) => n[0]).join('');
                 return (
-                  <div key={person.id} className={`flex items-center gap-3 p-2.5 rounded-xl border ${isCritical ? 'bg-red-50 border-red-100' : 'bg-amber-50 border-amber-100'}`}>
-                    <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-slate-600 to-slate-800 flex items-center justify-center text-white text-[10px] font-bold flex-shrink-0">
+                  <div key={person.id} className={`flex items-center gap-3 p-2.5 rounded-xl border ${isCritical ? 'bg-red-50 border-red-100' : 'bg-gray-50 border-gray-100'}`}>
+                    <div className="w-7 h-7 rounded-lg bg-slate-700 flex items-center justify-center text-white text-[10px] font-bold flex-shrink-0">
                       {initials}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className={`text-xs font-semibold truncate ${isCritical ? 'text-red-800' : 'text-amber-800'}`}>{person.name}</p>
+                      <p className={`text-xs font-semibold truncate ${isCritical ? 'text-red-800' : 'text-gray-700'}`}>{person.name}</p>
                       <p className="text-[10px] text-gray-400 truncate">{person.team}</p>
                     </div>
                     <div className="text-right flex-shrink-0">
-                      <p className={`text-xs font-bold ${isCritical ? 'text-red-600' : 'text-amber-600'}`}>{days}d</p>
-                      <p className={`text-[10px] font-semibold uppercase tracking-wide ${isCritical ? 'text-red-400' : 'text-amber-400'}`}>
+                      <p className={`text-xs font-bold ${isCritical ? 'text-red-600' : 'text-slate-600'}`}>{days}d</p>
+                      <p className={`text-[10px] font-semibold uppercase tracking-wide ${isCritical ? 'text-red-400' : 'text-slate-400'}`}>
                         {isCritical ? 'Critical' : 'Overdue'}
                       </p>
                     </div>
@@ -266,7 +266,7 @@ function CheckInRow({ department, selected, onSelect, colCount }: { department: 
     >
       <div className="px-4 py-3 flex flex-col justify-center">
         <div className="flex items-center gap-2">
-          <CalendarX size={12} className={hasCritical ? 'text-red-500' : hasOverdue ? 'text-amber-500' : 'text-emerald-500'} />
+          <CalendarX size={12} className={hasCritical ? 'text-red-400' : 'text-gray-400'} />
           <span className="text-sm font-semibold text-gray-800">Check-in Coverage</span>
         </div>
         <div className="flex items-center gap-2 mt-0.5">
@@ -278,15 +278,15 @@ function CheckInRow({ department, selected, onSelect, colCount }: { department: 
         <div className="flex-1">
           <div className="flex items-center gap-2 mb-1">
             <div className="flex-1 bg-gray-100 rounded-full h-2 overflow-hidden flex">
-              <div className="h-full bg-emerald-500" style={{ width: `${coveragePct}%` }} />
-              {flagged.length - critical.length > 0 && <div className="h-full bg-amber-400" style={{ width: `${Math.round(((flagged.length - critical.length) / people.length) * 100)}%` }} />}
-              {critical.length > 0 && <div className="h-full bg-red-500" style={{ width: `${Math.round((critical.length / people.length) * 100)}%` }} />}
+              <div className="h-full bg-slate-400" style={{ width: `${coveragePct}%` }} />
+              {flagged.length - critical.length > 0 && <div className="h-full bg-slate-300" style={{ width: `${Math.round(((flagged.length - critical.length) / people.length) * 100)}%` }} />}
+              {critical.length > 0 && <div className="h-full bg-red-300" style={{ width: `${Math.round((critical.length / people.length) * 100)}%` }} />}
             </div>
-            <span className={`text-xs font-bold w-9 text-right ${hasCritical ? 'text-red-600' : hasOverdue ? 'text-amber-600' : 'text-emerald-600'}`}>{coveragePct}%</span>
+            <span className={`text-xs font-bold w-9 text-right ${hasCritical ? 'text-red-600' : 'text-gray-600'}`}>{coveragePct}%</span>
           </div>
           <div className="flex items-center gap-3 text-[10px] text-gray-400">
             <span>{people.length - flagged.length} current</span>
-            {hasOverdue && <span className="text-amber-500">{flagged.length - critical.length} overdue</span>}
+            {hasOverdue && <span className="text-slate-500">{flagged.length - critical.length} overdue</span>}
             {hasCritical && <span className="text-red-500">{critical.length} critical</span>}
           </div>
         </div>
@@ -523,7 +523,7 @@ function DeptHeatmap({ department, onBack, onNavigateToPipeline, onAskAI, tourAc
               </div>
               <div className="text-right">
                 <p className="text-[10px] text-gray-400 uppercase tracking-wide">Avg gap</p>
-                <p className="text-sm font-bold text-orange-500">{overallStats.avgGap.toFixed(1)}</p>
+                <p className="text-sm font-bold text-slate-600">{overallStats.avgGap.toFixed(1)}</p>
               </div>
               <div className="text-right">
                 <p className="text-[10px] text-gray-400 uppercase tracking-wide">Skills</p>
@@ -569,11 +569,11 @@ function DeptHeatmap({ department, onBack, onNavigateToPipeline, onAskAI, tourAc
 
         {/* Alert bar */}
         {criticalSkills.length > 0 && (
-          <div className="bg-red-50 border-b border-red-100 px-8 py-3 flex-shrink-0" data-tour="heatmap-alert-bar">
+          <div className="bg-slate-50 border-b border-slate-100 px-8 py-3 flex-shrink-0" data-tour="heatmap-alert-bar">
             <div className="flex items-center gap-2 flex-wrap">
-              <Info size={13} className="text-red-500 flex-shrink-0" />
-              <p className="text-xs text-red-700 flex-1">
-                <span className="font-semibold">Critical gaps detected:</span>{' '}
+              <Info size={13} className="text-slate-500 flex-shrink-0" />
+              <p className="text-xs text-slate-700 flex-1">
+                <span className="font-semibold text-slate-800">Critical gaps detected:</span>{' '}
                 {criticalSkills.map((s, i) => (
                   <span key={s.skill}>
                     <button
@@ -672,11 +672,11 @@ function DeptHeatmap({ department, onBack, onNavigateToPipeline, onAskAI, tourAc
           {/* Legend */}
           <div className="mt-4 flex items-center gap-1.5 flex-wrap" data-tour="heatmap-legend">
             <span className="text-xs text-gray-400 mr-2">Gap severity:</span>
-            <LegendItem label="Exceeding" colorClass="bg-emerald-600 border-emerald-700" />
-            <LegendItem label="On track" colorClass="bg-emerald-100 border-emerald-200" />
-            <LegendItem label="Developing" colorClass="bg-amber-100 border-amber-200" />
-            <LegendItem label="At risk" colorClass="bg-orange-200 border-orange-300" />
-            <LegendItem label="Critical" colorClass="bg-red-300 border-red-400" />
+            <LegendItem label="Exceeding" colorClass="bg-slate-700 border-slate-800" />
+            <LegendItem label="On track" colorClass="bg-gray-100 border-gray-200" />
+            <LegendItem label="Developing" colorClass="bg-slate-100 border-slate-200" />
+            <LegendItem label="At risk" colorClass="bg-slate-200 border-slate-300" />
+            <LegendItem label="Critical" colorClass="bg-red-100 border-red-200" />
           </div>
 
           {/* Careerminds upsell — talent development */}
