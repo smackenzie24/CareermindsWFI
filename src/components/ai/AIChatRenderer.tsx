@@ -688,8 +688,8 @@ function pickUpsell(results: QueryResult[]): InlineUpsellVariant | null {
   return null;
 }
 
-export function ResultsBlock({ results, onSend, onNavigate, wide }: { results: QueryResult[]; onSend?: (text: string) => void; onNavigate?: (target: ActionNavTarget) => void; wide?: boolean }) {
-  const upsellVariant = pickUpsell(results);
+export function ResultsBlock({ results, onSend, onNavigate, wide, suppressUpsell }: { results: QueryResult[]; onSend?: (text: string) => void; onNavigate?: (target: ActionNavTarget) => void; wide?: boolean; suppressUpsell?: boolean }) {
+  const upsellVariant = suppressUpsell ? null : pickUpsell(results);
   return (
     <div className={`mt-3 space-y-3 ${wide ? 'grid grid-cols-1 gap-3' : ''}`}>
       {results.map((r, i) => {

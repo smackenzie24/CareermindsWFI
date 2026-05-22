@@ -649,12 +649,14 @@ function OutputPanel({
   onNavigate,
   onUpload,
   onPaste,
+  upsellShownBefore,
 }: {
   entry: OutputEntry;
   onSend: (t: string) => void;
   onNavigate?: (target: ActionNavTarget) => void;
   onUpload: () => void;
   onPaste: () => void;
+  upsellShownBefore?: boolean;
 }) {
   const [emailOpen, setEmailOpen] = useState(false);
   const [downloaded, setDownloaded] = useState(false);
@@ -740,7 +742,7 @@ function OutputPanel({
                 <span className="text-[10px] font-semibold text-gray-300 uppercase tracking-widest">Data</span>
                 <div className="flex-1 h-px bg-gray-100" />
               </div>
-              <ResultsBlock results={entry.results} onSend={onSend} onNavigate={onNavigate} wide />
+              <ResultsBlock results={entry.results} onSend={onSend} onNavigate={onNavigate} wide suppressUpsell={upsellShownBefore} />
             </>
           )}
 
@@ -752,7 +754,7 @@ function OutputPanel({
               assumptions={assumptions}
               ethicsNote={entry.ethicsNote}
             />
-            <CareermindsCard suggestion={entry.careermindsSuggestion ?? null} />
+            <CareermindsCard suggestion={upsellShownBefore ? null : (entry.careermindsSuggestion ?? null)} />
           </div>
         </div>
 
@@ -1487,6 +1489,9 @@ export function AskAIPage({ initialQuestion, onNavigate }: Props) {
               onNavigate={onNavigate}
               onUpload={() => fileInputRef.current?.click()}
               onPaste={() => setPasteOpen(true)}
+              upsellShownBefore={active.outputs
+                .filter(o => o.id !== activeOutput.id)
+                .some(o => !!o.careermindsSuggestion)}
             />
           : <EmptyOutput mode={mode} />
         }
