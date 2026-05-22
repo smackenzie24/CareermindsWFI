@@ -413,6 +413,48 @@ function DeptHeatmap({ department, onBack, onNavigateToPipeline, onAskAI, tourAc
 
   const deptColor = DEPT_COLORS[department];
 
+  function csvRow(...cells: (string | number)[]): string {
+    return cells.map(c => {
+      const s = String(c);
+      return s.includes(',') || s.includes('"') || s.includes('\n') ? `"${s.replace(/"/g, '""')}"` : s;
+    }).join(',');
+  }
+
+  function buildCsvContent(): string {
+    const rows: string[] = [
+      csvRow('Department', 'Skill', 'Category', 'Level', 'Team', 'Headcount', 'Below_Target_Count', 'Below_Target_Pct', 'Avg_Actual', 'Expected_Level', 'Gap_Score', 'Status'),
+    ];
+    for (const skill of skills) {
+      const entries = filtered.filter(e => e.skill === skill);
+      const teams = Array.from(new Set(entries.map(e => e.team)));
+      for (const team of teams) {
+        const teamEntries = entries.filter(e => e.team === team);
+        const head = teamEntries.reduce((s, e) => s + e.headcount, 0);
+        const below = teamEntries.reduce((s, e) => s + e.belowTarget, 0);
+        const avgActual = head > 0 ? teamEntries.reduce((s, e) => s + e.averageActual * e.headcount, 0) / head : 0;
+        const expected = teamEntries[0].expectedLevel;
+        const gap = Math.max(0, expected - avgActual);
+        const pct = head > 0 ? Math.round((below / head) * 100) : 0;
+        const status = avgActual > expected ? 'Exceeding' : pct < 30 ? 'On Track' : pct < 50 ? 'Developing' : pct < 70 ? 'At Risk' : 'Critical';
+        rows.push(csvRow(
+          department,
+          skill,
+          teamEntries[0].category,
+          teamEntries[0].level,
+          team,
+          head,
+          below,
+          pct,
+          avgActual.toFixed(2),
+          expected,
+          gap.toFixed(2),
+          status,
+        ));
+      }
+    }
+    return rows.join('\n');
+  }
+
   function buildExportContent(): string {
     const lines: string[] = [
       `${department.toUpperCase()} — SKILLS GAP HEATMAP`,
@@ -470,7 +512,7 @@ function DeptHeatmap({ department, onBack, onNavigateToPipeline, onAskAI, tourAc
               </div>
             </div>
             <div className="flex items-start gap-4">
-              <ExportButtons title={`${department} — Skills Gap`} buildContent={buildExportContent} />
+              <ExportButtons title={`${department} — Skills Gap`} buildContent={buildExportContent} buildCsvContent={buildCsvContent} />
             <div className="flex items-center gap-5" data-tour="heatmap-header-stats">
               <div className="text-right">
                 <p className="text-[10px] text-gray-400 uppercase tracking-wide">Below target</p>

@@ -111,6 +111,37 @@ export function DepartmentOverview({ onSelectDepartment }: Props) {
     }, 600);
   }, []);
 
+  function csvRow(...cells: (string | number)[]): string {
+    return cells.map(c => {
+      const s = String(c);
+      return s.includes(',') || s.includes('"') || s.includes('\n') ? `"${s.replace(/"/g, '""')}"` : s;
+    }).join(',');
+  }
+
+  function buildCsvContent(): string {
+    const rows: string[] = [
+      csvRow('Department', 'Headcount', 'Below_Target_Count', 'Below_Target_Pct', 'Median_Gap', 'Critical_Skills', 'At_Risk_Skills', 'Developing_Skills', 'On_Track_Skills', 'Top_Gap_Skill', 'Top_Gap_Pct', 'Severity'),
+    ];
+    for (const d of summaries) {
+      const severity = getSeverity(d.belowTargetPct);
+      rows.push(csvRow(
+        d.department,
+        d.headcount,
+        d.belowTarget,
+        d.belowTargetPct,
+        d.medianGap,
+        d.skillsCritical,
+        d.skillsRisk,
+        d.skillsDeveloping,
+        d.skillsGood,
+        d.topGapSkill,
+        d.topGapPct,
+        SEVERITY_CONFIG[severity].label,
+      ));
+    }
+    return rows.join('\n');
+  }
+
   function buildExportContent(): string {
     const lines: string[] = [
       'SKILLS GAP HEATMAP — ACME CORP',
@@ -215,7 +246,7 @@ export function DepartmentOverview({ onSelectDepartment }: Props) {
             <h1 className="text-2xl font-bold text-gray-900 leading-tight">Skills Gap Heatmap</h1>
           </div>
           <div className="flex items-center gap-3">
-            <ExportButtons title="Skills Gap Heatmap" buildContent={buildExportContent} />
+            <ExportButtons title="Skills Gap Heatmap" buildContent={buildExportContent} buildCsvContent={buildCsvContent} />
             <div className="flex items-center gap-2 text-xs text-gray-400">
               <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
               Acme Corp
