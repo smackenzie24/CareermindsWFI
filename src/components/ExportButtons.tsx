@@ -150,8 +150,10 @@ export function ExportButtons({ title, buildContent, buildCsvContent }: Props) {
     const a = document.createElement('a');
     a.href = url;
     a.download = `${title.replace(/[^a-z0-9]/gi, '_').toLowerCase()}.csv`;
+    document.body.appendChild(a);
     a.click();
-    URL.revokeObjectURL(url);
+    document.body.removeChild(a);
+    setTimeout(() => URL.revokeObjectURL(url), 100);
     setCsvDownloaded(true);
     setTimeout(() => setCsvDownloaded(false), 2000);
   }

@@ -413,6 +413,29 @@ function DeptHeatmap({ department, onBack, onNavigateToPipeline, onAskAI, tourAc
 
   const deptColor = DEPT_COLORS[department];
 
+  function buildExportContent(): string {
+    const lines: string[] = [
+      `${department.toUpperCase()} — SKILLS GAP HEATMAP`,
+      `Generated: ${new Date().toLocaleDateString()}`,
+      '='.repeat(50),
+      '',
+      `People below target: ${overallStats.totalHead > 0 ? Math.round((overallStats.totalBelow / overallStats.totalHead) * 100) : 0}% (${overallStats.totalBelow} of ${overallStats.totalHead})`,
+      `Avg skill gap: ${overallStats.avgGap.toFixed(1)}`,
+      `Skills tracked: ${skills.length}`,
+      '',
+      'SKILLS BREAKDOWN',
+      '-'.repeat(50),
+    ];
+    for (const skill of skills) {
+      const entries = filtered.filter(e => e.skill === skill);
+      const head = entries.reduce((s, e) => s + e.headcount, 0);
+      const below = entries.reduce((s, e) => s + e.belowTarget, 0);
+      const pct = head > 0 ? Math.round((below / head) * 100) : 0;
+      lines.push(`${skill}: ${pct}% below target (${below} of ${head} people)`);
+    }
+    return lines.join('\n');
+  }
+
   function csvRow(...cells: (string | number)[]): string {
     return cells.map(c => {
       const s = String(c);
@@ -453,29 +476,6 @@ function DeptHeatmap({ department, onBack, onNavigateToPipeline, onAskAI, tourAc
       }
     }
     return rows.join('\n');
-  }
-
-  function buildExportContent(): string {
-    const lines: string[] = [
-      `${department.toUpperCase()} — SKILLS GAP HEATMAP`,
-      `Generated: ${new Date().toLocaleDateString()}`,
-      '='.repeat(50),
-      '',
-      `People below target: ${overallStats.totalHead > 0 ? Math.round((overallStats.totalBelow / overallStats.totalHead) * 100) : 0}% (${overallStats.totalBelow} of ${overallStats.totalHead})`,
-      `Avg skill gap: ${overallStats.avgGap.toFixed(1)}`,
-      `Skills tracked: ${skills.length}`,
-      '',
-      'SKILLS BREAKDOWN',
-      '-'.repeat(50),
-    ];
-    for (const skill of skills) {
-      const entries = filtered.filter(e => e.skill === skill);
-      const head = entries.reduce((s, e) => s + e.headcount, 0);
-      const below = entries.reduce((s, e) => s + e.belowTarget, 0);
-      const pct = head > 0 ? Math.round((below / head) * 100) : 0;
-      lines.push(`${skill}: ${pct}% below target (${below} of ${head} people)`);
-    }
-    return lines.join('\n');
   }
 
   return (
