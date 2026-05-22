@@ -50,7 +50,7 @@ const NAV_ITEMS: { id: ActiveView; label: string; icon: React.ReactNode; accent?
   { id: 'pipeline',     label: 'Pipeline',     icon: <TrendingUp size={13} /> },
   { id: 'managers',     label: 'Managers',     icon: <BarChart3 size={13} /> },
   { id: 'benchmark',    label: 'Benchmarks',   icon: <Globe size={13} /> },
-  { id: 'journal',      label: 'Decisions',    icon: <ClipboardList size={13} /> },
+  // { id: 'journal',      label: 'Decisions',    icon: <ClipboardList size={13} /> },
   { id: 'how-it-works', label: 'How it works', icon: <HelpCircle size={13} /> },
   { id: 'zero-states',  label: 'Zero States',  icon: <Layers size={13} /> },
   { id: 'ask-ai',       label: 'Ask AI',       icon: <Sparkles size={13} />, accent: true },

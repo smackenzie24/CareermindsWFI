@@ -898,7 +898,7 @@ export function ResultsBlock({ results, onSend, onNavigate, wide }: { results: Q
         if (r.kind === 'reduction') return <ReductionAnalysisCard key={i} analysis={r.analysis} />;
         if (r.kind === 'clarification') return <ClarificationCard key={i} data={r.data} onChipClick={onSend ?? (() => {})} />;
         if (r.kind === 'decision') return <DecisionFrameCard key={i} frame={r.frame} onSend={onSend} />;
-        if (r.kind === 'commitment-prompt') return <CommitmentCaptureCard key={i} data={r.data} />;
+        if (r.kind === 'commitment-prompt') return null; // hidden — restore: <CommitmentCaptureCard key={i} data={r.data} />
         if (r.kind === 'partner-recommendation') return <PartnerRecommendationCard key={i} data={r.data} />;
         if (r.kind === 'role-fit-list') {
           return (
