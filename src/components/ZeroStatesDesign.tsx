@@ -140,75 +140,6 @@ function Ticket11() {
   );
 }
 
-// ── TICKET 12 — No Check-in Data ──────────────────────────────────────────────
-
-function Ticket12() {
-  return (
-    <FrameWithBreadcrumb dept="Design">
-      <div className="px-5 py-4 border-b border-gray-100">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-base font-bold text-gray-900">Design</h1>
-            <div className="flex items-center gap-3 mt-1">
-              <span className="text-xs text-gray-400">6 skills tracked</span>
-              <span className="text-xs font-semibold text-red-500">3 below target</span>
-            </div>
-          </div>
-          <div className="flex items-center gap-2">
-            <button className="flex items-center gap-1.5 text-xs text-gray-500 border border-gray-200 rounded-lg px-2.5 py-1.5 hover:bg-gray-50 transition-colors">
-              <Filter size={11} /> Filter
-            </button>
-          </div>
-        </div>
-      </div>
-
-      {/* Heatmap grid — column headers */}
-      <div className="grid border-b border-gray-100 bg-gray-50/80 text-xs font-semibold text-gray-400 uppercase tracking-wider" style={{ gridTemplateColumns: '220px 52px repeat(3, 1fr)' }}>
-        <div className="px-4 py-3">Skill</div>
-        <div className="px-2 py-3 text-center border-l border-gray-100">Req</div>
-        {['Team A', 'Team B', 'Team C'].map(t => (
-          <div key={t} className="px-4 py-3">{t}</div>
-        ))}
-      </div>
-
-      {/* Check-in row — no data state */}
-      <div className="grid border-b border-gray-100" style={{ gridTemplateColumns: '220px 52px repeat(3, 1fr)' }}>
-        <div className="px-4 py-3 flex items-center gap-2">
-          <CalendarX size={12} className="text-gray-300" />
-          <span className="text-sm font-medium text-gray-400">Check-in Coverage</span>
-        </div>
-        <div className="px-2 py-3 border-l border-gray-50" />
-        <div className="px-4 py-3 flex items-center" style={{ gridColumn: '3 / span 3' }}>
-          <div className="flex-1 h-6 rounded bg-gray-50 border border-dashed border-gray-200 flex items-center px-2.5">
-            <span className="text-[10px] text-gray-400 font-medium">No check-ins yet</span>
-          </div>
-        </div>
-      </div>
-
-      {/* Skill rows */}
-      {['Design Systems', 'User Research', 'Prototyping', 'Visual Design', 'Motion Design', 'Accessibility'].map((skill, i) => (
-        <div key={skill} className="grid border-b border-gray-100 hover:bg-gray-50/50 cursor-pointer" style={{ gridTemplateColumns: '220px 52px repeat(3, 1fr)' }}>
-          <div className="px-4 py-3 flex flex-col justify-center">
-            <span className="text-sm font-medium text-gray-800">{skill}</span>
-          </div>
-          <div className="px-2 py-3 flex items-center justify-center border-l border-gray-50">
-            <span className="text-xs font-semibold text-gray-400">4</span>
-          </div>
-          {[0,1,2].map(j => (
-            <div key={j} className="px-3 py-3 flex items-center">
-              <div className={`w-full h-7 rounded text-[11px] font-semibold flex items-center justify-center ${
-                (i + j) % 3 === 0 ? 'bg-red-100 text-red-600' : (i + j) % 3 === 1 ? 'bg-amber-100 text-amber-600' : 'bg-emerald-100 text-emerald-700'
-              }`}>
-                {2 + ((i + j) % 3)}
-              </div>
-            </div>
-          ))}
-        </div>
-      ))}
-    </FrameWithBreadcrumb>
-  );
-}
-
 // ── TICKET 13 — Skills Set Up, No Assessments ─────────────────────────────────
 
 function Ticket13() {
@@ -363,135 +294,6 @@ function Ticket14() {
         </div>
       </div>
     </Frame>
-  );
-}
-
-// ── TICKET 15 — Drilldown Panel: No Breakdown Data ───────────────────────────
-
-function Ticket15NoFilters() {
-  return (
-    <FrameWithBreadcrumb dept="Sales">
-      <div className="flex">
-        <div className="flex-1 p-4">
-          <div className="space-y-1.5">
-            {['Negotiation', 'CRM Tools', 'Pipeline Mgmt', 'Closing Techniques'].map((skill, i) => (
-              <div key={skill} className="flex items-center gap-2">
-                <span className="text-[11px] text-gray-600 w-32 truncate">{skill}</span>
-                <div className="flex gap-1">
-                  {[0,1,2].map(j => (
-                    <div key={j} className={`w-10 h-6 rounded text-[10px] font-semibold flex items-center justify-center ${
-                      (i + j) % 3 === 0 ? 'bg-red-100 text-red-600' : (i + j) % 3 === 1 ? 'bg-amber-100 text-amber-600' : 'bg-emerald-100 text-emerald-700'
-                    }`}>
-                      {2 + ((i + j) % 3)}
-                    </div>
-                  ))}
-                </div>
-              </div>
-            ))}
-            <div className="flex items-center gap-2 bg-sky-50 rounded-lg px-1">
-              <span className="text-[11px] text-sky-700 font-semibold w-32">Cold Outreach</span>
-              <div className="flex gap-1">
-                {[0,1,2].map(j => (
-                  <div key={j} className="w-10 h-6 rounded bg-gray-100 border border-dashed border-gray-200" />
-                ))}
-              </div>
-              <span className="text-[10px] text-sky-500 ml-1">selected</span>
-            </div>
-          </div>
-        </div>
-
-        <div className="w-72 border-l border-gray-100 flex flex-col">
-          <div className="px-4 py-3 border-b border-gray-100 flex items-center justify-between">
-            <div>
-              <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">Skill detail</p>
-              <h3 className="text-sm font-bold text-gray-900 mt-0.5">Cold Outreach</h3>
-            </div>
-            <button className="w-6 h-6 rounded flex items-center justify-center text-gray-400 hover:bg-gray-100">
-              <X size={12} />
-            </button>
-          </div>
-          <div className="flex-1 flex flex-col items-center justify-center text-center px-5 py-10 gap-4">
-            <div className="w-12 h-12 rounded-2xl bg-gray-100 flex items-center justify-center">
-              <BarChart2 size={20} className="text-gray-300" />
-            </div>
-            <div>
-              <p className="text-sm font-semibold text-gray-700 mb-1.5">No assessments recorded for this skill yet</p>
-              <p className="text-[11px] text-gray-400 leading-relaxed">
-                Once assessments are completed for Cold Outreach, you'll see individual and team breakdowns here.
-              </p>
-            </div>
-          </div>
-        </div>
-      </div>
-    </FrameWithBreadcrumb>
-  );
-}
-
-function Ticket15WithFilters() {
-  return (
-    <FrameWithBreadcrumb dept="Sales">
-      <div className="flex items-center gap-2 px-4 py-2 border-b border-gray-100 bg-gray-50/40">
-        <Filter size={11} className="text-gray-400" />
-        <span className="text-[11px] text-gray-500">Filters:</span>
-        <span className="text-[10px] font-semibold bg-sky-100 text-sky-700 px-2 py-0.5 rounded-full">New York</span>
-        <span className="text-[10px] font-semibold bg-sky-100 text-sky-700 px-2 py-0.5 rounded-full">IC3</span>
-        <span className="text-[11px] text-gray-400 ml-auto">Showing 0 matches for this skill</span>
-      </div>
-
-      <div className="flex">
-        <div className="flex-1 p-4">
-          <div className="space-y-1.5">
-            {['Negotiation', 'CRM Tools', 'Cold Outreach (selected)'].map((skill, i) => (
-              <div key={skill} className={`flex items-center gap-2 ${i === 2 ? 'bg-sky-50 rounded-lg px-1' : ''}`}>
-                <span className={`text-[11px] w-36 truncate ${i === 2 ? 'text-sky-700 font-semibold' : 'text-gray-600'}`}>{skill}</span>
-                {i === 2 ? (
-                  <div className="flex gap-1">
-                    {[0,1,2].map(j => (
-                      <div key={j} className="w-10 h-6 rounded bg-gray-100 border border-dashed border-gray-200" />
-                    ))}
-                  </div>
-                ) : (
-                  <div className="flex gap-1">
-                    {[0,1,2].map(j => (
-                      <div key={j} className={`w-10 h-6 rounded text-[10px] font-semibold flex items-center justify-center ${(i + j) % 2 === 0 ? 'bg-amber-100 text-amber-600' : 'bg-emerald-100 text-emerald-700'}`}>
-                        {3 + ((i + j) % 2)}
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
-        </div>
-
-        <div className="w-72 border-l border-gray-100 flex flex-col">
-          <div className="px-4 py-3 border-b border-gray-100 flex items-center justify-between">
-            <div>
-              <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">Skill detail</p>
-              <h3 className="text-sm font-bold text-gray-900 mt-0.5">Cold Outreach</h3>
-            </div>
-            <button className="w-6 h-6 rounded flex items-center justify-center text-gray-400 hover:bg-gray-100">
-              <X size={12} />
-            </button>
-          </div>
-          <div className="flex-1 flex flex-col items-center justify-center text-center px-5 py-10 gap-4">
-            <div className="w-12 h-12 rounded-2xl bg-sky-50 border border-sky-100 flex items-center justify-center">
-              <Search size={20} className="text-sky-400" />
-            </div>
-            <div>
-              <p className="text-sm font-semibold text-gray-700 mb-1.5">No data matches your current filters</p>
-              <p className="text-[11px] text-gray-400 leading-relaxed">
-                No records for Cold Outreach match the active Location: New York and Level: IC3 filters. Try removing one or both filters.
-              </p>
-            </div>
-            <button className="flex items-center gap-1.5 text-xs font-semibold text-emerald-600 border border-emerald-200 rounded-xl px-3 py-1.5 hover:bg-emerald-50 transition-colors">
-              <RefreshCw size={11} />
-              Clear filters
-            </button>
-          </div>
-        </div>
-      </div>
-    </FrameWithBreadcrumb>
   );
 }
 
@@ -852,10 +654,8 @@ export function ZeroStatesDesign() {
           {[
             { id: 'ticket-10', label: 'No framework' },
             { id: 'ticket-11', label: 'No dept skills' },
-            { id: 'ticket-12', label: 'No check-ins' },
             { id: 'ticket-13', label: 'No assessments' },
             { id: 'ticket-14', label: 'Partial setup' },
-            { id: 'ticket-15', label: 'No drilldown data' },
             { id: 'low-sample', label: 'Low sample size' },
             { id: 'error-states', label: 'Error states' },
           ].map(({ id, label }) => (
@@ -907,29 +707,10 @@ export function ZeroStatesDesign() {
 
       <Divider />
 
-      {/* TICKET 12 */}
-      <div id="ticket-12">
-        <SectionHeader
-          number="03"
-          id="TICKET 12"
-          title="No Check-in Data"
-          description="Skills are configured and assessments exist — the heatmap grid has real data. Check-ins are a separate signal that tracks development 1:1 recency. This state represents the check-in feature being unused while everything else works normally."
-        />
-        <div className="flex items-start gap-3 mb-6">
-          <Label color="sky">Inline row zero state</Label>
-          <Label color="emerald">Heatmap grid still shows</Label>
-          <Label color="gray">Panel stats show dashes</Label>
-          <Label color="amber">Export hidden</Label>
-        </div>
-        <Ticket12 />
-      </div>
-
-      <Divider />
-
       {/* TICKET 13 */}
       <div id="ticket-13">
         <SectionHeader
-          number="04"
+          number="03"
           id="TICKET 13"
           title="Skills Configured, No Assessments Yet"
           description="The framework is set up (8 skills visible) but nobody has been assessed. The heatmap grid is replaced with a zero state that distinguishes 'skills exist but no data' from 'not set up at all'."
@@ -947,7 +728,7 @@ export function ZeroStatesDesign() {
       {/* TICKET 14 */}
       <div id="ticket-14">
         <SectionHeader
-          number="05"
+          number="04"
           id="TICKET 14"
           title="Partial Setup — Mixed Configured and Unconfigured Departments"
           description="The Department Overview shows a mix of active departments and ones that haven't been set up. Org-level stats exclude unconfigured departments."
@@ -962,41 +743,10 @@ export function ZeroStatesDesign() {
 
       <Divider />
 
-      {/* TICKET 15 */}
-      <div id="ticket-15">
-        <SectionHeader
-          number="06"
-          id="TICKET 15"
-          title="Drilldown Panel — No Breakdown Data"
-          description="When a skill row is clicked but the panel has nothing to show — either no assessments exist, or active filters produce no matches — the panel renders a contextual empty state."
-        />
-        <div className="flex items-start gap-3 mb-6">
-          <Label color="sky">Two variants</Label>
-          <Label color="gray">Panel header stays</Label>
-          <Label color="amber">Action buttons hidden</Label>
-        </div>
-        <div className="mb-4">
-          <div className="flex items-center gap-2 mb-3">
-            <span className="text-xs font-bold text-gray-500 uppercase tracking-wider">Variant A</span>
-            <span className="text-xs text-gray-400">— No assessments recorded at all for this skill</span>
-          </div>
-          <Ticket15NoFilters />
-        </div>
-        <div className="mt-8">
-          <div className="flex items-center gap-2 mb-3">
-            <span className="text-xs font-bold text-gray-500 uppercase tracking-wider">Variant B</span>
-            <span className="text-xs text-gray-400">— Active filters produce no matching records</span>
-          </div>
-          <Ticket15WithFilters />
-        </div>
-      </div>
-
-      <Divider />
-
       {/* LOW SAMPLE SIZE */}
       <div id="low-sample">
         <SectionHeader
-          number="07"
+          number="05"
           id="LOW SAMPLE SIZE"
           title="Skill Has Only 1 or 2 Respondents"
           description="When a skill column contains very few assessments the score is unreliable. The cell still shows the score and colour coding, but a small badge in the corner shows how many people contributed."
@@ -1014,7 +764,7 @@ export function ZeroStatesDesign() {
       {/* ERROR STATES */}
       <div id="error-states">
         <SectionHeader
-          number="08"
+          number="06"
           id="ERROR STATES"
           title="Data Load Failures"
           description="When data fails to fetch — due to a network error, timeout, or server fault — each surface has a distinct error state. They always include a retry action and preserve the surrounding chrome so users maintain context."
@@ -1062,7 +812,7 @@ export function ZeroStatesDesign() {
       <div className="mt-16 pt-8 border-t border-gray-100 flex items-center justify-between">
         <div className="flex items-center gap-2">
           <CheckCircle2 size={14} className="text-emerald-500" />
-          <span className="text-sm text-gray-500">11 states documented — Tickets 10–15, Low Sample Size, Error States (A–D)</span>
+          <span className="text-sm text-gray-500">9 states documented — Tickets 10–11, 13–14, Low Sample Size, Error States (A–D)</span>
         </div>
         <div className="flex items-center gap-1.5 text-xs text-gray-400">
           <Sparkles size={11} className="text-emerald-400" />
