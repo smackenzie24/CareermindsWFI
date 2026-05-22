@@ -335,16 +335,16 @@ export function DepartmentOverview({ onSelectDepartment }: Props) {
                   </div>
                   <div className="flex h-2 rounded-full overflow-hidden gap-px bg-gray-100">
                     {dept.skillsCritical > 0 && (
-                      <div className="bg-red-400 transition-all" style={{ width: `${(dept.skillsCritical / total) * 100}%` }} title={`${dept.skillsCritical} critical`} />
+                      <div className="bg-red-300 transition-all" style={{ width: `${(dept.skillsCritical / total) * 100}%` }} title={`${dept.skillsCritical} critical`} />
                     )}
                     {dept.skillsRisk > 0 && (
-                      <div className="bg-slate-400 transition-all" style={{ width: `${(dept.skillsRisk / total) * 100}%` }} title={`${dept.skillsRisk} at risk`} />
+                      <div className="bg-orange-200 transition-all" style={{ width: `${(dept.skillsRisk / total) * 100}%` }} title={`${dept.skillsRisk} at risk`} />
                     )}
                     {dept.skillsDeveloping > 0 && (
-                      <div className="bg-slate-300 transition-all" style={{ width: `${(dept.skillsDeveloping / total) * 100}%` }} title={`${dept.skillsDeveloping} developing`} />
+                      <div className="bg-amber-200 transition-all" style={{ width: `${(dept.skillsDeveloping / total) * 100}%` }} title={`${dept.skillsDeveloping} developing`} />
                     )}
                     {dept.skillsGood > 0 && (
-                      <div className="bg-gray-200 transition-all" style={{ width: `${(dept.skillsGood / total) * 100}%` }} title={`${dept.skillsGood} on track`} />
+                      <div className="bg-emerald-200 transition-all" style={{ width: `${(dept.skillsGood / total) * 100}%` }} title={`${dept.skillsGood} on track`} />
                     )}
                   </div>
                 </div>
