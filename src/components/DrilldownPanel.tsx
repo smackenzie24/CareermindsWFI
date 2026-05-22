@@ -206,60 +206,6 @@ export function DrilldownPanel({ skill, entries, groupBy, department, onClose, o
           </div>
         )}
 
-        {/* Breakdown bars */}
-        <div className="p-6" data-tour="drilldown-breakdown">
-          <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-4">
-            Breakdown by {groupBy === 'manager' ? 'team' : groupBy}
-          </p>
-          <div className="space-y-4">
-            {sorted.map((entry, i) => {
-              const label = groupBy === 'department' ? entry.department : groupBy === 'manager' ? entry.team : entry.location;
-              const pct = Math.round((entry.belowTarget / entry.headcount) * 100);
-              const entryExceeding = entry.averageActual > entry.expectedLevel;
-              return (
-                <div key={i}>
-                  <div className="flex items-center justify-between mb-1.5">
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm font-semibold text-gray-800">{label}</span>
-                      <span className="text-xs text-gray-400">{entry.team}</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      {entryExceeding ? (
-                        <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-teal-100 text-teal-700">
-                          +{(entry.averageActual - entry.expectedLevel).toFixed(1)}
-                        </span>
-                      ) : (
-                        <>
-                          <span className="text-xs text-gray-500">{entry.belowTarget}/{entry.headcount}</span>
-                          <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${getBadgeColor(pct)}`}>
-                            {pct}%
-                          </span>
-                        </>
-                      )}
-                    </div>
-                  </div>
-                  {!entryExceeding && (
-                    <div className="flex-1 bg-gray-100 rounded-full h-2 overflow-hidden">
-                      <div
-                        className={`h-full rounded-full transition-all duration-500 ${getBarColor(pct)}`}
-                        style={{ width: `${pct}%` }}
-                      />
-                    </div>
-                  )}
-                  {entryExceeding && (
-                    <div className="flex-1 bg-brand-blue-bg rounded-full h-2 overflow-hidden">
-                      <div className="h-full rounded-full bg-brand-blue-accent" style={{ width: '100%' }} />
-                    </div>
-                  )}
-                  <div className="flex justify-between mt-1">
-                    <span className="text-[11px] text-gray-400">Actual: {entry.averageActual.toFixed(1)}</span>
-                    <span className="text-[11px] text-gray-400">Expected: {entry.expectedLevel}.0</span>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
       </div>
 
       {/* Action footer */}
