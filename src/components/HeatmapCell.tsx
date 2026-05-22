@@ -1,4 +1,3 @@
-import { ArrowUp } from 'lucide-react';
 import { Tooltip } from './Tooltip';
 
 interface CellData {
@@ -129,10 +128,7 @@ export function HeatmapCell({ data, onClick, selected }: HeatmapCellProps) {
       >
         {exceeding ? (
           <>
-            <div className="flex items-center gap-1">
-              <ArrowUp size={11} className="text-emerald-500 flex-shrink-0" />
-              <span className={`text-base font-bold ${textColor} leading-none`}>{data.averageActual.toFixed(1)}</span>
-            </div>
+            <span className={`text-base font-bold ${textColor} leading-none`}>{data.averageActual.toFixed(1)}</span>
             <span className="text-[10px] font-medium text-emerald-600 leading-none">+{surplus} above</span>
           </>
         ) : (
