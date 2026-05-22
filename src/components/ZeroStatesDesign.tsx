@@ -162,63 +162,49 @@ function Ticket12() {
         </div>
       </div>
 
-      <div className="flex">
-        <div className="flex-1 p-4 min-h-[300px]">
-          <div className="space-y-1.5">
-            {['Design Systems', 'User Research', 'Prototyping', 'Visual Design', 'Motion Design', 'Accessibility'].map((skill, i) => (
-              <div key={skill} className="flex items-center gap-2">
-                <span className="text-[11px] text-gray-600 w-28 truncate">{skill}</span>
-                <div className="flex gap-1">
-                  {[0,1,2].map(j => (
-                    <div key={j} className={`w-10 h-6 rounded text-[10px] font-semibold flex items-center justify-center ${
-                      (i + j) % 3 === 0 ? 'bg-red-100 text-red-600' : (i + j) % 3 === 1 ? 'bg-amber-100 text-amber-600' : 'bg-emerald-100 text-emerald-700'
-                    }`}>
-                      {2 + ((i + j) % 3)}
-                    </div>
-                  ))}
-                </div>
-              </div>
-            ))}
-            <div className="mt-3 pt-3 border-t border-gray-100">
-              <div className="flex items-center gap-2 group cursor-pointer">
-                <div className="flex items-center gap-1.5 w-28">
-                  <CalendarX size={11} className="text-gray-400" />
-                  <span className="text-[11px] text-gray-500 font-medium">Check-in Coverage</span>
-                </div>
-                <div className="flex-1 h-6 rounded bg-gray-100 border border-dashed border-gray-200 flex items-center px-2.5 gap-1.5">
-                  <span className="text-[10px] text-gray-400 font-medium">No check-ins yet</span>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
+      {/* Heatmap grid — column headers */}
+      <div className="grid border-b border-gray-100 bg-gray-50/80 text-xs font-semibold text-gray-400 uppercase tracking-wider" style={{ gridTemplateColumns: '220px 52px repeat(3, 1fr)' }}>
+        <div className="px-4 py-3">Skill</div>
+        <div className="px-2 py-3 text-center border-l border-gray-100">Req</div>
+        {['Team A', 'Team B', 'Team C'].map(t => (
+          <div key={t} className="px-4 py-3">{t}</div>
+        ))}
+      </div>
 
-        <div className="w-64 border-l border-gray-100 flex flex-col bg-gray-50/30">
-          <div className="px-4 py-3 border-b border-gray-100 flex items-center justify-between">
-            <div>
-              <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Engagement</p>
-              <h3 className="text-sm font-bold text-gray-900 mt-0.5">Check-in Coverage</h3>
-            </div>
-            <button className="w-6 h-6 rounded flex items-center justify-center text-gray-400 hover:bg-gray-100">
-              <X size={12} />
-            </button>
-          </div>
-          <div className="flex-1 p-4 flex flex-col items-center text-center justify-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-gray-100 flex items-center justify-center">
-              <CalendarX size={16} className="text-gray-400" />
-            </div>
-            <div>
-              <p className="text-xs font-semibold text-gray-700 mb-1">Check-ins not started</p>
-              <p className="text-[11px] text-gray-400 leading-relaxed">
-                Once people start logging check-ins, you'll see coverage and overdue alerts here.
-              </p>
-            </div>
-            <button className="w-full text-center text-xs font-semibold text-white bg-emerald-600 rounded-xl py-2 hover:bg-emerald-700 transition-colors">
-              Send first check-in prompt
-            </button>
+      {/* Check-in row — no data state */}
+      <div className="grid border-b border-gray-100" style={{ gridTemplateColumns: '220px 52px repeat(3, 1fr)' }}>
+        <div className="px-4 py-3 flex items-center gap-2">
+          <CalendarX size={12} className="text-gray-300" />
+          <span className="text-sm font-medium text-gray-400">Check-in Coverage</span>
+        </div>
+        <div className="px-2 py-3 border-l border-gray-50" />
+        <div className="px-4 py-3 flex items-center" style={{ gridColumn: '3 / span 3' }}>
+          <div className="flex-1 h-6 rounded bg-gray-50 border border-dashed border-gray-200 flex items-center px-2.5">
+            <span className="text-[10px] text-gray-400 font-medium">No check-ins yet</span>
           </div>
         </div>
       </div>
+
+      {/* Skill rows */}
+      {['Design Systems', 'User Research', 'Prototyping', 'Visual Design', 'Motion Design', 'Accessibility'].map((skill, i) => (
+        <div key={skill} className="grid border-b border-gray-100 hover:bg-gray-50/50 cursor-pointer" style={{ gridTemplateColumns: '220px 52px repeat(3, 1fr)' }}>
+          <div className="px-4 py-3 flex flex-col justify-center">
+            <span className="text-sm font-medium text-gray-800">{skill}</span>
+          </div>
+          <div className="px-2 py-3 flex items-center justify-center border-l border-gray-50">
+            <span className="text-xs font-semibold text-gray-400">4</span>
+          </div>
+          {[0,1,2].map(j => (
+            <div key={j} className="px-3 py-3 flex items-center">
+              <div className={`w-full h-7 rounded text-[11px] font-semibold flex items-center justify-center ${
+                (i + j) % 3 === 0 ? 'bg-red-100 text-red-600' : (i + j) % 3 === 1 ? 'bg-amber-100 text-amber-600' : 'bg-emerald-100 text-emerald-700'
+              }`}>
+                {2 + ((i + j) % 3)}
+              </div>
+            </div>
+          ))}
+        </div>
+      ))}
     </FrameWithBreadcrumb>
   );
 }
