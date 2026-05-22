@@ -719,7 +719,7 @@ function OutputPanel({
               </div>
             </div>
             <h1 className="text-2xl font-bold text-gray-900 leading-snug mb-4">{entry.question}</h1>
-            {entry.answer && (
+            {entry.answer && !entry.results.some(r => !['commitment-prompt', 'decision'].includes(r.kind)) && (
               <p className="text-sm text-gray-600 leading-relaxed border-l-2 border-sky-200 pl-4">
                 {entry.answer}
               </p>
