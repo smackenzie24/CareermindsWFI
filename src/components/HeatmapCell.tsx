@@ -28,24 +28,28 @@ function isExceeding(actual: number, expected: number): boolean {
 }
 
 function getGapColor(gap: number, headcount: number, exceeding: boolean): string {
-  if (headcount === 0) return 'bg-gray-50 border-gray-200';
-  if (exceeding) return 'bg-gray-100 border-gray-200';
-  if (gap < 0.8) return 'bg-gray-50 border-gray-200';
-  if (gap < 1.6) return 'bg-amber-50 border-amber-200';
-  return 'bg-red-50 border-red-200';
+  if (headcount === 0) return 'bg-gray-100 border-gray-200';
+  if (exceeding) return 'bg-emerald-600 border-emerald-700';
+  if (gap < 0.3) return 'bg-emerald-100 border-emerald-200';
+  if (gap < 0.8) return 'bg-amber-100 border-amber-200';
+  if (gap < 1.4) return 'bg-orange-200 border-orange-300';
+  if (gap < 2.0) return 'bg-red-300 border-red-400';
+  return 'bg-red-500 border-red-600';
 }
 
 function getTextColor(gap: number, exceeding: boolean): string {
-  if (exceeding) return 'text-emerald-700';
-  if (gap < 0.8) return 'text-gray-500';
-  if (gap < 1.6) return 'text-amber-700';
-  return 'text-red-700';
+  if (exceeding) return 'text-white';
+  if (gap < 0.3) return 'text-emerald-700';
+  if (gap < 0.8) return 'text-amber-700';
+  if (gap < 1.4) return 'text-orange-800';
+  return 'text-red-900';
 }
 
 function getLabel(pct: number, exceeding: boolean): string {
   if (exceeding) return 'exceeding';
-  if (pct < 45) return 'on track';
-  if (pct < 70) return 'developing';
+  if (pct < 30) return 'on track';
+  if (pct < 50) return 'developing';
+  if (pct < 70) return 'at risk';
   return 'critical';
 }
 
@@ -125,8 +129,8 @@ export function HeatmapCell({ data, onClick, selected }: HeatmapCellProps) {
       >
         {exceeding ? (
           <div className="flex items-center gap-1">
-            <ArrowUp size={11} className="text-emerald-500 flex-shrink-0" />
-            <span className="text-[11px] font-semibold text-emerald-700 leading-none">Exceeding</span>
+            <ArrowUp size={11} className="text-emerald-100 flex-shrink-0" />
+            <span className="text-[11px] font-semibold text-white leading-none">Exceeding</span>
           </div>
         ) : (
           <span className={`text-[11px] font-semibold ${textColor} leading-none capitalize`}>{label}</span>

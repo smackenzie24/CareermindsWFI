@@ -59,7 +59,6 @@ interface DeptSummary {
   topGapPct: number;
   skillCount: number;
   // skill counts by severity bucket
-  skillsExceeding: number;
   skillsGood: number;
   skillsDeveloping: number;
   skillsRisk: number;
@@ -83,10 +82,10 @@ function getSeverity(pct: number): 'critical' | 'risk' | 'developing' | 'good' {
 }
 
 const SEVERITY_CONFIG = {
-  critical:   { label: 'Critical',   badge: 'bg-red-50 text-red-600 border border-red-100',       bar: 'bg-red-400',    tile: 'bg-gray-50', tileColor: 'text-red-600'   },
-  risk:       { label: 'Developing', badge: 'bg-amber-50 text-amber-700 border border-amber-100',  bar: 'bg-amber-300',  tile: 'bg-gray-50', tileColor: 'text-amber-700' },
-  developing: { label: 'Developing', badge: 'bg-amber-50 text-amber-700 border border-amber-100',  bar: 'bg-amber-300',  tile: 'bg-gray-50', tileColor: 'text-amber-700' },
-  good:       { label: 'On Track',   badge: 'bg-gray-100 text-gray-600 border border-gray-200',    bar: 'bg-gray-300',   tile: 'bg-gray-50', tileColor: 'text-gray-600'  },
+  critical:   { label: 'Critical',   badge: 'bg-red-100 text-red-700',     bar: 'bg-red-500',    tile: 'bg-red-50',     tileColor: 'text-red-600'    },
+  risk:       { label: 'At Risk',    badge: 'bg-orange-100 text-orange-700', bar: 'bg-orange-400', tile: 'bg-orange-50',  tileColor: 'text-orange-600' },
+  developing: { label: 'Developing', badge: 'bg-amber-100 text-amber-700',  bar: 'bg-amber-400',  tile: 'bg-amber-50',   tileColor: 'text-amber-700'  },
+  good:       { label: 'On Track',   badge: 'bg-emerald-100 text-emerald-700', bar: 'bg-emerald-400', tile: 'bg-emerald-50', tileColor: 'text-emerald-600' },
 };
 
 interface Props {
@@ -164,22 +163,17 @@ export function DepartmentOverview({ onSelectDepartment }: Props) {
       let criticalSkills = 0;
       let topGapSkill = '';
       let topGapPct = 0;
-      let skillsExceeding = 0, skillsGood = 0, skillsDeveloping = 0, skillsRisk = 0, skillsCritical = 0;
+      let skillsGood = 0, skillsDeveloping = 0, skillsRisk = 0, skillsCritical = 0;
       for (const skill of skills) {
         const skillEntries = entries.filter(e => e.skill === skill);
         const sh = skillEntries.reduce((s, e) => s + e.headcount, 0);
         const sb = skillEntries.reduce((s, e) => s + e.belowTarget, 0);
-        const sa = sh > 0 ? skillEntries.reduce((s, e) => s + e.averageActual * e.headcount, 0) / sh : 0;
-        const exp = skillEntries[0].expectedLevel;
         const pct = sh > 0 ? Math.round((sb / sh) * 100) : 0;
-        if (sa > exp) { skillsExceeding++; }
-        else {
-          const sev = getSeverity(pct);
-          if (sev === 'critical') { criticalSkills++; skillsCritical++; }
-          else if (sev === 'risk') skillsRisk++;
-          else if (sev === 'developing') skillsDeveloping++;
-          else skillsGood++;
-        }
+        const sev = getSeverity(pct);
+        if (sev === 'critical') { criticalSkills++; skillsCritical++; }
+        else if (sev === 'risk') skillsRisk++;
+        else if (sev === 'developing') skillsDeveloping++;
+        else skillsGood++;
         if (pct > topGapPct) { topGapPct = pct; topGapSkill = skill; }
       }
 
@@ -194,7 +188,6 @@ export function DepartmentOverview({ onSelectDepartment }: Props) {
         topGapSkill,
         topGapPct,
         skillCount: skills.length,
-        skillsExceeding,
         skillsGood,
         skillsDeveloping,
         skillsRisk,
@@ -280,9 +273,9 @@ export function DepartmentOverview({ onSelectDepartment }: Props) {
         <div className="mt-5 grid grid-cols-4 gap-4" data-tour="heatmap-header-stats">
           {[
             { label: 'Total headcount', value: orgStats.totalHead, sub: 'across all depts', color: 'text-gray-900', icon: <Users size={14} className="text-gray-400" /> },
-            { label: 'Below target (org)', value: `${orgStats.pct}%`, sub: 'of workforce', color: orgStats.pct >= 60 ? 'text-red-600' : 'text-gray-900', icon: <TrendingDown size={14} className="text-gray-400" /> },
-            { label: 'Critical skills', value: orgStats.critical, sub: '70%+ of team below expected', color: orgStats.critical > 0 ? 'text-red-600' : 'text-gray-900', icon: <AlertTriangle size={14} className={orgStats.critical > 0 ? 'text-red-400' : 'text-gray-400'} /> },
-            { label: 'Check-in Coverage', value: `${ORG_SUMMARY.checkInCoverage}%`, sub: 'checked in (30d)', color: 'text-gray-900', icon: <CalendarCheck size={14} className="text-gray-400" /> },
+            { label: 'Below target (org)', value: `${orgStats.pct}%`, sub: 'of workforce', color: 'text-red-600', icon: <TrendingDown size={14} className="text-red-400" /> },
+            { label: 'Skills below target', value: orgStats.critical, sub: '60%+ of team below expected', color: 'text-orange-600', icon: <AlertTriangle size={14} className="text-orange-400" /> },
+            { label: 'Check-in Coverage', value: `${ORG_SUMMARY.checkInCoverage}%`, sub: 'checked in (30d)', color: ORG_SUMMARY.checkInCoverage >= 80 ? 'text-emerald-600' : 'text-amber-600', icon: <CalendarCheck size={14} className={ORG_SUMMARY.checkInCoverage >= 80 ? 'text-emerald-500' : 'text-amber-500'} /> },
           ].map(({ label, value, sub, color, icon }) => (
             <div key={label} className="bg-gray-50 rounded-xl p-4 border border-gray-100">
               <div className="flex items-center gap-1.5 mb-2">{icon}<span className="text-xs text-gray-500">{label}</span></div>
@@ -334,34 +327,44 @@ export function DepartmentOverview({ onSelectDepartment }: Props) {
                   </div>
                 </div>
 
-                {/* Skill breakdown bar */}
+                {/* Segmented skill breakdown bar */}
                 <div className="mb-4">
                   <div className="flex items-center justify-between mb-1.5">
                     <span className="text-xs text-gray-500 font-medium">Staff below target</span>
                     <span className="text-2xl font-bold text-gray-900">{dept.belowTargetPct}%</span>
                   </div>
-                  <div className="h-1.5 rounded-full bg-gray-100 overflow-hidden">
-                    <div
-                      className={`h-full rounded-full transition-all ${dept.skillsCritical > 0 ? 'bg-red-400' : dept.skillsRisk > 0 || dept.skillsDeveloping > 0 ? 'bg-amber-300' : 'bg-gray-300'}`}
-                      style={{ width: `${dept.belowTargetPct}%` }}
-                    />
+                  <div className="flex h-3 rounded-full overflow-hidden gap-px bg-gray-100">
+                    {dept.skillsCritical > 0 && (
+                      <div className="bg-red-500 transition-all" style={{ width: `${(dept.skillsCritical / total) * 100}%` }} title={`${dept.skillsCritical} critical`} />
+                    )}
+                    {dept.skillsRisk > 0 && (
+                      <div className="bg-orange-400 transition-all" style={{ width: `${(dept.skillsRisk / total) * 100}%` }} title={`${dept.skillsRisk} at risk`} />
+                    )}
+                    {dept.skillsDeveloping > 0 && (
+                      <div className="bg-amber-400 transition-all" style={{ width: `${(dept.skillsDeveloping / total) * 100}%` }} title={`${dept.skillsDeveloping} developing`} />
+                    )}
+                    {dept.skillsGood > 0 && (
+                      <div className="bg-gray-200 transition-all" style={{ width: `${(dept.skillsGood / total) * 100}%` }} title={`${dept.skillsGood} on track`} />
+                    )}
                   </div>
                 </div>
 
-                {/* Skill count summary */}
-                <div className="flex items-center gap-3 mb-4 text-xs text-gray-500">
-                  {dept.skillsCritical > 0 && (
-                    <span><span className="font-semibold text-red-600">{dept.skillsCritical}</span> critical</span>
-                  )}
-                  {(dept.skillsRisk + dept.skillsDeveloping) > 0 && (
-                    <span><span className="font-semibold text-amber-700">{dept.skillsRisk + dept.skillsDeveloping}</span> developing</span>
-                  )}
-                  {dept.skillsGood > 0 && (
-                    <span><span className="font-semibold text-gray-700">{dept.skillsGood}</span> on track</span>
-                  )}
-                  {dept.skillsExceeding > 0 && (
-                    <span><span className="font-semibold text-emerald-700">{dept.skillsExceeding}</span> exceeding</span>
-                  )}
+                {/* Stat tiles — 4 buckets */}
+                <div className="grid grid-cols-4 gap-2 mb-4">
+                  {([
+                    { key: 'critical',   count: dept.skillsCritical,  label: 'Critical'    },
+                    { key: 'risk',       count: dept.skillsRisk,       label: 'At Risk'     },
+                    { key: 'developing', count: dept.skillsDeveloping, label: 'Developing'  },
+                    { key: 'good',       count: dept.skillsGood,       label: 'On Track'    },
+                  ] as const).map(({ key, count, label }) => {
+                    const tileCfg = SEVERITY_CONFIG[key];
+                    return (
+                      <div key={key} className={`rounded-lg p-2 text-center ${tileCfg.tile}`}>
+                        <p className={`text-lg font-black leading-none ${tileCfg.tileColor}`}>{count}</p>
+                        <p className="text-[10px] text-gray-400 mt-0.5">{label}</p>
+                      </div>
+                    );
+                  })}
                 </div>
 
                 {/* Biggest gap callout */}
@@ -378,12 +381,12 @@ export function DepartmentOverview({ onSelectDepartment }: Props) {
         <div className="mt-6 flex items-center gap-1.5 flex-wrap" data-tour="heatmap-legend">
           <span className="text-xs text-gray-400 mr-2">Severity key:</span>
           {[
-            { label: 'Exceeding', badge: 'bg-gray-100 text-emerald-700' },
-            { label: 'On Track', badge: 'bg-gray-100 text-gray-600' },
-            { label: 'Developing', badge: 'bg-amber-50 text-amber-700 border border-amber-100' },
-            { label: 'Critical', badge: 'bg-red-50 text-red-600 border border-red-100' },
+            { label: 'On Track', badge: 'bg-emerald-100 text-emerald-700' },
+            { label: 'Developing', badge: 'bg-amber-100 text-amber-700' },
+            { label: 'At Risk', badge: 'bg-orange-100 text-orange-700' },
+            { label: 'Critical', badge: 'bg-red-100 text-red-700' },
           ].map(({ label, badge }) => (
-            <span key={label} className={`text-xs font-medium px-2 py-0.5 rounded-full ${badge}`}>{label}</span>
+            <span key={label} className={`text-xs font-semibold px-2 py-0.5 rounded-full ${badge}`}>{label}</span>
           ))}
         </div>
         <FeedbackBanner context="Skills Overview" className="mt-4" />
