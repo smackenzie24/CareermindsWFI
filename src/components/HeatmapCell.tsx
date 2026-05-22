@@ -29,7 +29,7 @@ function isExceeding(actual: number, expected: number): boolean {
 
 function getGapColor(gap: number, headcount: number, exceeding: boolean): string {
   if (headcount === 0) return 'bg-gray-100 border-gray-200';
-  if (exceeding) return 'bg-emerald-500 border-emerald-600';
+  if (exceeding) return 'bg-emerald-100 border-emerald-200';
   if (gap < 0.3) return 'bg-emerald-50 border-emerald-100';
   if (gap < 0.8) return 'bg-amber-50 border-amber-100';
   if (gap < 1.4) return 'bg-orange-100 border-orange-200';
@@ -38,7 +38,7 @@ function getGapColor(gap: number, headcount: number, exceeding: boolean): string
 }
 
 function getTextColor(gap: number, exceeding: boolean): string {
-  if (exceeding) return 'text-white';
+  if (exceeding) return 'text-emerald-700';
   if (gap < 0.3) return 'text-emerald-600';
   if (gap < 0.8) return 'text-amber-600';
   if (gap < 1.4) return 'text-orange-700';
@@ -129,8 +129,8 @@ export function HeatmapCell({ data, onClick, selected }: HeatmapCellProps) {
       >
         {exceeding ? (
           <div className="flex items-center gap-1">
-            <ArrowUp size={11} className="text-emerald-100 flex-shrink-0" />
-            <span className="text-[11px] font-semibold text-white leading-none">Exceeding</span>
+            <ArrowUp size={11} className="text-emerald-500 flex-shrink-0" />
+            <span className="text-[11px] font-semibold text-emerald-700 leading-none">Exceeding</span>
           </div>
         ) : (
           <span className={`text-[11px] font-semibold ${textColor} leading-none capitalize`}>{label}</span>
