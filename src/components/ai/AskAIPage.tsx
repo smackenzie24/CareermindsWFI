@@ -719,7 +719,7 @@ function OutputPanel({
               </div>
             </div>
             <h1 className="text-2xl font-bold text-gray-900 leading-snug mb-4">{entry.question}</h1>
-            {entry.answer && !entry.results.some(r => !['commitment-prompt', 'decision'].includes(r.kind)) && (
+            {entry.answer && (
               <p className="text-sm text-gray-600 leading-relaxed border-l-2 border-sky-200 pl-4">
                 {entry.answer}
               </p>
@@ -1217,26 +1217,12 @@ export function AskAIPage({ initialQuestion, onNavigate }: Props) {
       return;
     }
 
-    // Local query — show structured data results immediately, then fetch AI reasoning in background
+    // Local query — show structured data results immediately
     setTimeout(() => {
       finalize(response.text, response.results ?? [], {
         confidence: 'high',
         sources: ['Structured workforce data'],
       });
-
-      // Fetch AI reasoning in background and patch it in when ready
-      callWorkforceAI(trimmed, docContext).then(aiResp => {
-        patchReasoning({
-          reasoning: aiResp.reasoning,
-          sources: aiResp.sources?.length ? aiResp.sources : ['Structured workforce data'],
-          assumptions: aiResp.assumptions,
-          confidence: aiResp.confidence,
-          ethicsNote: aiResp.ethicsNote,
-          careermindsSuggestion: aiResp.careermindsSuggestion,
-          needsMoreContext: aiResp.needsMoreContext,
-          contextQuestion: aiResp.contextQuestion,
-        });
-      }).catch(() => { /* reasoning unavailable — local data still shows */ });
     }, 400 + Math.random() * 300);
   }
 
