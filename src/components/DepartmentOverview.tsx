@@ -1,5 +1,5 @@
-import { useMemo } from 'react';
-import { ChevronRight, Users, TrendingDown, AlertTriangle, CalendarCheck } from 'lucide-react';
+import { useMemo, useState, useCallback } from 'react';
+import { ChevronRight, Users, TrendingDown, AlertTriangle, CalendarCheck, RefreshCw } from 'lucide-react';
 import { SKILLS_DATA, DEPARTMENTS, DEPT_COLORS, type Department } from '../data/mockData';
 import { PEOPLE } from '../data/promotionData';
 import { FeedbackBanner } from './feedback/FeedbackBanner';
@@ -92,7 +92,24 @@ interface Props {
   onSelectDepartment: (dept: Department) => void;
 }
 
+function formatTimestamp(date: Date): string {
+  return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) +
+    ' · ' + date.toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' });
+}
+
 export function DepartmentOverview({ onSelectDepartment }: Props) {
+  const [refreshKey, setRefreshKey] = useState(0);
+  const [lastRefreshed, setLastRefreshed] = useState(() => new Date());
+  const [refreshing, setRefreshing] = useState(false);
+
+  const handleRefresh = useCallback(() => {
+    setRefreshing(true);
+    setTimeout(() => {
+      setRefreshKey(k => k + 1);
+      setLastRefreshed(new Date());
+      setRefreshing(false);
+    }, 600);
+  }, []);
 
   function buildExportContent(): string {
     const lines: string[] = [
@@ -120,7 +137,9 @@ export function DepartmentOverview({ onSelectDepartment }: Props) {
     return lines.join('\n');
   }
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   const summaries = useMemo((): DeptSummary[] => {
+    void refreshKey;
     return DEPARTMENTS.map(dept => {
       const entries = SKILLS_DATA.filter(e => e.department === dept);
       const skills = Array.from(new Set(entries.map(e => e.skill)));
@@ -200,6 +219,21 @@ export function DepartmentOverview({ onSelectDepartment }: Props) {
             <div className="flex items-center gap-2 text-xs text-gray-400">
               <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
               Acme Corp
+            </div>
+            <div className="h-4 w-px bg-gray-200" />
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-gray-400">
+                Updated {formatTimestamp(lastRefreshed)}
+              </span>
+              <button
+                onClick={handleRefresh}
+                disabled={refreshing}
+                className="flex items-center gap-1.5 text-xs font-medium text-gray-500 hover:text-gray-800 bg-white border border-gray-200 hover:border-gray-300 rounded-lg px-2.5 py-1.5 transition-all disabled:opacity-60"
+                title="Refresh data"
+              >
+                <RefreshCw size={12} className={refreshing ? 'animate-spin' : ''} />
+                Refresh
+              </button>
             </div>
           </div>
         </div>
