@@ -82,10 +82,10 @@ function getSeverity(pct: number): 'critical' | 'risk' | 'developing' | 'good' {
 }
 
 const SEVERITY_CONFIG = {
-  critical:   { label: 'Critical',   badge: 'bg-red-100 text-red-700',       bar: 'bg-red-400',    tile: 'bg-red-50',    tileColor: 'text-red-600'  },
-  risk:       { label: 'At Risk',    badge: 'bg-slate-100 text-slate-600',   bar: 'bg-slate-400',  tile: 'bg-slate-50',  tileColor: 'text-slate-600' },
-  developing: { label: 'Developing', badge: 'bg-slate-100 text-slate-500',   bar: 'bg-slate-300',  tile: 'bg-slate-50',  tileColor: 'text-slate-500' },
-  good:       { label: 'On Track',   badge: 'bg-gray-100 text-gray-500',     bar: 'bg-gray-200',   tile: 'bg-gray-50',   tileColor: 'text-gray-500'  },
+  critical:   { label: 'Critical',   badge: 'bg-red-50 text-red-600',        bar: 'bg-red-300',     tile: 'bg-red-50',      tileColor: 'text-red-500'    },
+  risk:       { label: 'At Risk',    badge: 'bg-orange-50 text-orange-600',  bar: 'bg-orange-200',  tile: 'bg-orange-50',   tileColor: 'text-orange-500' },
+  developing: { label: 'Developing', badge: 'bg-amber-50 text-amber-600',    bar: 'bg-amber-200',   tile: 'bg-amber-50',    tileColor: 'text-amber-600'  },
+  good:       { label: 'On Track',   badge: 'bg-emerald-50 text-emerald-600',bar: 'bg-emerald-200', tile: 'bg-emerald-50',  tileColor: 'text-emerald-600' },
 };
 
 interface Props {
@@ -273,9 +273,9 @@ export function DepartmentOverview({ onSelectDepartment }: Props) {
         <div className="mt-5 grid grid-cols-4 gap-4" data-tour="heatmap-header-stats">
           {[
             { label: 'Total headcount', value: orgStats.totalHead, sub: 'across all depts', color: 'text-gray-900', icon: <Users size={14} className="text-gray-400" /> },
-            { label: 'Below target (org)', value: `${orgStats.pct}%`, sub: 'of workforce', color: 'text-red-600', icon: <TrendingDown size={14} className="text-slate-400" /> },
-            { label: 'Skills below target', value: orgStats.critical, sub: '60%+ of team below expected', color: 'text-slate-700', icon: <AlertTriangle size={14} className="text-slate-400" /> },
-            { label: 'Check-in Coverage', value: `${ORG_SUMMARY.checkInCoverage}%`, sub: 'checked in (30d)', color: ORG_SUMMARY.checkInCoverage >= 80 ? 'text-gray-700' : 'text-slate-600', icon: <CalendarCheck size={14} className="text-gray-400" /> },
+            { label: 'Below target (org)', value: `${orgStats.pct}%`, sub: 'of workforce', color: 'text-red-500', icon: <TrendingDown size={14} className="text-red-300" /> },
+            { label: 'Skills below target', value: orgStats.critical, sub: '60%+ of team below expected', color: 'text-orange-500', icon: <AlertTriangle size={14} className="text-orange-300" /> },
+            { label: 'Check-in Coverage', value: `${ORG_SUMMARY.checkInCoverage}%`, sub: 'checked in (30d)', color: ORG_SUMMARY.checkInCoverage >= 80 ? 'text-emerald-500' : 'text-amber-500', icon: <CalendarCheck size={14} className={ORG_SUMMARY.checkInCoverage >= 80 ? 'text-emerald-300' : 'text-amber-300'} /> },
           ].map(({ label, value, sub, color, icon }) => (
             <div key={label} className="bg-gray-50 rounded-xl p-4 border border-gray-100">
               <div className="flex items-center gap-1.5 mb-2">{icon}<span className="text-xs text-gray-500">{label}</span></div>
@@ -381,10 +381,10 @@ export function DepartmentOverview({ onSelectDepartment }: Props) {
         <div className="mt-6 flex items-center gap-1.5 flex-wrap" data-tour="heatmap-legend">
           <span className="text-xs text-gray-400 mr-2">Severity key:</span>
           {[
-            { label: 'On Track', badge: 'bg-gray-100 text-gray-500' },
-            { label: 'Developing', badge: 'bg-slate-100 text-slate-500' },
-            { label: 'At Risk', badge: 'bg-slate-100 text-slate-600' },
-            { label: 'Critical', badge: 'bg-red-100 text-red-700' },
+            { label: 'On Track', badge: 'bg-emerald-50 text-emerald-600' },
+            { label: 'Developing', badge: 'bg-amber-50 text-amber-600' },
+            { label: 'At Risk', badge: 'bg-orange-50 text-orange-600' },
+            { label: 'Critical', badge: 'bg-red-50 text-red-600' },
           ].map(({ label, badge }) => (
             <span key={label} className={`text-xs font-semibold px-2 py-0.5 rounded-full ${badge}`}>{label}</span>
           ))}
