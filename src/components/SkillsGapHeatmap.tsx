@@ -42,12 +42,11 @@ function CheckInPanel({ department }: { department: Department }) {
           <h2 className="text-xl font-bold text-gray-900">Check-in Coverage</h2>
           <p className="text-sm text-gray-500 mt-0.5">{department}</p>
         </div>
-        <span className={`text-xs font-bold px-2.5 py-1 rounded-full mt-1 ${
-          flagged.length === 0 ? 'bg-emerald-100 text-emerald-700' :
-          critical.length > 0 ? 'bg-red-100 text-red-700' : 'bg-amber-100 text-amber-700'
-        }`}>
-          {flagged.length === 0 ? 'All current' : critical.length > 0 ? 'Critical' : 'Overdue'}
-        </span>
+        {critical.length > 0 && (
+          <span className="text-xs font-medium px-2.5 py-1 rounded-full mt-1 bg-red-50 text-red-600 border border-red-100">
+            Critical
+          </span>
+        )}
       </div>
 
       {/* Stat cards */}
@@ -59,45 +58,43 @@ function CheckInPanel({ department }: { department: Department }) {
           </div>
           <p className="text-base font-bold text-gray-900">{people.length}</p>
         </div>
-        <div className={`rounded-lg px-2.5 py-2 border ${flagged.length === 0 ? 'bg-emerald-50 border-emerald-100' : 'bg-red-50 border-red-100'}`}>
+        <div className="bg-gray-50 rounded-lg px-2.5 py-2 border border-gray-100">
           <div className="flex items-center gap-1 mb-0.5">
-            <CalendarX size={11} className={flagged.length === 0 ? 'text-emerald-500' : 'text-red-400'} />
-            <span className={`text-[10px] font-medium ${flagged.length === 0 ? 'text-emerald-600' : 'text-red-500'}`}>Not checked in</span>
+            <CalendarX size={11} className="text-gray-400" />
+            <span className="text-[10px] text-gray-500 font-medium">Not checked in</span>
           </div>
-          <p className={`text-base font-bold ${flagged.length === 0 ? 'text-emerald-600' : 'text-red-600'}`}>
-            {flagged.length}<span className="text-xs font-normal ml-0.5 opacity-60">/ {people.length}</span>
+          <p className="text-base font-bold text-gray-900">
+            {flagged.length}<span className="text-xs font-normal text-gray-400 ml-0.5">/ {people.length}</span>
           </p>
         </div>
-        <div className="bg-red-50 rounded-lg px-2.5 py-2 border border-red-100">
+        <div className={`rounded-lg px-2.5 py-2 border ${critical.length > 0 ? 'bg-red-50 border-red-100' : 'bg-gray-50 border-gray-100'}`}>
           <div className="flex items-center gap-1 mb-0.5">
-            <AlertTriangle size={11} className="text-red-400" />
-            <span className="text-[10px] text-red-500 font-medium">Critical 90d+</span>
+            <AlertTriangle size={11} className={critical.length > 0 ? 'text-red-400' : 'text-gray-400'} />
+            <span className={`text-[10px] font-medium ${critical.length > 0 ? 'text-red-600' : 'text-gray-500'}`}>Critical 90d+</span>
           </div>
-          <p className="text-base font-bold text-red-600">{critical.length}</p>
+          <p className={`text-base font-bold ${critical.length > 0 ? 'text-red-600' : 'text-gray-900'}`}>{critical.length}</p>
         </div>
-        <div className={`rounded-lg px-2.5 py-2 border ${coveragePct >= 80 ? 'bg-emerald-50 border-emerald-100' : 'bg-amber-50 border-amber-100'}`}>
+        <div className="bg-gray-50 rounded-lg px-2.5 py-2 border border-gray-100">
           <div className="flex items-center gap-1 mb-0.5">
-            <Target size={11} className={coveragePct >= 80 ? 'text-emerald-500' : 'text-amber-500'} />
-            <span className={`text-[10px] font-medium ${coveragePct >= 80 ? 'text-emerald-600' : 'text-amber-600'}`}>Coverage</span>
+            <Target size={11} className="text-gray-400" />
+            <span className="text-[10px] text-gray-500 font-medium">Coverage</span>
           </div>
-          <p className={`text-base font-bold ${coveragePct >= 80 ? 'text-emerald-600' : 'text-amber-600'}`}>{coveragePct}%</p>
+          <p className="text-base font-bold text-gray-900">{coveragePct}%</p>
         </div>
       </div>
 
       {/* Coverage bar */}
       <div className="px-6 py-4 border-b border-gray-100 flex-shrink-0">
         <div className="flex items-center gap-3 mb-1.5">
-          <div className="flex-1 bg-gray-100 rounded-full h-2.5 overflow-hidden flex">
-            <div className="h-full bg-emerald-500" style={{ width: `${coveragePct}%` }} />
-            {overdue.length > 0 && <div className="h-full bg-amber-400" style={{ width: `${Math.round((overdue.length / people.length) * 100)}%` }} />}
-            {critical.length > 0 && <div className="h-full bg-red-500" style={{ width: `${Math.round((critical.length / people.length) * 100)}%` }} />}
+          <div className="flex-1 bg-gray-100 rounded-full h-1.5 overflow-hidden">
+            <div className="h-full bg-gray-400 rounded-full" style={{ width: `${coveragePct}%` }} />
           </div>
-          <span className="text-xs font-bold text-gray-600 w-9 text-right">{coveragePct}%</span>
+          <span className="text-xs font-semibold text-gray-600 w-9 text-right">{coveragePct}%</span>
         </div>
         <div className="flex items-center gap-3 text-[10px] text-gray-400">
-          <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block" />Current ({people.length - flagged.length})</span>
-          <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-amber-400 inline-block" />Overdue ({overdue.length})</span>
-          <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-red-500 inline-block" />Critical ({critical.length})</span>
+          <span>{people.length - flagged.length} current</span>
+          {overdue.length > 0 && <span>{overdue.length} overdue</span>}
+          {critical.length > 0 && <span className="text-red-500 font-medium">{critical.length} critical</span>}
         </div>
       </div>
 
@@ -121,17 +118,17 @@ function CheckInPanel({ department }: { department: Department }) {
                 const isCritical = days >= 90;
                 const initials = person.name.split(' ').map((n: string) => n[0]).join('');
                 return (
-                  <div key={person.id} className={`flex items-center gap-3 p-2.5 rounded-xl border ${isCritical ? 'bg-red-50 border-red-100' : 'bg-amber-50 border-amber-100'}`}>
-                    <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-slate-600 to-slate-800 flex items-center justify-center text-white text-[10px] font-bold flex-shrink-0">
+                  <div key={person.id} className={`flex items-center gap-3 p-2.5 rounded-xl border ${isCritical ? 'bg-red-50 border-red-100' : 'bg-gray-50 border-gray-100'}`}>
+                    <div className="w-7 h-7 rounded-lg bg-gray-200 flex items-center justify-center text-gray-600 text-[10px] font-bold flex-shrink-0">
                       {initials}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className={`text-xs font-semibold truncate ${isCritical ? 'text-red-800' : 'text-amber-800'}`}>{person.name}</p>
+                      <p className="text-xs font-semibold text-gray-800 truncate">{person.name}</p>
                       <p className="text-[10px] text-gray-400 truncate">{person.team}</p>
                     </div>
                     <div className="text-right flex-shrink-0">
-                      <p className={`text-xs font-bold ${isCritical ? 'text-red-600' : 'text-amber-600'}`}>{days}d</p>
-                      <p className={`text-[10px] font-semibold uppercase tracking-wide ${isCritical ? 'text-red-400' : 'text-amber-400'}`}>
+                      <p className={`text-xs font-bold ${isCritical ? 'text-red-600' : 'text-gray-600'}`}>{days}d</p>
+                      <p className={`text-[10px] uppercase tracking-wide ${isCritical ? 'text-red-400 font-semibold' : 'text-gray-400'}`}>
                         {isCritical ? 'Critical' : 'Overdue'}
                       </p>
                     </div>
@@ -271,23 +268,21 @@ function CheckInRow({ department, selected, onSelect, colCount }: { department: 
         </div>
         <div className="flex items-center gap-2 mt-0.5">
           <span className="text-[11px] text-gray-400">Engagement</span>
-          {hasCritical && <span className="text-[10px] font-bold bg-red-100 text-red-600 px-1.5 py-0.5 rounded">CRITICAL</span>}
+          {hasCritical && <span className="text-[10px] font-medium bg-red-50 text-red-500 px-1.5 py-0.5 rounded border border-red-100">Critical</span>}
         </div>
       </div>
       <div className={`col-span-${colCount} px-4 py-3 flex items-center gap-4`} style={{ gridColumn: `2 / span ${colCount}` }}>
         <div className="flex-1">
           <div className="flex items-center gap-2 mb-1">
-            <div className="flex-1 bg-gray-100 rounded-full h-2 overflow-hidden flex">
-              <div className="h-full bg-emerald-500" style={{ width: `${coveragePct}%` }} />
-              {flagged.length - critical.length > 0 && <div className="h-full bg-amber-400" style={{ width: `${Math.round(((flagged.length - critical.length) / people.length) * 100)}%` }} />}
-              {critical.length > 0 && <div className="h-full bg-red-500" style={{ width: `${Math.round((critical.length / people.length) * 100)}%` }} />}
+            <div className="flex-1 bg-gray-100 rounded-full h-1.5 overflow-hidden">
+              <div className="h-full bg-gray-400 rounded-full" style={{ width: `${coveragePct}%` }} />
             </div>
-            <span className={`text-xs font-bold w-9 text-right ${hasCritical ? 'text-red-600' : hasOverdue ? 'text-amber-600' : 'text-emerald-600'}`}>{coveragePct}%</span>
+            <span className="text-xs font-semibold text-gray-600 w-9 text-right">{coveragePct}%</span>
           </div>
           <div className="flex items-center gap-3 text-[10px] text-gray-400">
             <span>{people.length - flagged.length} current</span>
-            {hasOverdue && <span className="text-amber-500">{flagged.length - critical.length} overdue</span>}
-            {hasCritical && <span className="text-red-500">{critical.length} critical</span>}
+            {hasOverdue && <span>{flagged.length - critical.length} overdue</span>}
+            {hasCritical && <span className="text-red-500 font-medium">{critical.length} critical</span>}
           </div>
         </div>
       </div>
@@ -516,14 +511,14 @@ function DeptHeatmap({ department, onBack, onNavigateToPipeline, onAskAI, tourAc
             <div className="flex items-center gap-5" data-tour="heatmap-header-stats">
               <div className="text-right">
                 <p className="text-[10px] text-gray-400 uppercase tracking-wide">Below target</p>
-                <p className="text-sm font-bold text-red-600">
+                <p className="text-sm font-bold text-gray-900">
                   {overallStats.totalHead > 0 ? Math.round((overallStats.totalBelow / overallStats.totalHead) * 100) : 0}%
                   <span className="text-xs font-normal text-gray-400 ml-1">({overallStats.totalBelow}/{overallStats.totalHead})</span>
                 </p>
               </div>
               <div className="text-right">
                 <p className="text-[10px] text-gray-400 uppercase tracking-wide">Avg gap</p>
-                <p className="text-sm font-bold text-orange-500">{overallStats.avgGap.toFixed(1)}</p>
+                <p className="text-sm font-bold text-gray-900">{overallStats.avgGap.toFixed(1)}</p>
               </div>
               <div className="text-right">
                 <p className="text-[10px] text-gray-400 uppercase tracking-wide">Skills</p>
@@ -643,8 +638,8 @@ function DeptHeatmap({ department, onBack, onNavigateToPipeline, onAskAI, tourAc
                         <span className="text-sm font-semibold text-gray-800 leading-tight">{skill}</span>
                         <div className="flex items-center gap-2 mt-0.5">
                           <span className="text-[11px] text-gray-400">{category}</span>
-                          {pctBelow >= 60 && (
-                            <span className="text-[10px] font-bold bg-red-100 text-red-600 px-1.5 py-0.5 rounded">HIGH RISK</span>
+                          {pctBelow >= 70 && (
+                            <span className="text-[10px] font-medium bg-red-50 text-red-500 px-1.5 py-0.5 rounded border border-red-100">Critical</span>
                           )}
                         </div>
                       </div>
@@ -672,11 +667,10 @@ function DeptHeatmap({ department, onBack, onNavigateToPipeline, onAskAI, tourAc
           {/* Legend */}
           <div className="mt-4 flex items-center gap-1.5 flex-wrap" data-tour="heatmap-legend">
             <span className="text-xs text-gray-400 mr-2">Gap severity:</span>
-            <LegendItem label="Exceeding" colorClass="bg-emerald-600 border-emerald-700" />
-            <LegendItem label="On track" colorClass="bg-emerald-100 border-emerald-200" />
-            <LegendItem label="Developing" colorClass="bg-amber-100 border-amber-200" />
-            <LegendItem label="At risk" colorClass="bg-orange-200 border-orange-300" />
-            <LegendItem label="Critical" colorClass="bg-red-300 border-red-400" />
+            <LegendItem label="Exceeding" colorClass="bg-gray-100 border-gray-200" />
+            <LegendItem label="On track" colorClass="bg-gray-50 border-gray-200" />
+            <LegendItem label="Developing" colorClass="bg-amber-50 border-amber-200" />
+            <LegendItem label="Critical" colorClass="bg-red-50 border-red-200" />
           </div>
 
           {/* Careerminds upsell — talent development */}
