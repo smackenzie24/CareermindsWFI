@@ -215,7 +215,7 @@ function DrilldownPanelWrapper(props: DrilldownPanelWrapperProps) {
   const label = skill === '__checkins__' ? 'Check-ins' : skill;
 
   return (
-    <div className={`fixed top-0 right-0 h-full z-40 flex transition-all duration-300 ${collapsed ? 'w-10' : 'w-96'}`}>
+    <div className={`fixed top-0 right-0 h-full z-40 flex transition-all duration-300 ${collapsed ? 'w-10' : 'w-[420px]'}`}>
       {/* Collapse toggle rail */}
       <button
         onClick={onToggleCollapse}
@@ -261,7 +261,7 @@ function CheckInRow({ department, selected, onSelect, colCount }: { department: 
   return (
     <div
       className={`grid border-b border-gray-100 cursor-pointer transition-colors ${selected ? 'bg-gray-50' : 'hover:bg-gray-50/50'}`}
-      style={{ gridTemplateColumns: `220px repeat(${colCount}, 1fr)` }}
+      style={{ gridTemplateColumns: `220px 52px repeat(${colCount}, 1fr)` }}
       onClick={onSelect}
     >
       <div className="px-4 py-3 flex flex-col justify-center">
@@ -274,7 +274,8 @@ function CheckInRow({ department, selected, onSelect, colCount }: { department: 
           {hasCritical && <span className="text-[10px] font-bold bg-red-100 text-red-600 px-1.5 py-0.5 rounded">CRITICAL</span>}
         </div>
       </div>
-      <div className={`col-span-${colCount} px-4 py-3 flex items-center gap-4`} style={{ gridColumn: `2 / span ${colCount}` }}>
+      <div className="px-2 py-3 flex items-center justify-center border-l border-gray-50" />
+      <div className={`col-span-${colCount} px-4 py-3 flex items-center gap-4`} style={{ gridColumn: `3 / span ${colCount}` }}>
         <div className="flex-1">
           <div className="flex items-center gap-2 mb-1">
             <div className="flex-1 bg-gray-100 rounded-full h-2 overflow-hidden flex">
@@ -605,10 +606,13 @@ function DeptHeatmap({ department, onBack, onNavigateToPipeline, onAskAI, tourAc
               {/* Column headers */}
               <div
                 className="grid border-b border-gray-100 bg-gray-50/80"
-                style={{ gridTemplateColumns: `220px repeat(${groupKeys.length}, 1fr)` }}
+                style={{ gridTemplateColumns: `220px 52px repeat(${groupKeys.length}, 1fr)` }}
               >
                 <div className="px-4 py-3 flex items-center">
                   <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Skill</span>
+                </div>
+                <div className="px-2 py-3 flex items-center justify-center border-l border-gray-100">
+                  <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Req</span>
                 </div>
                 {groupKeys.map((key) => {
                   const mgr = groupBy === 'manager' ? deptManagers.find((m) => m.name === key) : undefined;
@@ -629,12 +633,13 @@ function DeptHeatmap({ department, onBack, onNavigateToPipeline, onAskAI, tourAc
                   const totalBelow = skillEntries.reduce((s, e) => s + e.belowTarget, 0);
                   const pctBelow = totalHead > 0 ? Math.round((totalBelow / totalHead) * 100) : 0;
                   const category = skillEntries[0]?.category;
+                  const expectedLevel = skillEntries[0]?.expectedLevel;
 
                   return (
                     <div
                       key={skill}
                       className={`grid transition-colors ${selectedSkill === skill ? 'bg-gray-50' : 'hover:bg-gray-50/50'}`}
-                      style={{ gridTemplateColumns: `220px repeat(${groupKeys.length}, 1fr)` }}
+                      style={{ gridTemplateColumns: `220px 52px repeat(${groupKeys.length}, 1fr)` }}
                     >
                       <div
                         className="px-4 py-3 flex flex-col justify-center cursor-pointer"
@@ -647,6 +652,14 @@ function DeptHeatmap({ department, onBack, onNavigateToPipeline, onAskAI, tourAc
                             <span className="text-[10px] font-bold bg-red-100 text-red-600 px-1.5 py-0.5 rounded">HIGH RISK</span>
                           )}
                         </div>
+                      </div>
+
+                      <div className="px-2 py-3 flex items-center justify-center border-l border-gray-50">
+                        {expectedLevel != null && (
+                          <span className="w-7 h-7 flex items-center justify-center rounded-full border border-gray-200 text-xs font-semibold text-gray-600 bg-white">
+                            {expectedLevel}
+                          </span>
+                        )}
                       </div>
 
                       {groupKeys.map((key) => {

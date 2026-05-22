@@ -121,19 +121,27 @@ export function HeatmapCell({ data, onClick, selected }: HeatmapCellProps) {
       <button
         onClick={onClick}
         className={`
-          relative w-full h-14 rounded-md border transition-all duration-150 cursor-pointer
+          relative w-full h-16 rounded-md border transition-all duration-150 cursor-pointer
           flex flex-col items-center justify-center gap-0.5
           ${colorClass}
           ${selected ? 'ring-2 ring-offset-1 ring-gray-900 scale-105 shadow-md' : 'hover:scale-105 hover:shadow-sm'}
         `}
       >
         {exceeding ? (
-          <div className="flex items-center gap-1">
-            <ArrowUp size={11} className="text-emerald-500 flex-shrink-0" />
-            <span className="text-[11px] font-semibold text-emerald-700 leading-none">Exceeding</span>
-          </div>
+          <>
+            <div className="flex items-center gap-1">
+              <ArrowUp size={11} className="text-emerald-500 flex-shrink-0" />
+              <span className={`text-base font-bold ${textColor} leading-none`}>{data.averageActual.toFixed(1)}</span>
+            </div>
+            <span className="text-[10px] font-medium text-emerald-600 leading-none">+{surplus} above</span>
+          </>
         ) : (
-          <span className={`text-[11px] font-semibold ${textColor} leading-none capitalize`}>{label}</span>
+          <>
+            <span className={`text-base font-bold ${textColor} leading-none`}>{data.averageActual.toFixed(1)}</span>
+            <span className={`text-[10px] font-medium ${textColor} opacity-70 leading-none`}>
+              {data.belowTarget}/{data.headcount} below
+            </span>
+          </>
         )}
         {isLowSample && (
           <span className={`absolute -top-1.5 -right-1.5 text-[8px] font-bold px-1.5 py-0.5 rounded-full leading-none whitespace-nowrap shadow-sm
