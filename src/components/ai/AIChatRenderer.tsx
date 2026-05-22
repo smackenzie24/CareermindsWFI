@@ -3,7 +3,7 @@ import {
   Sparkles, ArrowRight, AlertTriangle, UserPlus, BookOpen,
   RefreshCw, Eye, Zap, Scale, AlertCircle, CheckCircle2,
   MinusCircle, ExternalLink, Users, TrendingUp, MoveRight,
-  CircleDot, Check, Pencil, ChevronRight, X, Linkedin, Info,
+  CircleDot, ChevronRight, X, Linkedin, Info,
 } from 'lucide-react';
 import {
   type ChatMessage,
@@ -18,14 +18,10 @@ import {
   type ClarificationResult,
   type ActionType,
   type ActionNavTarget,
-  type DecisionFrame,
-  type CommitmentPrompt,
-  type PartnerRecommendation,
+type PartnerRecommendation,
 } from '../../data/chatEngine';
 import { type CrossDeptFitResult, DEPT_COLORS as PROMO_DEPT_COLORS } from '../../data/promotionData';
 import { DEPT_COLORS } from '../../data/mockData';
-import { supabase } from '../../lib/supabase';
-
 // ── Badges & small helpers ────────────────────────────────────────────
 
 const TIER_COLORS: Record<string, string> = {
@@ -504,165 +500,6 @@ const DECISION_ACCENT: Record<DecisionFrame['options'][0]['accent'], { border: s
   teal:    { border: 'border-teal-100',    bg: 'bg-teal-50/60',    text: 'text-teal-700',    hoverBorder: 'hover:border-teal-300',    hoverBg: 'hover:bg-teal-50',    badge: 'bg-teal-100 text-teal-700' },
 };
 
-function DecisionFrameCard({ frame, onSend }: { frame: DecisionFrame; onSend?: (text: string) => void }) {
-  const [chosen, setChosen] = useState<string | null>(null);
-
-  function choose(opt: DecisionFrame['options'][0]) {
-    if (chosen) return;
-    setChosen(opt.id);
-    onSend?.(opt.prompt);
-  }
-
-  return (
-    <div className="mt-1 rounded-2xl border border-gray-200 bg-white overflow-hidden shadow-sm">
-      <div className="px-4 py-3 border-b border-gray-100 flex items-start gap-2.5">
-        <div className="w-6 h-6 rounded-lg bg-gray-900 flex items-center justify-center flex-shrink-0 mt-0.5">
-          <Zap size={11} className="text-white" />
-        </div>
-        <div>
-          <p className="text-[11px] font-bold text-gray-400 uppercase tracking-widest mb-0.5">Decision point</p>
-          <p className="text-sm font-semibold text-gray-900 leading-snug">{frame.situation}</p>
-          <p className="text-xs text-gray-500 mt-0.5">{frame.question}</p>
-        </div>
-      </div>
-      <div className="p-3 grid grid-cols-1 gap-2">
-        {frame.options.map(opt => {
-          const ac = DECISION_ACCENT[opt.accent];
-          const isChosen = chosen === opt.id;
-          const isDisabled = chosen !== null && !isChosen;
-          return (
-            <button
-              key={opt.id}
-              onClick={() => choose(opt)}
-              disabled={!!chosen}
-              className={`group relative w-full text-left rounded-xl border px-3.5 py-3 transition-all flex items-center gap-3 ${
-                isChosen
-                  ? `${ac.border} ${ac.bg} ring-1 ring-offset-0 ring-current ${ac.text}`
-                  : isDisabled
-                  ? 'border-gray-100 bg-gray-50/60 opacity-40 cursor-not-allowed'
-                  : `border-gray-150 bg-white ${ac.hoverBorder} ${ac.hoverBg} cursor-pointer`
-              }`}
-            >
-              <div className={`w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 transition-colors ${
-                isChosen ? `${ac.badge}` : `bg-gray-100 text-gray-500 group-hover:${ac.badge}`
-              }`}>
-                {isChosen ? <Check size={13} /> : DECISION_ICON_MAP[opt.icon]}
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className={`text-sm font-semibold leading-snug ${isChosen ? ac.text : 'text-gray-800'}`}>{opt.label}</p>
-                <p className="text-[11px] text-gray-400 leading-snug mt-0.5 truncate">{opt.description}</p>
-              </div>
-              {!chosen && <ChevronRight size={14} className="text-gray-300 flex-shrink-0 group-hover:text-gray-500 transition-colors" />}
-            </button>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
-
-// ── Commitment capture card ───────────────────────────────────────────
-
-function CommitmentCaptureCard({ data }: { data: CommitmentPrompt }) {
-  const [text, setText] = useState('');
-  const [status, setStatus] = useState<'idle' | 'saving' | 'saved'>('idle');
-
-  async function save() {
-    if (!text.trim() || status !== 'idle') return;
-    setStatus('saving');
-    await supabase.from('commitments').insert({
-      text: text.trim(),
-      context: data.insightSummary,
-      insight_kind: data.insightKind,
-      department: data.department ?? null,
-      source_query: data.sourceQuery ?? null,
-      status: 'open',
-    });
-    setStatus('saved');
-  }
-
-  const suggestions = data.suggestedDecisions ?? [];
-  const careermindsChips = suggestions.filter(s => /careerminds/i.test(s));
-  const actionChips = suggestions.filter(s => !/careerminds/i.test(s));
-
-  return (
-    <div className="mt-1 rounded-2xl border border-gray-200 bg-white overflow-hidden shadow-sm">
-      <div className="px-4 py-3 border-b border-gray-100 flex items-center gap-2.5">
-        <div className="w-6 h-6 rounded-lg bg-emerald-500 flex items-center justify-center flex-shrink-0">
-          <Pencil size={10} className="text-white" />
-        </div>
-        <div>
-          <p className="text-[11px] font-bold text-gray-400 uppercase tracking-widest">What will you do about this?</p>
-          <p className="text-xs text-gray-500 mt-0.5">{data.insightSummary}</p>
-        </div>
-      </div>
-
-      {suggestions.length > 0 && (
-        <div className="px-3 pt-3 pb-1">
-          <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-2">Suggested decisions</p>
-          <div className="flex flex-col gap-1.5">
-            {actionChips.map((s, i) => (
-              <button
-                key={i}
-                onClick={() => setText(s)}
-                className={`text-left text-xs px-3 py-2 rounded-xl border transition-all ${
-                  text === s
-                    ? 'bg-emerald-50 border-emerald-200 text-emerald-800 font-medium'
-                    : 'bg-gray-50 border-gray-200 text-gray-700 hover:border-emerald-200 hover:bg-emerald-50 hover:text-emerald-800'
-                }`}
-              >
-                {s}
-              </button>
-            ))}
-            {careermindsChips.map((s, i) => (
-              <button
-                key={`cm-${i}`}
-                onClick={() => setText(s)}
-                className={`text-left text-xs px-3 py-2 rounded-xl border transition-all flex items-center gap-2 ${
-                  text === s
-                    ? 'bg-sky-50 border-sky-200 text-sky-800 font-medium'
-                    : 'bg-sky-50/60 border-sky-100 text-sky-700 hover:border-sky-200 hover:bg-sky-50 hover:text-sky-800'
-                }`}
-              >
-                <Sparkles size={10} className="text-sky-500 flex-shrink-0" />
-                {s}
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
-
-      <div className="p-3">
-        {status === 'saved' ? (
-          <div className="flex items-center gap-2 px-3 py-2.5 bg-emerald-50 rounded-xl border border-emerald-200">
-            <CheckCircle2 size={14} className="text-emerald-500 flex-shrink-0" />
-            <p className="text-xs font-semibold text-emerald-700">Commitment logged — you'll see it in your Decisions journal.</p>
-          </div>
-        ) : (
-          <div className="flex items-end gap-2">
-            <textarea
-              value={text}
-              onChange={e => setText(e.target.value)}
-              onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); save(); } }}
-              placeholder="Type your decision, or pick one above…"
-              rows={2}
-              className="flex-1 text-sm text-gray-800 placeholder:text-gray-300 bg-gray-50 border border-gray-200 rounded-xl px-3 py-2.5 resize-none focus:outline-none focus:border-emerald-300 focus:bg-white focus:ring-1 focus:ring-emerald-100 transition-all leading-relaxed"
-            />
-            <button
-              onClick={save}
-              disabled={!text.trim() || status === 'saving'}
-              className="flex-shrink-0 h-10 px-3.5 rounded-xl bg-emerald-500 text-white text-xs font-semibold disabled:opacity-30 disabled:cursor-not-allowed hover:bg-emerald-400 transition-all flex items-center gap-1.5"
-            >
-              {status === 'saving' ? <RefreshCw size={11} className="animate-spin" /> : <Check size={11} />}
-              Log it
-            </button>
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
-
 // ── Partner recommendation card ───────────────────────────────────────
 
 const PARTNER_SERVICE_CONFIG: Record<PartnerRecommendation['service'], { accent: string; border: string; bg: string; badgeBg: string; badgeText: string; icon: React.ReactNode }> = {
@@ -897,9 +734,7 @@ export function ResultsBlock({ results, onSend, onNavigate, wide }: { results: Q
         }
         if (r.kind === 'reduction') return <ReductionAnalysisCard key={i} analysis={r.analysis} />;
         if (r.kind === 'clarification') return <ClarificationCard key={i} data={r.data} onChipClick={onSend ?? (() => {})} />;
-        if (r.kind === 'decision') return <DecisionFrameCard key={i} frame={r.frame} onSend={onSend} />;
-        if (r.kind === 'commitment-prompt') return <CommitmentCaptureCard key={i} data={r.data} />;
-        if (r.kind === 'partner-recommendation') return <PartnerRecommendationCard key={i} data={r.data} />;
+if (r.kind === 'partner-recommendation') return <PartnerRecommendationCard key={i} data={r.data} />;
         if (r.kind === 'role-fit-list') {
           return (
             <div key={i} className="space-y-2">
