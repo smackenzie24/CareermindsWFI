@@ -203,14 +203,6 @@ function Ticket12() {
               <X size={12} />
             </button>
           </div>
-          <div className="grid grid-cols-2 gap-1.5 p-3 border-b border-gray-100">
-            {['Team size', 'Not checked in', 'Critical 90d+', 'Coverage'].map(label => (
-              <div key={label} className="bg-white rounded-lg px-2 py-1.5 border border-gray-100 text-center">
-                <p className="text-base font-bold text-gray-200">—</p>
-                <p className="text-[9px] text-gray-300 mt-0.5 leading-tight">{label}</p>
-              </div>
-            ))}
-          </div>
           <div className="flex-1 p-4 flex flex-col items-center text-center justify-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-gray-100 flex items-center justify-center">
               <CalendarX size={16} className="text-gray-400" />
