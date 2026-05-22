@@ -133,8 +133,171 @@ export type QueryResultKind =
   | 'scenario'
   | 'reduction'
   | 'clarification'
+  | 'decision'
+  | 'commitment-prompt'
   | 'partner-recommendation'
   | 'role-fit-list';
+
+export interface DecisionOption {
+  id: string;
+  label: string;
+  description: string;
+  prompt: string; // sent as next user message when chosen
+  icon: 'upskill' | 'hire' | 'move' | 'monitor' | 'retain' | 'restructure';
+  accent: 'sky' | 'emerald' | 'amber' | 'rose' | 'teal';
+}
+
+export interface DecisionFrame {
+  situation: string;
+  question: string;
+  options: DecisionOption[];
+  insightKind: string;
+  department?: string;
+}
+
+export interface CommitmentPrompt {
+  insightSummary: string;
+  insightKind: string;
+  department?: string;
+  sourceQuery?: string;
+  suggestedDecisions?: string[];
+}
+
+// ── Commitment prompt builder ─────────────────────────────────────────
+
+export function buildCommitmentPrompt(question: string, responseText: string): CommitmentPrompt {
+  const q = question.toLowerCase();
+  const r = responseText.toLowerCase();
+  const dept = detectDept(q);
+
+  const deptSuffix = dept ? ` in ${dept}` : '';
+
+  // Derive insight kind and contextual suggested decisions
+  if (/promot|near.?ready|ready for promo|promo.?pipeline|pipeline|show me the/.test(q) || /ready for promotion|near.ready|pipeline summary/.test(r)) {
+    return {
+      insightSummary: `Promotion readiness findings${deptSuffix}`,
+      insightKind: 'promotion',
+      department: dept ?? undefined,
+      suggestedDecisions: [
+        `Schedule promotion review meetings for near-ready employees${deptSuffix}`,
+        `Set up monthly check-ins with near-ready candidates to track progress`,
+        `Share readiness reports with relevant line managers${deptSuffix}`,
+        `Upgrade promotion pipeline management with CareerMinds Talent Development`,
+      ],
+    };
+  }
+
+  if (/churn|flight.?risk|attrition|retain|leaving|resign/.test(q) || /churn risk|flight risk|attrition/.test(r)) {
+    return {
+      insightSummary: `Retention risk findings${deptSuffix}`,
+      insightKind: 'churn-risk',
+      department: dept ?? undefined,
+      suggestedDecisions: [
+        `Schedule 1:1 stay interviews with all flagged employees${deptSuffix}`,
+        `Build tailored retention plans for high-flight-risk individuals`,
+        `Review compensation and progression paths for at-risk employees`,
+        `Engage CareerMinds outplacement readiness to reduce disruption if departures occur`,
+      ],
+    };
+  }
+
+  if (/skill.?gap|missing skill|skill deficit|upskill|training|develop/.test(q) || /skill gap|below target|skill deficit/.test(r)) {
+    return {
+      insightSummary: `Skills gap findings${deptSuffix}`,
+      insightKind: 'skills-gap',
+      department: dept ?? undefined,
+      suggestedDecisions: [
+        `Commission a focused upskilling programme for critical gap skills${deptSuffix}`,
+        `Identify internal mentors who can coach employees on priority gaps`,
+        `Add critical gap skills to the next hiring brief${deptSuffix}`,
+        `Explore CareerMinds Talent Development for structured skills programmes`,
+      ],
+    };
+  }
+
+  if (/hir|recruit|headcount|add.*role|open.*role|backfill/.test(q) || /hiring|recruit|headcount gap/.test(r)) {
+    return {
+      insightSummary: `Hiring strategy findings${deptSuffix}`,
+      insightKind: 'hiring',
+      department: dept ?? undefined,
+      suggestedDecisions: [
+        `Raise hiring requisitions for the highest-priority roles${deptSuffix}`,
+        `Share the prioritised hiring list with your talent acquisition team`,
+        `Review headcount budget allocation before opening new roles`,
+        `Use CareerMinds sourcing tools to accelerate critical hires`,
+      ],
+    };
+  }
+
+  if (/redund|lay.?off|downsize|reduce headcount|workforce reduction|rif/.test(q) || /redundan|reduction in force|headcount reduction/.test(r)) {
+    return {
+      insightSummary: `Workforce reduction findings${deptSuffix}`,
+      insightKind: 'reduction',
+      department: dept ?? undefined,
+      suggestedDecisions: [
+        `Present the reduction analysis to your leadership team for sign-off`,
+        `Engage legal / HR to review the proposed reduction approach`,
+        `Draft a communication plan for affected employees`,
+        `Activate CareerMinds outplacement support to manage transitions with care`,
+      ],
+    };
+  }
+
+  if (/manager|management|leadership|coach/.test(q) || /manager effectiveness|leadership gap/.test(r)) {
+    return {
+      insightSummary: `Manager effectiveness findings${deptSuffix}`,
+      insightKind: 'manager',
+      department: dept ?? undefined,
+      suggestedDecisions: [
+        `Share effectiveness data with managers in a 1:1 conversation`,
+        `Set development goals with underperforming managers${deptSuffix}`,
+        `Pair lower-scoring managers with high-performing peers for coaching`,
+        `Explore CareerMinds Manager Coaching to accelerate leadership development`,
+      ],
+    };
+  }
+
+  if (/bench|benchm|industry|peer|compan|compar/.test(q) || /benchmark|industry average|peer comparison/.test(r)) {
+    return {
+      insightSummary: `Benchmark comparison findings${deptSuffix}`,
+      insightKind: 'benchmark',
+      department: dept ?? undefined,
+      suggestedDecisions: [
+        `Share the benchmark report with your CHRO and leadership team`,
+        `Identify the two or three areas furthest behind peers and prioritise action`,
+        `Set a 6-month target to close the most critical gaps`,
+        `Consult CareerMinds on how peer-leading organisations closed these gaps`,
+      ],
+    };
+  }
+
+  if (/90.?day|action plan|roadmap|priorit|quarter|plan/.test(q) || /action plan|priority|roadmap/.test(r)) {
+    return {
+      insightSummary: `Workforce action plan`,
+      insightKind: 'action-plan',
+      department: dept ?? undefined,
+      suggestedDecisions: [
+        `Share the action plan with your leadership team for alignment`,
+        `Assign owners and deadlines to each priority action`,
+        `Schedule a 30-day progress review`,
+        `Engage CareerMinds to support delivery of key actions in the plan`,
+      ],
+    };
+  }
+
+  // Generic fallback
+  return {
+    insightSummary: `Workforce insight${deptSuffix}`,
+    insightKind: 'general',
+    department: dept ?? undefined,
+    suggestedDecisions: [
+      `Share this analysis with your leadership team`,
+      `Document the key findings and assign owners to follow-up actions`,
+      `Schedule a review in 30 days to track progress`,
+      `Contact CareerMinds to discuss tailored support for your workforce challenges`,
+    ],
+  };
+}
 
 export type PartnerService =
   | 'outplacement'
@@ -163,6 +326,8 @@ export type QueryResult =
   | { kind: 'reduction'; analysis: ReductionAnalysis }
   | { kind: 'clarification'; data: ClarificationResult }
   | { kind: 'labeled-people'; label: string; subLabel?: string; isChurn?: boolean; items: PersonResult[] }
+  | { kind: 'decision'; frame: DecisionFrame }
+  | { kind: 'commitment-prompt'; data: CommitmentPrompt }
   | { kind: 'partner-recommendation'; data: PartnerRecommendation }
   | { kind: 'role-fit-list'; items: CrossDeptFitResult[] };
 
@@ -239,6 +404,11 @@ function handlePromoReady(query: string): { text: string; results: QueryResult[]
     text: `${nearReady.length} ${nearReady.length === 1 ? 'person is' : 'people are'} ready for promotion${scope} (90%+ criteria met).`,
     results: [
       { kind: 'person-list', items: nearReady.map(toPersonResult) },
+      { kind: 'commitment-prompt', data: {
+        insightSummary: `${nearReady.length} people are ready for promotion${scope}`,
+        insightKind: 'promotion',
+        department: dept ?? undefined,
+      }},
     ],
   };
 }
@@ -273,10 +443,45 @@ function handleChurnRisk(query: string): { text: string; results: QueryResult[] 
     return { text: `No high-churn-risk signals detected${scope}.`, results: [] };
   }
 
+  const topDept = dept ?? (atRisk[0]?.person.department ?? undefined);
+  const decisionFrame: DecisionFrame = {
+    situation: `${atRisk.length} ${atRisk.length === 1 ? 'person is' : 'people are'} at churn risk${scope}.`,
+    question: 'What do you want to do about it?',
+    insightKind: 'churn-risk',
+    department: topDept,
+    options: [
+      {
+        id: 'retain-plan',
+        label: 'Build a retention plan',
+        description: 'Get specific actions to re-engage and keep each person',
+        prompt: `Build a retention plan for churn risks${dept ? ` in ${dept}` : ''}`,
+        icon: 'retain',
+        accent: 'rose',
+      },
+      {
+        id: 'mobility',
+        label: 'Explore internal mobility',
+        description: 'See if a role move could reignite engagement',
+        prompt: `What internal mobility options exist for people at churn risk${dept ? ` in ${dept}` : ''}?`,
+        icon: 'move',
+        accent: 'amber',
+      },
+      {
+        id: 'scenario',
+        label: 'Model the impact of losing them',
+        description: "See what breaks if they actually leave",
+        prompt: `What happens if we lose the ${Math.min(atRisk.length, 3)} people most at churn risk${dept ? ` in ${dept}` : ''}?`,
+        icon: 'monitor',
+        accent: 'sky',
+      },
+    ],
+  };
+
   return {
     text: `${atRisk.length} ${atRisk.length === 1 ? 'person has' : 'people have'} been in their current level 18+ months but are below 70% readiness${scope} — high churn risk.`,
     results: [
       { kind: 'churn-risk-list', items: atRisk.map(toPersonResult) },
+      { kind: 'decision', frame: decisionFrame },
     ],
   };
 }
@@ -325,11 +530,46 @@ function handleSkillsGaps(query: string): { text: string; results: QueryResult[]
     .slice(0, 10);
 
   const scope = dept ? ` in ${dept}` : ' org-wide';
+  const topSkill = items[0]?.skill ?? 'this skill';
+  const topSkillDept = items[0]?.department ?? dept ?? undefined;
+  const decisionFrame: DecisionFrame = {
+    situation: `${topSkill} is your biggest gap${scope} — ${items[0]?.belowTarget ?? 0} people below target.`,
+    question: 'How do you want to close it?',
+    insightKind: 'skill-gap',
+    department: topSkillDept !== 'Org-wide' ? topSkillDept : undefined,
+    options: [
+      {
+        id: 'upskill',
+        label: 'Upskilling path',
+        description: 'See who to develop and how long it takes',
+        prompt: `How do we close the ${topSkill} skills gap${dept ? ` in ${dept}` : ''}?`,
+        icon: 'upskill',
+        accent: 'teal',
+      },
+      {
+        id: 'mobility',
+        label: 'Internal mobility',
+        description: 'Find people in other teams with this skill already',
+        prompt: `Who internally has strong ${topSkill} skills and could move${dept ? ` into ${dept}` : ''}?`,
+        icon: 'move',
+        accent: 'amber',
+      },
+      {
+        id: 'hire',
+        label: 'Hiring cost',
+        description: 'Understand what bringing in external talent looks like',
+        prompt: `What would it cost to hire for ${topSkill}${dept ? ` in ${dept}` : ''}?`,
+        icon: 'hire',
+        accent: 'sky',
+      },
+    ],
+  };
 
   return {
     text: `Top ${items.length} skills gaps${scope} by number of people below target:`,
     results: [
       { kind: 'skill-gap-list', items },
+      { kind: 'decision', frame: decisionFrame },
     ],
   };
 }
@@ -1366,7 +1606,14 @@ function handleCareermindsResult(query: string): { text: string; results: QueryR
 
 export function query(input: string): { text: string; results: QueryResult[]; needsAI?: boolean } {
   const q = input.toLowerCase().trim();
-  return _queryInner(q, input);
+  const result = _queryInner(q, input);
+  // Stamp the original question onto any commitment-prompt results
+  if (result.results) {
+    for (const r of result.results) {
+      if (r.kind === 'commitment-prompt') r.data.sourceQuery = input;
+    }
+  }
+  return result;
 }
 
 function _queryInner(q: string, _input: string): { text: string; results: QueryResult[]; needsAI?: boolean } {
