@@ -175,15 +175,10 @@ export function ExportButtons({ title, buildContent, buildCsvContent }: Props) {
           </button>
         )}
         <button
-          onClick={handleDownload}
-          className={`flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-lg border transition-all ${
-            downloaded
-              ? 'bg-emerald-50 border-emerald-200 text-emerald-600'
-              : 'bg-white border-gray-200 text-gray-500 hover:border-gray-300 hover:text-gray-700'
-          }`}
+          className="flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-lg border bg-white border-gray-200 text-gray-500 hover:border-gray-300 hover:text-gray-700 transition-all"
         >
-          {downloaded ? <Check size={12} /> : <Download size={12} />}
-          {downloaded ? 'Downloaded' : 'Print'}
+          <Download size={12} />
+          Export report
         </button>
         {false && <button
           onClick={() => setEmailOpen(true)}

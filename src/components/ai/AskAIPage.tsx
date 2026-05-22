@@ -698,19 +698,10 @@ function OutputPanel({
               </div>
               <div className="flex items-center gap-2 flex-shrink-0">
                 <button
-                  onClick={handleDownload}
-                  disabled={exportsLocked}
-                  title={exportsLocked ? 'Acknowledge the legal notice to unlock exports' : undefined}
-                  className={`flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-lg border transition-all ${
-                    exportsLocked
-                      ? 'bg-gray-50 border-gray-200 text-gray-300 cursor-not-allowed'
-                      : downloaded
-                        ? 'bg-emerald-50 border-emerald-200 text-emerald-600'
-                        : 'bg-white border-gray-200 text-gray-500 hover:border-gray-300 hover:text-gray-700'
-                  }`}
+                  className="flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-lg border bg-white border-gray-200 text-gray-500 hover:border-gray-300 hover:text-gray-700 transition-all"
                 >
-                  {exportsLocked ? <Lock size={12} /> : downloaded ? <Check size={12} /> : <Download size={12} />}
-                  {downloaded && !exportsLocked ? 'Downloaded' : 'Download'}
+                  <Download size={12} />
+                  Export report
                 </button>
                 {false && <button
                   onClick={() => { if (!exportsLocked) setEmailOpen(true); }}
