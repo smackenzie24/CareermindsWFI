@@ -82,10 +82,10 @@ function getSeverity(pct: number): 'critical' | 'risk' | 'developing' | 'good' {
 }
 
 const SEVERITY_CONFIG = {
-  critical:   { label: 'Critical',   badge: 'bg-red-50 text-red-600',        bar: 'bg-red-300',     tile: 'bg-red-50',      tileColor: 'text-red-500'    },
-  risk:       { label: 'At Risk',    badge: 'bg-orange-50 text-orange-600',  bar: 'bg-orange-200',  tile: 'bg-orange-50',   tileColor: 'text-orange-500' },
-  developing: { label: 'Developing', badge: 'bg-amber-50 text-amber-600',    bar: 'bg-amber-200',   tile: 'bg-amber-50',    tileColor: 'text-amber-600'  },
-  good:       { label: 'On Track',   badge: 'bg-emerald-50 text-emerald-600',bar: 'bg-emerald-200', tile: 'bg-emerald-50',  tileColor: 'text-emerald-600' },
+  critical:   { label: 'Critical',   badge: 'bg-red-100 text-red-600',        bar: 'bg-red-300',      tile: 'bg-red-100',     tileColor: 'text-red-600'    },
+  risk:       { label: 'At Risk',    badge: 'bg-orange-100 text-orange-600',  bar: 'bg-orange-200',   tile: 'bg-orange-100',  tileColor: 'text-orange-600' },
+  developing: { label: 'Developing', badge: 'bg-amber-50 text-amber-600',     bar: 'bg-amber-200',    tile: 'bg-amber-50',    tileColor: 'text-amber-600'  },
+  good:       { label: 'On Track',   badge: 'bg-emerald-50 text-emerald-600', bar: 'bg-emerald-200',  tile: 'bg-emerald-50',  tileColor: 'text-emerald-600' },
 };
 
 interface Props {
@@ -383,8 +383,8 @@ export function DepartmentOverview({ onSelectDepartment }: Props) {
           {[
             { label: 'On Track', badge: 'bg-emerald-50 text-emerald-600' },
             { label: 'Developing', badge: 'bg-amber-50 text-amber-600' },
-            { label: 'At Risk', badge: 'bg-orange-50 text-orange-600' },
-            { label: 'Critical', badge: 'bg-red-50 text-red-600' },
+            { label: 'At Risk', badge: 'bg-orange-100 text-orange-600' },
+            { label: 'Critical', badge: 'bg-red-100 text-red-600' },
           ].map(({ label, badge }) => (
             <span key={label} className={`text-xs font-semibold px-2 py-0.5 rounded-full ${badge}`}>{label}</span>
           ))}
