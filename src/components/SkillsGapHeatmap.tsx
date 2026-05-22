@@ -1,9 +1,8 @@
 import { useState, useMemo, useEffect } from 'react';
-import { Filter, ChevronDown, LayoutGrid, Map, Info, ArrowLeft, PanelRightClose, PanelRightOpen, CalendarX, Users, AlertTriangle, Target } from 'lucide-react';
+import { Filter, ChevronDown, LayoutGrid, Info, ArrowLeft, PanelRightClose, PanelRightOpen, CalendarX, Users, AlertTriangle, Target } from 'lucide-react';
 import { ExportButtons } from './ExportButtons';
 import {
   SKILLS_DATA,
-  LOCATIONS,
   LEVELS,
   DEPT_COLORS,
   type Department,
@@ -160,7 +159,7 @@ function CheckInPanel({ department }: { department: Department }) {
   );
 }
 
-type GroupBy = 'department' | 'location' | 'manager';
+type GroupBy = 'department' | 'manager';
 
 function FilterPill({
   label,
@@ -202,7 +201,7 @@ function LegendItem({ label, colorClass }: { label: string; colorClass: string }
 interface DrilldownPanelWrapperProps {
   skill: string;
   entries: SkillGapEntry[];
-  groupBy: 'department' | 'location' | 'manager';
+  groupBy: 'department' | 'manager';
   department?: Department;
   onClose: () => void;
   collapsed: boolean;
@@ -305,8 +304,7 @@ interface DeptHeatmapProps {
 }
 
 function DeptHeatmap({ department, onBack, onNavigateToPipeline, onAskAI, tourActive }: DeptHeatmapProps) {
-  const [groupBy, setGroupBy] = useState<GroupBy>('location');
-  const [filterLocation, setFilterLocation] = useState<string>('');
+  const [groupBy, setGroupBy] = useState<GroupBy>('manager');
   const [filterLevel, setFilterLevel] = useState<string>('');
   const [selectedSkill, setSelectedSkill] = useState<string | null>(null); // '__checkins__' for check-in panel
   const [panelCollapsed, setPanelCollapsed] = useState(false);
@@ -314,11 +312,10 @@ function DeptHeatmap({ department, onBack, onNavigateToPipeline, onAskAI, tourAc
   const filtered = useMemo(() => {
     return SKILLS_DATA.filter((d) => {
       if (d.department !== department) return false;
-      if (filterLocation && d.location !== filterLocation) return false;
       if (filterLevel && d.level !== filterLevel) return false;
       return true;
     });
-  }, [department, filterLocation, filterLevel]);
+  }, [department, filterLevel]);
 
   const skills = useMemo(() => {
     return Array.from(new Set(filtered.map((d) => d.skill)));
@@ -337,16 +334,11 @@ function DeptHeatmap({ department, onBack, onNavigateToPipeline, onAskAI, tourAc
   );
 
   const groupKeys = useMemo((): string[] => {
-    if (groupBy === 'location') {
-      return filterLocation
-        ? [filterLocation]
-        : LOCATIONS.filter((l) => filtered.some((e) => e.location === l));
-    } else if (groupBy === 'manager') {
+    if (groupBy === 'manager') {
       return deptManagers.map((m) => m.name);
-    } else {
-      return [department];
     }
-  }, [groupBy, filtered, filterLocation, department, deptManagers]);
+    return [department];
+  }, [groupBy, department, deptManagers]);
 
   const cellData = useMemo(() => {
     const map: Record<string, Record<string, SkillGapEntry[]>> = {};
@@ -355,7 +347,6 @@ function DeptHeatmap({ department, onBack, onNavigateToPipeline, onAskAI, tourAc
       for (const key of groupKeys) {
         map[skill][key] = filtered.filter((d) => {
           if (d.skill !== skill) return false;
-          if (groupBy === 'location') return d.location === key;
           if (groupBy === 'manager') {
             const mgr = deptManagers.find((m) => m.name === key);
             return mgr ? mgr.teams.includes(d.team) : false;
@@ -506,22 +497,12 @@ function DeptHeatmap({ department, onBack, onNavigateToPipeline, onAskAI, tourAc
               <Filter size={14} />
               <span>Filter</span>
             </div>
-            <FilterPill label="Location" options={LOCATIONS} value={filterLocation} onChange={setFilterLocation} />
             <FilterPill label="Level" options={LEVELS} value={filterLevel} onChange={setFilterLevel} />
 
             <div className="flex-1" />
 
             {/* Group by toggle */}
             <div className="flex items-center bg-gray-100 rounded-lg p-1 gap-1">
-              <button
-                onClick={() => setGroupBy('location')}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-all ${
-                  groupBy === 'location' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'
-                }`}
-              >
-                <Map size={13} />
-                By Location
-              </button>
               <button
                 onClick={() => setGroupBy('manager')}
                 className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-all ${
