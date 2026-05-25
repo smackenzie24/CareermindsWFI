@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Sparkles, ArrowRight, Linkedin, ChevronDown, ChevronUp, Info, TrendingUp, AlertTriangle, ArrowUpDown, Zap } from 'lucide-react';
+import { Sparkles, ArrowRight, Linkedin, ChevronDown, ChevronUp, Info, TrendingUp, AlertTriangle, ArrowUpDown, Zap, ChevronRight, Clock } from 'lucide-react';
 import {
   getCrossDeptFitCandidates,
   DEPT_COLORS,
@@ -8,6 +8,150 @@ import {
   type FlightRisk,
 } from '../../data/promotionData';
 import { DEPARTMENTS } from '../../data/mockData';
+import { UpsellBanner } from '../UpsellBanner';
+import { FeedbackBanner } from '../feedback/FeedbackBanner';
+
+type RecPriority = 'critical' | 'high' | 'medium';
+interface HiddenRec { id: string; priority: RecPriority; title: string; rationale: string; actions: string[]; timeframe: string; }
+
+const REC_PRIORITY_CFG: Record<RecPriority, { label: string; color: string; bg: string; border: string; dot: string }> = {
+  critical: { label: 'Critical', color: 'text-red-700',   bg: 'bg-red-50',   border: 'border-red-200',   dot: 'bg-red-500'  },
+  high:     { label: 'High',     color: 'text-amber-700', bg: 'bg-amber-50', border: 'border-amber-200', dot: 'bg-amber-400' },
+  medium:   { label: 'Medium',   color: 'text-sky-700',   bg: 'bg-sky-50',   border: 'border-sky-200',   dot: 'bg-sky-500'  },
+};
+
+function buildHiddenRecs(results: CrossDeptFitResult[]): HiddenRec[] {
+  const recs: HiddenRec[] = [];
+  const urgent = results.filter(r => r.flightRisk === 'high');
+  const highFit = results.filter(r => r.delta >= 30);
+  const medFit  = results.filter(r => r.delta >= 20 && r.delta < 30);
+
+  if (urgent.length > 0) {
+    const names = urgent.map(r => r.person.name.split(' ')[0]).slice(0, 3).join(', ');
+    recs.push({
+      id: 'urgent-mobility',
+      priority: 'critical',
+      title: `${urgent.length} high-risk employee${urgent.length > 1 ? 's' : ''} have an internal fit — act before they go external`,
+      rationale: `${names}${urgent.length > 3 ? ' and others' : ''} are both flight risks and strong candidates for an internal move. Internal mobility is one of the fastest retention levers available.`,
+      timeframe: 'This week',
+      actions: [
+        `Initiate a career conversation with ${names}${urgent.length > 3 ? ' and others' : ''} framed as an opportunity, not a reassignment`,
+        'Loop in the suggested receiving manager to assess mutual interest',
+        'Move quickly — flight-risk windows close fast',
+        'Document as a retention win in your people data',
+      ],
+    });
+  }
+
+  if (highFit.length > 0) {
+    const names = highFit.map(r => r.person.name.split(' ')[0]).slice(0, 3).join(', ');
+    recs.push({
+      id: 'high-fit',
+      priority: 'high',
+      title: `${highFit.length} employee${highFit.length > 1 ? 's' : ''} show a 30%+ fit improvement — strong internal mobility candidates`,
+      rationale: `${names}${highFit.length > 3 ? ' and others' : ''} have inferred skills that match a different function significantly better than their current role. Moving them increases engagement and output.`,
+      timeframe: 'Next 30 days',
+      actions: [
+        'Review their LinkedIn profile and skills signals with their current manager',
+        'Present the opportunity as a growth path — frame it as investment, not reallocation',
+        'Set up an exploratory conversation between the employee and the suggested team lead',
+        'If a move isn\'t feasible now, note in their IDP as a 6–12 month goal',
+      ],
+    });
+  }
+
+  if (medFit.length > 0) {
+    recs.push({
+      id: 'medium-fit',
+      priority: 'medium',
+      title: `${medFit.length} employee${medFit.length > 1 ? 's' : ''} with moderate cross-dept fit — worth a development conversation`,
+      rationale: `These employees show a 20–29% fit improvement in another function. A structured development conversation could surface interest or rule it out cleanly.`,
+      timeframe: 'Next quarter',
+      actions: [
+        'Add a career aspiration question to their next 1:1 or review cycle',
+        'Share the fit signal informally — "we noticed you have strengths in X" — and gauge interest',
+        'If there is interest, create a project-based trial before committing to a full move',
+      ],
+    });
+  }
+
+  return recs;
+}
+
+function HiddenRecCard({ rec }: { rec: HiddenRec }) {
+  const [expanded, setExpanded] = useState(false);
+  const pc = REC_PRIORITY_CFG[rec.priority];
+  return (
+    <div className={`rounded-xl border bg-white overflow-hidden transition-shadow hover:shadow-sm ${pc.border}`}>
+      <button className="w-full text-left px-5 py-4 flex items-start gap-4" onClick={() => setExpanded(e => !e)}>
+        <div className={`mt-1 w-2 h-2 rounded-full flex-shrink-0 ${pc.dot}`} />
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 flex-wrap mb-1">
+            <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${pc.bg} ${pc.border} ${pc.color}`}>
+              {pc.label}
+            </span>
+          </div>
+          <p className="text-sm font-semibold text-gray-800 leading-snug">{rec.title}</p>
+          <p className="text-xs text-gray-500 mt-1 leading-relaxed">{rec.rationale}</p>
+        </div>
+        <div className="flex items-center gap-2 flex-shrink-0 mt-0.5">
+          <span className="text-[10px] text-gray-400 flex items-center gap-1 whitespace-nowrap">
+            <Clock size={10} />{rec.timeframe}
+          </span>
+          <ChevronRight size={14} className={`text-gray-300 transition-transform flex-shrink-0 ${expanded ? 'rotate-90' : ''}`} />
+        </div>
+      </button>
+      {expanded && (
+        <div className="px-5 pb-4 pt-0 border-t border-gray-50">
+          <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400 mt-3 mb-2">Action plan</p>
+          <ol className="space-y-2">
+            {rec.actions.map((action, i) => (
+              <li key={i} className="flex items-start gap-2.5">
+                <span className="w-4 h-4 rounded-full bg-gray-100 text-gray-500 text-[10px] font-bold flex items-center justify-center flex-shrink-0 mt-0.5">{i + 1}</span>
+                <span className="text-xs text-gray-600 leading-relaxed">{action}</span>
+              </li>
+            ))}
+          </ol>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function HiddenRecsPanel({ recs }: { recs: HiddenRec[] }) {
+  const [open, setOpen] = useState(true);
+  if (recs.length === 0) return null;
+  const criticalCount = recs.filter(r => r.priority === 'critical').length;
+  const highCount     = recs.filter(r => r.priority === 'high').length;
+  return (
+    <div className="rounded-2xl border border-gray-200 overflow-hidden">
+      <button
+        onClick={() => setOpen(o => !o)}
+        className="w-full flex items-center justify-between px-5 py-4 bg-white hover:bg-gray-50 transition-colors"
+      >
+        <div className="flex items-center gap-3">
+          <span className="text-sm font-bold text-gray-900">Recommendations</span>
+          {criticalCount > 0 && (
+            <span className="text-[10px] font-bold bg-red-100 text-red-700 border border-red-200 px-2 py-0.5 rounded-full">
+              {criticalCount} critical
+            </span>
+          )}
+          {highCount > 0 && (
+            <span className="text-[10px] font-bold bg-amber-100 text-amber-700 border border-amber-200 px-2 py-0.5 rounded-full">
+              {highCount} high
+            </span>
+          )}
+        </div>
+        <ChevronRight size={15} className={`text-gray-300 transition-transform ${open ? 'rotate-90' : ''}`} />
+      </button>
+      {open && (
+        <div className="border-t border-gray-100 bg-gray-50 p-4 space-y-3">
+          {recs.map(rec => <HiddenRecCard key={rec.id} rec={rec} />)}
+        </div>
+      )}
+    </div>
+  );
+}
 
 const CONFIDENCE_COLORS = {
   high: 'text-emerald-700 bg-emerald-50',
@@ -254,6 +398,7 @@ export function HiddenTalent({ filterDept }: Props) {
   }, [allCandidates]);
 
   const highRiskCount = filtered.filter(r => r.flightRisk === 'high').length;
+  const recs = useMemo(() => buildHiddenRecs(filtered), [filtered]);
 
   return (
     <div className="space-y-6">
@@ -370,6 +515,10 @@ export function HiddenTalent({ filterDept }: Props) {
           </span>
         </div>
       )}
+
+      <HiddenRecsPanel recs={recs} />
+      <UpsellBanner variant="talent-development" />
+      <FeedbackBanner context="Talent Signals" />
     </div>
   );
 }

@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { AlertTriangle, Clock, ArrowRight, ChevronDown, ChevronUp, Sparkles, Info, Zap, Shield } from 'lucide-react';
+import { AlertTriangle, Clock, ArrowRight, ChevronDown, ChevronUp, Sparkles, Info, Zap, Shield, ChevronRight } from 'lucide-react';
 import {
   getFlightRiskPeople,
   DEPT_COLORS,
@@ -9,8 +9,154 @@ import {
   type Department,
 } from '../../data/promotionData';
 import { MostExpensiveToLose } from '../MostExpensiveToLose';
+import { UpsellBanner } from '../UpsellBanner';
+import { FeedbackBanner } from '../feedback/FeedbackBanner';
 
 type RiskFilter = 'all' | 'high' | 'medium';
+
+type RecPriority = 'critical' | 'high' | 'medium';
+interface FlightRec { id: string; priority: RecPriority; title: string; rationale: string; actions: string[]; timeframe: string; }
+
+const REC_PRIORITY_CFG: Record<RecPriority, { label: string; color: string; bg: string; border: string; dot: string }> = {
+  critical: { label: 'Critical', color: 'text-red-700',   bg: 'bg-red-50',   border: 'border-red-200',   dot: 'bg-red-500'  },
+  high:     { label: 'High',     color: 'text-amber-700', bg: 'bg-amber-50', border: 'border-amber-200', dot: 'bg-amber-400' },
+  medium:   { label: 'Medium',   color: 'text-sky-700',   bg: 'bg-sky-50',   border: 'border-sky-200',   dot: 'bg-sky-500'  },
+};
+
+function buildFlightRecs(entries: FlightRiskPerson[]): FlightRec[] {
+  const recs: FlightRec[] = [];
+  const high   = entries.filter(e => e.flightRisk === 'high');
+  const medium = entries.filter(e => e.flightRisk === 'medium');
+  const withOpp = entries.filter(e => e.hasInternalOpportunity);
+
+  if (high.length > 0) {
+    const names = high.map(e => e.person.name.split(' ')[0]).slice(0, 3).join(', ');
+    recs.push({
+      id: 'high-risk',
+      priority: 'critical',
+      title: `Immediate retention action needed for ${high.length === 1 ? names : `${high.length} high-risk employees`}`,
+      rationale: `${names}${high.length > 3 ? ' and others' : ''} show high flight-risk signals. Acting this week significantly increases the chance of retention.`,
+      timeframe: 'This week',
+      actions: [
+        `Schedule stay interviews with ${names}${high.length > 3 ? ' and others' : ''} to surface unmet needs`,
+        'Review compensation and title against current market benchmarks',
+        'Identify one stretch project or visibility opportunity to offer immediately',
+        'Loop in their manager with specific retention talking points',
+      ],
+    });
+  }
+
+  if (medium.length > 0) {
+    const names = medium.map(e => e.person.name.split(' ')[0]).slice(0, 3).join(', ');
+    recs.push({
+      id: 'medium-risk',
+      priority: 'high',
+      title: `Proactively engage ${medium.length} medium-risk employee${medium.length > 1 ? 's' : ''} before signals escalate`,
+      rationale: `${names}${medium.length > 3 ? ' and others' : ''} carry medium flight-risk signals. Early engagement prevents escalation to high risk.`,
+      timeframe: 'This month',
+      actions: [
+        'Add a career-growth conversation to the next monthly 1:1',
+        'Confirm their promotion timeline is clear and documented',
+        'Identify one concrete milestone they can hit in the next 30 days',
+        'Check in on workload and team dynamics — often an early warning sign',
+      ],
+    });
+  }
+
+  if (withOpp.length > 0) {
+    const names = withOpp.map(e => e.person.name.split(' ')[0]).slice(0, 3).join(', ');
+    recs.push({
+      id: 'internal-opp',
+      priority: 'medium',
+      title: `${withOpp.length} at-risk employee${withOpp.length > 1 ? 's' : ''} have an internal mobility match — act before they look externally`,
+      rationale: `${names}${withOpp.length > 3 ? ' and others' : ''} are flight risks with an available internal opportunity. Internal moves are one of the most effective retention levers.`,
+      timeframe: 'Next 2 weeks',
+      actions: [
+        'Surface the internal opportunity as a career conversation, not a directive',
+        'Involve the potential receiving manager early to gauge fit',
+        'Move quickly — flight-risk windows are short',
+        'Document the internal move as a win in your retention data',
+      ],
+    });
+  }
+
+  return recs;
+}
+
+function FlightRecCard({ rec }: { rec: FlightRec }) {
+  const [expanded, setExpanded] = useState(false);
+  const pc = REC_PRIORITY_CFG[rec.priority];
+  return (
+    <div className={`rounded-xl border bg-white overflow-hidden transition-shadow hover:shadow-sm ${pc.border}`}>
+      <button className="w-full text-left px-5 py-4 flex items-start gap-4" onClick={() => setExpanded(e => !e)}>
+        <div className={`mt-1 w-2 h-2 rounded-full flex-shrink-0 ${pc.dot}`} />
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 flex-wrap mb-1">
+            <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${pc.bg} ${pc.border} ${pc.color}`}>
+              {pc.label}
+            </span>
+          </div>
+          <p className="text-sm font-semibold text-gray-800 leading-snug">{rec.title}</p>
+          <p className="text-xs text-gray-500 mt-1 leading-relaxed">{rec.rationale}</p>
+        </div>
+        <div className="flex items-center gap-2 flex-shrink-0 mt-0.5">
+          <span className="text-[10px] text-gray-400 flex items-center gap-1 whitespace-nowrap">
+            <Clock size={10} />{rec.timeframe}
+          </span>
+          <ChevronRight size={14} className={`text-gray-300 transition-transform flex-shrink-0 ${expanded ? 'rotate-90' : ''}`} />
+        </div>
+      </button>
+      {expanded && (
+        <div className="px-5 pb-4 pt-0 border-t border-gray-50">
+          <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400 mt-3 mb-2">Action plan</p>
+          <ol className="space-y-2">
+            {rec.actions.map((action, i) => (
+              <li key={i} className="flex items-start gap-2.5">
+                <span className="w-4 h-4 rounded-full bg-gray-100 text-gray-500 text-[10px] font-bold flex items-center justify-center flex-shrink-0 mt-0.5">{i + 1}</span>
+                <span className="text-xs text-gray-600 leading-relaxed">{action}</span>
+              </li>
+            ))}
+          </ol>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function FlightRecsPanel({ recs }: { recs: FlightRec[] }) {
+  const [open, setOpen] = useState(true);
+  if (recs.length === 0) return null;
+  const criticalCount = recs.filter(r => r.priority === 'critical').length;
+  const highCount     = recs.filter(r => r.priority === 'high').length;
+  return (
+    <div className="rounded-2xl border border-gray-200 overflow-hidden">
+      <button
+        onClick={() => setOpen(o => !o)}
+        className="w-full flex items-center justify-between px-5 py-4 bg-white hover:bg-gray-50 transition-colors"
+      >
+        <div className="flex items-center gap-3">
+          <span className="text-sm font-bold text-gray-900">Recommendations</span>
+          {criticalCount > 0 && (
+            <span className="text-[10px] font-bold bg-red-100 text-red-700 border border-red-200 px-2 py-0.5 rounded-full">
+              {criticalCount} critical
+            </span>
+          )}
+          {highCount > 0 && (
+            <span className="text-[10px] font-bold bg-amber-100 text-amber-700 border border-amber-200 px-2 py-0.5 rounded-full">
+              {highCount} high
+            </span>
+          )}
+        </div>
+        <ChevronRight size={15} className={`text-gray-300 transition-transform ${open ? 'rotate-90' : ''}`} />
+      </button>
+      {open && (
+        <div className="border-t border-gray-100 bg-gray-50 p-4 space-y-3">
+          {recs.map(rec => <FlightRecCard key={rec.id} rec={rec} />)}
+        </div>
+      )}
+    </div>
+  );
+}
 
 const RISK_CONFIG: Record<FlightRisk, { label: string; dot: string; bg: string; border: string; text: string; badgeBg: string }> = {
   high:   { label: 'High',   dot: 'bg-red-500',    bg: 'bg-red-50',    border: 'border-red-100',    text: 'text-red-700',    badgeBg: 'bg-red-100' },
@@ -154,6 +300,7 @@ export function FlightRiskTab({ onSwitchToHiddenTalent, department }: Props) {
   const highCount = all.filter(e => e.flightRisk === 'high').length;
   const mediumCount = all.filter(e => e.flightRisk === 'medium').length;
   const withOpportunity = all.filter(e => e.hasInternalOpportunity).length;
+  const recs = useMemo(() => buildFlightRecs(all), [all]);
 
   return (
     <div className="space-y-6">
@@ -254,6 +401,9 @@ export function FlightRiskTab({ onSwitchToHiddenTalent, department }: Props) {
       )}
 
       <MostExpensiveToLose limit={5} showMethodology department={department} />
+      <FlightRecsPanel recs={recs} />
+      <UpsellBanner variant="outplacement" />
+      <FeedbackBanner context="Talent Signals" />
     </div>
   );
 }
