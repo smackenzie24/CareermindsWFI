@@ -3,6 +3,7 @@ import {
   TrendingUp, TrendingDown, Minus, Users, DollarSign,
   BarChart3, Globe, Star, AlertTriangle, ChevronDown, ChevronUp, Info,
   LogOut, Calendar, Building2, Lightbulb, Clock, ChevronRight,
+  UserX, MessageSquareOff, TrendingUp as LevelStall, Banknote, RefreshCw,
 } from 'lucide-react';
 
 import { ExportButtons } from '../ExportButtons';
@@ -261,6 +262,186 @@ const DESTINATION_TYPE_CONFIG: Record<AttritionRecord['destinationType'], { colo
 
 function fmtDate(iso: string): string {
   return new Date(iso).toLocaleDateString([], { day: 'numeric', month: 'short', year: 'numeric' });
+}
+
+// ── Retention signal chips & commonalities ─────────────────────────────
+
+interface SignalChipProps {
+  label: string;
+  icon: React.ReactNode;
+  variant: 'red' | 'amber' | 'sky' | 'gray';
+}
+
+function SignalChip({ label, icon, variant }: SignalChipProps) {
+  const cls = {
+    red:   'bg-red-50 border-red-200 text-red-700',
+    amber: 'bg-amber-50 border-amber-200 text-amber-700',
+    sky:   'bg-sky-50 border-sky-200 text-sky-700',
+    gray:  'bg-gray-100 border-gray-200 text-gray-500',
+  }[variant];
+  return (
+    <span className={`inline-flex items-center gap-1 text-[10px] font-semibold px-1.5 py-0.5 rounded-full border ${cls}`}>
+      <span className="w-3 h-3 flex items-center justify-center">{icon}</span>
+      {label}
+    </span>
+  );
+}
+
+function getSignalChips(r: AttritionRecord): SignalChipProps[] {
+  const chips: SignalChipProps[] = [];
+  if (r.monthsAtLevel !== undefined && r.monthsAtLevel >= 24) {
+    chips.push({ label: `${r.monthsAtLevel}m at level`, icon: <LevelStall size={9} />, variant: 'amber' });
+  }
+  if (r.monthsSinceLastCheckIn !== null && r.monthsSinceLastCheckIn !== undefined && r.monthsSinceLastCheckIn >= 90) {
+    chips.push({ label: `${r.monthsSinceLastCheckIn}d no check-in`, icon: <MessageSquareOff size={9} />, variant: 'red' });
+  } else if (r.monthsSinceLastCheckIn !== null && r.monthsSinceLastCheckIn !== undefined && r.monthsSinceLastCheckIn >= 30) {
+    chips.push({ label: `${r.monthsSinceLastCheckIn}d no check-in`, icon: <MessageSquareOff size={9} />, variant: 'amber' });
+  } else if (r.monthsSinceLastCheckIn === null) {
+    chips.push({ label: 'No check-in record', icon: <MessageSquareOff size={9} />, variant: 'gray' });
+  }
+  if (r.skillStagnant) {
+    chips.push({ label: 'Skill plateau', icon: <UserX size={9} />, variant: 'amber' });
+  }
+  if (r.inferredPayGapPct !== undefined && r.inferredPayGapPct >= 20) {
+    chips.push({ label: `+${r.inferredPayGapPct}% pay uplift`, icon: <Banknote size={9} />, variant: 'red' });
+  } else if (r.inferredPayGapPct !== undefined && r.inferredPayGapPct >= 10) {
+    chips.push({ label: `+${r.inferredPayGapPct}% pay uplift`, icon: <Banknote size={9} />, variant: 'amber' });
+  } else if (r.inferredPayGapPct !== undefined && r.inferredPayGapPct > 0) {
+    chips.push({ label: `+${r.inferredPayGapPct}% pay uplift`, icon: <Banknote size={9} />, variant: 'sky' });
+  }
+  if (r.recentManagerChange) {
+    chips.push({ label: 'Manager change', icon: <RefreshCw size={9} />, variant: 'sky' });
+  }
+  return chips;
+}
+
+interface CommonalityItem {
+  label: string;
+  count: number;
+  pct: number;
+  description: string;
+  icon: React.ReactNode;
+  variant: 'red' | 'amber' | 'sky';
+}
+
+function buildCommonalities(records: AttritionRecord[]): CommonalityItem[] {
+  const n = records.length;
+  if (n === 0) return [];
+
+  const stalledAtLevel = records.filter(r => r.monthsAtLevel !== undefined && r.monthsAtLevel >= 24).length;
+  const overdueCheckIn = records.filter(r => r.monthsSinceLastCheckIn != null && r.monthsSinceLastCheckIn >= 90).length;
+  const noCheckIn      = records.filter(r => r.monthsSinceLastCheckIn === null).length;
+  const skillPlateau   = records.filter(r => r.skillStagnant).length;
+  const bigPayGap      = records.filter(r => r.inferredPayGapPct !== undefined && r.inferredPayGapPct >= 20).length;
+  const anyPayGap      = records.filter(r => r.inferredPayGapPct !== undefined && r.inferredPayGapPct >= 10).length;
+  const managerChange  = records.filter(r => r.recentManagerChange).length;
+  const avgPayGap      = records.filter(r => r.inferredPayGapPct !== undefined).reduce((s, r) => s + (r.inferredPayGapPct ?? 0), 0) / (records.filter(r => r.inferredPayGapPct !== undefined).length || 1);
+
+  const items: CommonalityItem[] = [];
+
+  if (stalledAtLevel > 0) {
+    items.push({
+      label: 'Stalled in level',
+      count: stalledAtLevel,
+      pct: Math.round((stalledAtLevel / n) * 100),
+      description: `Had been in the same level for 24+ months — promotion pathway was unclear or blocked.`,
+      icon: <LevelStall size={14} />,
+      variant: 'amber',
+    });
+  }
+  if (overdueCheckIn + noCheckIn > 0) {
+    const total = overdueCheckIn + noCheckIn;
+    items.push({
+      label: 'Neglected 1-on-1s',
+      count: total,
+      pct: Math.round((total / n) * 100),
+      description: `Had gone 90+ days without a manager check-in or had no recorded 1:1 at all before departing.`,
+      icon: <MessageSquareOff size={14} />,
+      variant: 'red',
+    });
+  }
+  if (skillPlateau > 0) {
+    items.push({
+      label: 'Skill plateau',
+      count: skillPlateau,
+      pct: Math.round((skillPlateau / n) * 100),
+      description: `Showed no measurable skill growth in the 6 months prior to departure — no development path was activated.`,
+      icon: <UserX size={14} />,
+      variant: 'amber',
+    });
+  }
+  if (anyPayGap > 0) {
+    items.push({
+      label: 'Market pay gap',
+      count: anyPayGap,
+      pct: Math.round((anyPayGap / n) * 100),
+      description: `Estimated ${Math.round(avgPayGap)}% avg pay uplift at destination — Acme comp was materially below market for their role and level.`,
+      icon: <Banknote size={14} />,
+      variant: bigPayGap > anyPayGap / 2 ? 'red' : 'amber',
+    });
+  }
+  if (managerChange > 0) {
+    items.push({
+      label: 'Recent manager change',
+      count: managerChange,
+      pct: Math.round((managerChange / n) * 100),
+      description: `Experienced a manager change within 6 months of leaving — disruption in the manager relationship correlates with elevated flight risk.`,
+      icon: <RefreshCw size={14} />,
+      variant: 'sky',
+    });
+  }
+
+  return items.sort((a, b) => b.pct - a.pct);
+}
+
+function CommonalitiesPanel({ records }: { records: AttritionRecord[] }) {
+  const items = buildCommonalities(records);
+  if (items.length === 0) return null;
+
+  const variantCls = {
+    red:   { bg: 'bg-red-50',   border: 'border-red-200',   text: 'text-red-700',   bar: 'bg-red-400',   dot: 'bg-red-500' },
+    amber: { bg: 'bg-amber-50', border: 'border-amber-200', text: 'text-amber-700', bar: 'bg-amber-400', dot: 'bg-amber-500' },
+    sky:   { bg: 'bg-sky-50',   border: 'border-sky-200',   text: 'text-sky-700',   bar: 'bg-sky-400',   dot: 'bg-sky-500' },
+  };
+
+  return (
+    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+      <div className="px-6 py-4 border-b border-gray-100 flex items-center gap-3">
+        <AlertTriangle size={15} className="text-amber-400" />
+        <div>
+          <h3 className="text-sm font-bold text-gray-900">Leaver commonalities</h3>
+          <p className="text-xs text-gray-400 mt-0.5">Signals shared by people who left — use these to shape retention and hiring plans</p>
+        </div>
+      </div>
+      <div className="divide-y divide-gray-50">
+        {items.map(item => {
+          const cls = variantCls[item.variant];
+          return (
+            <div key={item.label} className="px-6 py-4 flex items-center gap-5">
+              <div className={`w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 ${cls.bg} border ${cls.border}`}>
+                <span className={cls.text}>{item.icon}</span>
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 mb-0.5">
+                  <span className="text-sm font-bold text-gray-800">{item.label}</span>
+                  <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full border ${cls.bg} ${cls.border} ${cls.text}`}>
+                    {item.pct}% of leavers
+                  </span>
+                </div>
+                <p className="text-xs text-gray-500 leading-relaxed">{item.description}</p>
+                <div className="mt-2 flex items-center gap-2">
+                  <div className="flex-1 bg-gray-100 rounded-full h-1.5 overflow-hidden">
+                    <div className={`h-full rounded-full ${cls.bar}`} style={{ width: `${item.pct}%` }} />
+                  </div>
+                  <span className="text-xs font-bold text-gray-600 flex-shrink-0">{item.count} / {records.length}</span>
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
 }
 
 // ── Main component ──────────────────────────────────────────────────────
@@ -832,32 +1013,48 @@ export function IndustryBenchmark({ onNavigateToGapReport }: Props) {
               </div>
             </div>
 
+            {/* Leaver commonalities */}
+            <CommonalitiesPanel records={filteredAttrition} />
+
             {/* Departure log */}
             <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
               <div className="px-6 py-4 border-b border-gray-100">
                 <h3 className="text-sm font-bold text-gray-900">Departure log</h3>
                 <p className="text-xs text-gray-400 mt-0.5">{filteredAttrition.length} records · sorted by most recent</p>
               </div>
-              <div className="grid grid-cols-[160px_1fr_120px_120px_110px] gap-3 px-6 py-2.5 border-b border-gray-100 bg-gray-50">
-                {['Date', 'Person', 'Department', 'Destination', 'Tenure'].map(h => (
+              <div className="grid grid-cols-[140px_160px_110px_150px_80px_1fr] gap-3 px-6 py-2.5 border-b border-gray-100 bg-gray-50">
+                {['Date', 'Person', 'Dept', 'Destination', 'Tenure', 'Risk signals'].map(h => (
                   <span key={h} className="text-[10px] font-bold uppercase tracking-wider text-gray-400">{h}</span>
                 ))}
               </div>
               {visibleRecords.map((r, i) => {
                 const typeCfg = DESTINATION_TYPE_CONFIG[r.destinationType];
+                const chips = getSignalChips(r);
                 return (
                   <div
                     key={`${r.name}-${r.date}`}
-                    className={`grid grid-cols-[160px_1fr_120px_120px_110px] gap-3 px-6 py-3 items-center ${i % 2 === 0 ? 'bg-white' : 'bg-gray-50/40'}`}
+                    className={`grid grid-cols-[140px_160px_110px_150px_80px_1fr] gap-3 px-6 py-3 items-start ${i % 2 === 0 ? 'bg-white' : 'bg-gray-50/40'}`}
                   >
-                    <span className="text-xs text-gray-500">{fmtDate(r.date)}</span>
-                    <span className="text-xs font-semibold text-gray-800">{r.name}</span>
-                    <span className="text-xs text-gray-500">{r.department}</span>
-                    <div className="flex items-center gap-1.5 min-w-0">
-                      <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${typeCfg.dot}`} />
-                      <span className="text-xs font-medium text-gray-700 truncate">{r.destination}</span>
+                    <span className="text-xs text-gray-500 pt-0.5">{fmtDate(r.date)}</span>
+                    <div className="min-w-0">
+                      <p className="text-xs font-semibold text-gray-800 truncate">{r.name}</p>
+                      <p className="text-[10px] text-gray-400 mt-0.5">{r.level}</p>
                     </div>
-                    <span className="text-xs text-gray-500">{r.tenureMonths}m</span>
+                    <span className="text-xs text-gray-500 pt-0.5">{r.department}</span>
+                    <div className="flex items-start gap-1.5 min-w-0 pt-0.5">
+                      <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 mt-1 ${typeCfg.dot}`} />
+                      <div>
+                        <span className="text-xs font-medium text-gray-700 truncate block">{r.destination}</span>
+                        <span className={`text-[10px] ${typeCfg.color}`}>{r.destinationType}</span>
+                      </div>
+                    </div>
+                    <span className="text-xs text-gray-500 pt-0.5">{r.tenureMonths}m</span>
+                    <div className="flex flex-wrap gap-1">
+                      {chips.length > 0
+                        ? chips.map((chip, ci) => <SignalChip key={ci} {...chip} />)
+                        : <span className="text-[10px] text-gray-300">—</span>
+                      }
+                    </div>
                   </div>
                 );
               })}
