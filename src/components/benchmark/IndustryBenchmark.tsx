@@ -804,8 +804,39 @@ export function IndustryBenchmark({ onNavigateToGapReport }: Props) {
           </div>
         </div>
 
-        {/* Tab navigation */}
-        <div className="flex items-end gap-0" data-tour="benchmark-peer-filter">
+        {/* Priority actions strip — sits above tabs so tabs remain flush with the page */}
+        {priorityActions.length > 0 && (
+          <div className="flex items-center gap-3 flex-wrap bg-amber-50 rounded-xl px-4 py-2.5 mb-3 border border-amber-100">
+            <div className="flex items-center gap-1.5 flex-shrink-0">
+              <AlertTriangle size={12} className="text-amber-600" />
+              <span className="text-xs font-bold text-amber-800">Priority actions:</span>
+            </div>
+            {priorityActions.map(rec => (
+              <button
+                key={rec.id}
+                onClick={() => {
+                  const tabMap: Record<string, PageTab> = {
+                    upskilling: 'skills', compensation: 'compensation', hiring: 'talent',
+                    retention: 'talent', 'org-design': 'overview', process: 'overview',
+                  };
+                  setPageTab(tabMap[rec.category] ?? 'overview');
+                }}
+                className={`flex items-center gap-1.5 text-xs font-medium px-3 py-1 rounded-full border transition-colors hover:opacity-80 ${
+                  rec.priority === 'critical'
+                    ? 'bg-red-50 border-red-200 text-red-700'
+                    : 'bg-amber-100 border-amber-200 text-amber-800'
+                }`}
+              >
+                <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${rec.priority === 'critical' ? 'bg-red-500' : 'bg-amber-500'}`} />
+                {rec.title}
+                <ArrowRight size={10} className="opacity-60" />
+              </button>
+            ))}
+          </div>
+        )}
+
+        {/* Tab navigation — last element so active underline connects directly to page */}
+        <div className="flex items-end gap-0 -mx-8 px-8" data-tour="benchmark-peer-filter">
           {PAGE_TABS.map(tab => (
             <button
               key={tab.id}
@@ -841,37 +872,6 @@ export function IndustryBenchmark({ onNavigateToGapReport }: Props) {
           </div>
         </div>
       </header>
-
-      {/* Priority actions strip — always visible */}
-      {priorityActions.length > 0 && (
-        <div className="bg-amber-50 border-b border-amber-100 px-8 py-3 flex items-center gap-3 flex-wrap">
-          <div className="flex items-center gap-1.5 flex-shrink-0">
-            <AlertTriangle size={13} className="text-amber-600" />
-            <span className="text-xs font-bold text-amber-800">Priority actions:</span>
-          </div>
-          {priorityActions.map(rec => (
-            <button
-              key={rec.id}
-              onClick={() => {
-                const tabMap: Record<string, PageTab> = {
-                  upskilling: 'skills', compensation: 'compensation', hiring: 'talent',
-                  retention: 'talent', 'org-design': 'overview', process: 'overview',
-                };
-                setPageTab(tabMap[rec.category] ?? 'overview');
-              }}
-              className={`flex items-center gap-1.5 text-xs font-medium px-3 py-1 rounded-full border transition-colors hover:opacity-80 ${
-                rec.priority === 'critical'
-                  ? 'bg-red-50 border-red-200 text-red-700'
-                  : 'bg-amber-100 border-amber-200 text-amber-800'
-              }`}
-            >
-              <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${rec.priority === 'critical' ? 'bg-red-500' : 'bg-amber-500'}`} />
-              {rec.title}
-              <ArrowRight size={10} className="opacity-60" />
-            </button>
-          ))}
-        </div>
-      )}
 
       <main className="flex-1 overflow-auto p-8">
         <div className="max-w-5xl mx-auto space-y-8">
