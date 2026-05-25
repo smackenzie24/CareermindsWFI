@@ -5,7 +5,7 @@ import {
   LogOut, Calendar, Building2, Lightbulb, Clock, ChevronRight,
   UserX, MessageSquareOff, TrendingUp as LevelStall, Banknote, RefreshCw,
   Briefcase, UserCheck, ShieldAlert, GitBranch,
-  Megaphone, Search,
+  Megaphone, Search, ArrowRight,
 } from 'lucide-react';
 
 import { ExportButtons } from '../ExportButtons';
