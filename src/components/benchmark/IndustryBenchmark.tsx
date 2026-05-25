@@ -4,7 +4,8 @@ import {
   BarChart3, Globe, Star, AlertTriangle, ChevronDown, ChevronUp, Info,
   LogOut, Calendar, Building2, Lightbulb, Clock, ChevronRight,
   UserX, MessageSquareOff, TrendingUp as LevelStall, Banknote, RefreshCw,
-  ArrowRight, Briefcase, Zap,
+  ArrowRight, Briefcase, Zap, UserCheck, ShieldAlert, GitBranch,
+  Megaphone, Search,
 } from 'lucide-react';
 
 import { ExportButtons } from '../ExportButtons';
@@ -1577,6 +1578,381 @@ export function IndustryBenchmark({ onNavigateToGapReport }: Props) {
                 </div>
               )}
             </div>
+
+            {/* ── First-year turnover flag ──────────────────────── */}
+            {(() => {
+              const FIRST_YEAR_THRESHOLD = 12;
+              const earlyLeavers = filteredAttrition.filter(r => r.tenureMonths <= FIRST_YEAR_THRESHOLD);
+              const earlyRate    = totalLeavers > 0 ? Math.round((earlyLeavers.length / totalLeavers) * 100) : 0;
+              const PEER_EARLY_RATE = 18; // industry benchmark: ~18% of leavers go within first year
+
+              // Signals: hiring vs onboarding
+              const managerChangePct   = earlyLeavers.length > 0 ? Math.round(earlyLeavers.filter(r => r.recentManagerChange).length / earlyLeavers.length * 100) : 0;
+              const culturePct         = earlyLeavers.length > 0 ? Math.round(earlyLeavers.filter(r => r.reason === 'culture').length / earlyLeavers.length * 100) : 0;
+              const careerPct          = earlyLeavers.length > 0 ? Math.round(earlyLeavers.filter(r => r.reason === 'career-growth').length / earlyLeavers.length * 100) : 0;
+              const compPct            = earlyLeavers.length > 0 ? Math.round(earlyLeavers.filter(r => r.reason === 'compensation').length / earlyLeavers.length * 100) : 0;
+              const juniorHires        = earlyLeavers.filter(r => (r.sourceYearsExperience ?? 99) <= 2);
+              const agencyHires        = earlyLeavers.filter(r => r.hireChannel === 'agency');
+              const inboundHires       = earlyLeavers.filter(r => r.hireChannel === 'inbound');
+              const referralHires      = earlyLeavers.filter(r => r.hireChannel === 'referral');
+
+              // Hire channel breakdown for early leavers
+              const channelBreakdown: { channel: string; count: number; pct: number; icon: React.ReactNode; color: string; bgColor: string }[] = [
+                { channel: 'Recruiter',          count: earlyLeavers.filter(r => r.hireChannel === 'recruiter').length,         pct: 0, icon: <Search size={11} />,      color: 'text-sky-700',    bgColor: 'bg-sky-50 border-sky-100' },
+                { channel: 'Inbound / Applied',  count: inboundHires.length,                                                    pct: 0, icon: <Megaphone size={11} />,   color: 'text-violet-700', bgColor: 'bg-violet-50 border-violet-100' },
+                { channel: 'Agency',             count: agencyHires.length,                                                     pct: 0, icon: <Briefcase size={11} />,   color: 'text-orange-700', bgColor: 'bg-orange-50 border-orange-100' },
+                { channel: 'Referral',           count: referralHires.length,                                                   pct: 0, icon: <UserCheck size={11} />,   color: 'text-emerald-700',bgColor: 'bg-emerald-50 border-emerald-100' },
+                { channel: 'Internal transfer',  count: earlyLeavers.filter(r => r.hireChannel === 'internal-transfer').length, pct: 0, icon: <GitBranch size={11} />,   color: 'text-gray-700',   bgColor: 'bg-gray-50 border-gray-200' },
+              ].map(c => ({ ...c, pct: earlyLeavers.length > 0 ? Math.round((c.count / earlyLeavers.length) * 100) : 0 }))
+               .filter(c => c.count > 0)
+               .sort((a, b) => b.count - a.count);
+
+              // Dept breakdown
+              const deptCounts = earlyLeavers.reduce<Record<string, number>>((acc, r) => {
+                acc[r.department] = (acc[r.department] ?? 0) + 1;
+                return acc;
+              }, {});
+              const deptRows = Object.entries(deptCounts).sort((a, b) => b[1] - a[1]);
+              const maxDeptCount = Math.max(...deptRows.map(([, c]) => c), 1);
+
+              // Determine severity
+              const isAbove = earlyRate > PEER_EARLY_RATE;
+              const severity: 'critical' | 'elevated' | 'normal' =
+                earlyRate > PEER_EARLY_RATE + 15 ? 'critical' :
+                isAbove ? 'elevated' : 'normal';
+              const severityCfg = {
+                critical: { bg: 'bg-red-50', border: 'border-red-200', text: 'text-red-700', badge: 'bg-red-100 border-red-200 text-red-700', dot: 'bg-red-400', label: 'High concern' },
+                elevated: { bg: 'bg-amber-50', border: 'border-amber-200', text: 'text-amber-700', badge: 'bg-amber-100 border-amber-200 text-amber-700', dot: 'bg-amber-400', label: 'Elevated' },
+                normal:   { bg: 'bg-emerald-50', border: 'border-emerald-200', text: 'text-emerald-700', badge: 'bg-emerald-100 border-emerald-200 text-emerald-700', dot: 'bg-emerald-400', label: 'Within norms' },
+              }[severity];
+
+              // Primary signal (hiring vs onboarding)
+              // onboarding signals: culture reason, manager change, career-growth in first year
+              const onboardingSignalScore = (culturePct * 0.4) + (managerChangePct * 0.4) + (careerPct * 0.2);
+              // hiring signals: agency channel concentration, junior hires without support
+              const hiringSignalScore     = (agencyHires.length / Math.max(earlyLeavers.length, 1)) * 60 + (juniorHires.length / Math.max(earlyLeavers.length, 1)) * 40;
+              const primarySignal         = onboardingSignalScore >= hiringSignalScore ? 'onboarding' : 'hiring';
+
+              if (earlyLeavers.length === 0) return null;
+
+              return (
+                <div className="space-y-4">
+                  {/* Section header */}
+                  <div className="flex items-center gap-3 pt-2">
+                    <ShieldAlert size={15} className="text-gray-400" />
+                    <h3 className="text-sm font-bold text-gray-900">First-year Turnover</h3>
+                    <span className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full border ${severityCfg.badge}`}>
+                      {severityCfg.label}
+                    </span>
+                    <p className="text-xs text-gray-400 ml-2">
+                      People who left within 12 months — signals poor hiring fit or weak onboarding
+                    </p>
+                  </div>
+
+                  {/* Hero metric card */}
+                  <div className={`rounded-2xl border p-6 ${severityCfg.bg} ${severityCfg.border}`}>
+                    <div className="flex items-start gap-8">
+                      {/* Big number */}
+                      <div className="flex-shrink-0">
+                        <p className={`text-6xl font-black leading-none ${severityCfg.text}`}>{earlyRate}%</p>
+                        <p className={`text-sm font-semibold mt-1 ${severityCfg.text}`}>of leavers left within year 1</p>
+                        <p className="text-xs text-gray-500 mt-0.5">{earlyLeavers.length} of {totalLeavers} departures</p>
+                      </div>
+
+                      {/* vs peer benchmark */}
+                      <div className="flex-shrink-0 border-l border-black/10 pl-8">
+                        <p className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">vs industry benchmark</p>
+                        <div className="flex items-end gap-3">
+                          <div className="text-center">
+                            <p className={`text-2xl font-black ${severityCfg.text}`}>{earlyRate}%</p>
+                            <p className="text-[10px] text-gray-500 font-medium mt-0.5">Acme</p>
+                          </div>
+                          <div className="text-center mb-1">
+                            {isAbove
+                              ? <TrendingUp size={16} className="text-red-500 mx-auto" />
+                              : <TrendingDown size={16} className="text-emerald-500 mx-auto" />
+                            }
+                          </div>
+                          <div className="text-center">
+                            <p className="text-2xl font-black text-gray-500">{PEER_EARLY_RATE}%</p>
+                            <p className="text-[10px] text-gray-400 font-medium mt-0.5">Peer median</p>
+                          </div>
+                        </div>
+                        {isAbove && (
+                          <p className={`text-xs font-bold mt-2 ${severityCfg.text}`}>
+                            +{earlyRate - PEER_EARLY_RATE}pp above peer norm
+                          </p>
+                        )}
+                      </div>
+
+                      {/* Primary diagnosis */}
+                      <div className="flex-1 border-l border-black/10 pl-8">
+                        <p className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Primary signal</p>
+                        <div className={`inline-flex items-center gap-2 px-3 py-2 rounded-xl border ${
+                          primarySignal === 'onboarding'
+                            ? 'bg-orange-50 border-orange-200 text-orange-800'
+                            : 'bg-sky-50 border-sky-200 text-sky-800'
+                        }`}>
+                          {primarySignal === 'onboarding'
+                            ? <UserX size={14} />
+                            : <Search size={14} />
+                          }
+                          <span className="text-sm font-bold">
+                            {primarySignal === 'onboarding' ? 'Onboarding & fit' : 'Hiring selection'}
+                          </span>
+                        </div>
+                        <p className="text-xs text-gray-500 mt-2 leading-relaxed max-w-xs">
+                          {primarySignal === 'onboarding'
+                            ? `${culturePct}% cited culture or fit. ${managerChangePct > 0 ? `${managerChangePct}% had a manager change in their first 6 months — a strong onboarding risk factor.` : 'Consider structured 30/60/90-day check-in programmes.'}`
+                            : `${agencyHires.length > 0 ? `${Math.round(agencyHires.length / earlyLeavers.length * 100)}% of early leavers came via agency — typically lower job-fit accuracy. ` : ''}${juniorHires.length > 0 ? `${juniorHires.length} were junior hires (≤2yr exp) who may have needed more structured ramp support.` : ''}`
+                          }
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Two column: dept breakdown + hire channel */}
+                  <div className="grid grid-cols-2 gap-5">
+                    {/* Dept breakdown */}
+                    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
+                      <div className="flex items-center gap-2 mb-4">
+                        <Users size={14} className="text-gray-400" />
+                        <h4 className="text-xs font-bold text-gray-900">First-year exits by department</h4>
+                      </div>
+                      <div className="space-y-3">
+                        {deptRows.map(([dept, count]) => {
+                          const deptColor = DEPT_COLORS[dept as Department] ?? '#9ca3af';
+                          const pct = Math.round((count / earlyLeavers.length) * 100);
+                          return (
+                            <div key={dept}>
+                              <div className="flex items-center justify-between mb-1">
+                                <div className="flex items-center gap-1.5">
+                                  <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: deptColor }} />
+                                  <span className="text-xs font-medium text-gray-700">{dept}</span>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  <span className="text-xs font-bold text-gray-700">{count}</span>
+                                  <span className="text-[10px] text-gray-400">({pct}%)</span>
+                                </div>
+                              </div>
+                              <div className="w-full bg-gray-100 rounded-full h-2 overflow-hidden">
+                                <div
+                                  className="h-full rounded-full transition-all"
+                                  style={{ width: `${(count / maxDeptCount) * 100}%`, background: deptColor }}
+                                />
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    {/* Hire channel breakdown */}
+                    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
+                      <div className="flex items-center gap-2 mb-1">
+                        <Briefcase size={14} className="text-gray-400" />
+                        <h4 className="text-xs font-bold text-gray-900">Hire channel of early leavers</h4>
+                      </div>
+                      <p className="text-[10px] text-gray-400 mb-4">
+                        High agency or unstructured channel concentration can indicate sourcing fit issues
+                      </p>
+                      <div className="space-y-3">
+                        {channelBreakdown.map(c => (
+                          <div key={c.channel}>
+                            <div className="flex items-center justify-between mb-1">
+                              <span className={`flex items-center gap-1.5 text-xs font-medium text-gray-700`}>
+                                <span className={`text-gray-400`}>{c.icon}</span>
+                                {c.channel}
+                                {c.channel === 'Agency' && agencyHires.length >= 2 && (
+                                  <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-orange-50 border border-orange-200 text-orange-700 ml-1">Watch</span>
+                                )}
+                                {c.channel === 'Referral' && (
+                                  <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-700 ml-1">Best fit</span>
+                                )}
+                              </span>
+                              <div className="flex items-center gap-2">
+                                <span className="text-xs font-bold text-gray-700">{c.count}</span>
+                                <span className="text-[10px] text-gray-400">({c.pct}%)</span>
+                              </div>
+                            </div>
+                            <div className="w-full bg-gray-100 rounded-full h-2 overflow-hidden">
+                              <div className={`h-full rounded-full transition-all ${
+                                c.channel === 'Agency' ? 'bg-orange-400' :
+                                c.channel === 'Referral' ? 'bg-emerald-400' :
+                                'bg-sky-400'
+                              }`} style={{ width: `${c.pct}%` }} />
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+
+                      {/* Referral insight */}
+                      {referralHires.length < agencyHires.length && (
+                        <div className="mt-4 bg-emerald-50 border border-emerald-100 rounded-xl p-3">
+                          <p className="text-[10px] font-bold text-emerald-700">Referral hires show lower early attrition</p>
+                          <p className="text-[10px] text-emerald-600 mt-0.5">
+                            Only {referralHires.length} referral hire{referralHires.length !== 1 ? 's' : ''} in first-year exits — consider increasing referral programme investment to improve hiring fit.
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Reason + risk factor breakdown */}
+                  <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
+                    <div className="flex items-center gap-2 mb-4">
+                      <AlertTriangle size={14} className="text-gray-400" />
+                      <h4 className="text-xs font-bold text-gray-900">Exit reasons & onboarding risk factors</h4>
+                      <span className="text-xs text-gray-400 ml-auto">First-year leavers only · n={earlyLeavers.length}</span>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-6">
+                      {/* Reason split */}
+                      <div>
+                        <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-3">Exit reason</p>
+                        <div className="space-y-2.5">
+                          {([
+                            { label: 'Career growth',  pct: careerPct,  bar: 'bg-sky-400',    note: 'Onboarding signal: unclear progression paths' },
+                            { label: 'Compensation',   pct: compPct,    bar: 'bg-amber-400',  note: 'May indicate offer miscalibration' },
+                            { label: 'Culture / fit',  pct: culturePct, bar: 'bg-red-400',    note: 'Strongest hiring-fit signal' },
+                            { label: 'Unknown',
+                              pct: earlyLeavers.length > 0 ? 100 - careerPct - compPct - culturePct : 0,
+                              bar: 'bg-gray-300', note: 'Incomplete exit interviews' },
+                          ] as { label: string; pct: number; bar: string; note: string }[])
+                            .filter(r => r.pct > 0)
+                            .sort((a, b) => b.pct - a.pct)
+                            .map(r => (
+                              <div key={r.label}>
+                                <div className="flex items-center justify-between mb-0.5">
+                                  <span className="text-xs font-medium text-gray-700">{r.label}</span>
+                                  <span className="text-xs font-bold text-gray-700">{r.pct}%</span>
+                                </div>
+                                <div className="w-full bg-gray-100 rounded-full h-1.5 overflow-hidden mb-0.5">
+                                  <div className={`h-full rounded-full ${r.bar}`} style={{ width: `${r.pct}%` }} />
+                                </div>
+                                <p className="text-[10px] text-gray-400">{r.note}</p>
+                              </div>
+                            ))}
+                        </div>
+                      </div>
+
+                      {/* Risk factors */}
+                      <div>
+                        <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-3">Onboarding risk factors present</p>
+                        <div className="space-y-2">
+                          {[
+                            {
+                              label: 'Manager change in first 6m',
+                              count: earlyLeavers.filter(r => r.recentManagerChange).length,
+                              pct: managerChangePct,
+                              severity: managerChangePct >= 30 ? 'high' : managerChangePct >= 15 ? 'medium' : 'low',
+                              note: 'Manager continuity is the #1 onboarding stability factor',
+                            },
+                            {
+                              label: 'Junior hires (≤ 2yr exp)',
+                              count: juniorHires.length,
+                              pct: earlyLeavers.length > 0 ? Math.round((juniorHires.length / earlyLeavers.length) * 100) : 0,
+                              severity: juniorHires.length >= 4 ? 'high' : juniorHires.length >= 2 ? 'medium' : 'low' as const,
+                              note: 'Junior hires need structured 90-day ramp to succeed',
+                            },
+                            {
+                              label: 'No check-in on record',
+                              count: earlyLeavers.filter(r => r.monthsSinceLastCheckIn == null).length,
+                              pct: earlyLeavers.length > 0 ? Math.round(earlyLeavers.filter(r => r.monthsSinceLastCheckIn == null).length / earlyLeavers.length * 100) : 0,
+                              severity: 'medium' as const,
+                              note: 'Missing 1:1 records suggest engagement was not tracked',
+                            },
+                            {
+                              label: 'Culture / fit cited as reason',
+                              count: earlyLeavers.filter(r => r.reason === 'culture').length,
+                              pct: culturePct,
+                              severity: culturePct >= 25 ? 'high' : culturePct >= 10 ? 'medium' : 'low' as const,
+                              note: 'Culture exits in year 1 point to hiring-stage misalignment',
+                            },
+                          ].map(f => {
+                            const sev = f.severity === 'high'
+                              ? 'bg-red-50 border-red-200 text-red-700'
+                              : f.severity === 'medium'
+                              ? 'bg-amber-50 border-amber-200 text-amber-700'
+                              : 'bg-gray-50 border-gray-200 text-gray-500';
+                            return (
+                              <div key={f.label} className={`flex items-start gap-3 p-3 rounded-xl border ${sev}`}>
+                                <div className="flex-1 min-w-0">
+                                  <div className="flex items-center justify-between gap-2">
+                                    <p className="text-[11px] font-bold truncate">{f.label}</p>
+                                    <span className="text-[11px] font-black flex-shrink-0">{f.count} <span className="font-normal text-[10px] opacity-70">({f.pct}%)</span></span>
+                                  </div>
+                                  <p className="text-[10px] mt-0.5 opacity-75">{f.note}</p>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Recommendations */}
+                  <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
+                    <div className="flex items-center gap-2 mb-4">
+                      <Lightbulb size={14} className="text-amber-500" />
+                      <h4 className="text-xs font-bold text-gray-900">Recommended actions</h4>
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      {[
+                        primarySignal === 'onboarding' && managerChangePct >= 20 && {
+                          icon: <UserX size={13} />,
+                          color: 'bg-orange-50 border-orange-200 text-orange-800',
+                          title: 'Protect manager continuity for new hires',
+                          body: `${managerChangePct}% of early exits had a manager change in their first 6 months. Avoid reassignments for the first 6 months post-hire wherever possible.`,
+                        },
+                        culturePct >= 20 && {
+                          icon: <MessageSquareOff size={13} />,
+                          color: 'bg-red-50 border-red-200 text-red-800',
+                          title: 'Improve culture alignment at hiring stage',
+                          body: `${culturePct}% of first-year exits cited culture/fit. Review interview processes for realistic job previews and values alignment assessment.`,
+                        },
+                        agencyHires.length >= 2 && {
+                          icon: <Briefcase size={13} />,
+                          color: 'bg-amber-50 border-amber-200 text-amber-800',
+                          title: 'Reduce agency hiring reliance',
+                          body: `${Math.round(agencyHires.length / earlyLeavers.length * 100)}% of early leavers came via agency. Agency channels show lower job-fit accuracy — shift budget toward referrals and direct sourcing.`,
+                        },
+                        referralHires.length < 2 && {
+                          icon: <UserCheck size={13} />,
+                          color: 'bg-emerald-50 border-emerald-200 text-emerald-800',
+                          title: 'Invest in the employee referral programme',
+                          body: 'Referral hires consistently show the lowest first-year attrition. Only ' + referralHires.length + ' referral hire' + (referralHires.length !== 1 ? 's' : '') + ' appeared in first-year exits.',
+                        },
+                        careerPct >= 30 && {
+                          icon: <TrendingUp size={13} />,
+                          color: 'bg-sky-50 border-sky-200 text-sky-800',
+                          title: 'Set explicit career paths at onboarding',
+                          body: `${careerPct}% cited career growth. New hires should leave their first week with a clear 12-month development plan and promotion criteria.`,
+                        },
+                        juniorHires.length >= 2 && {
+                          icon: <Star size={13} />,
+                          color: 'bg-sky-50 border-sky-200 text-sky-800',
+                          title: 'Structured ramp for junior hires',
+                          body: `${juniorHires.length} junior hires (≤2yr exp) left within year 1. Introduce a dedicated 90-day buddy/mentoring programme for new graduates and career-switchers.`,
+                        },
+                      ].filter(Boolean).slice(0, 4).map((rec, i) => {
+                        if (!rec) return null;
+                        return (
+                          <div key={i} className={`flex items-start gap-3 p-4 rounded-xl border ${rec.color}`}>
+                            <span className="flex-shrink-0 mt-0.5">{rec.icon}</span>
+                            <div>
+                              <p className="text-xs font-bold">{rec.title}</p>
+                              <p className="text-[11px] mt-1 leading-relaxed opacity-80">{rec.body}</p>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </div>
+              );
+            })()}
 
             <RecommendationsPanel recs={talentFlowRecs} />
           </section>
