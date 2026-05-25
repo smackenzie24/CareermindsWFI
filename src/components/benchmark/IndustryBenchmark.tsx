@@ -843,46 +843,74 @@ export function IndustryBenchmark({ onNavigateToGapReport }: Props) {
             </div>
 
             {/* Overall position */}
-            <div className={`rounded-2xl border p-6 ${overallCfg.bg} ${overallCfg.border}`}>
-              <div className="flex items-start justify-between">
-                <div>
-                  <p className="text-xs font-semibold text-gray-500 uppercase tracking-widest mb-1">Overall benchmark position</p>
-                  <h2 className={`text-3xl font-black ${overallCfg.color}`}>{overallCfg.label}</h2>
-                  <p className="text-sm text-gray-600 mt-2 max-w-xl">
-                    Across skill competency, compensation, and org structure, Acme Corp ranks in the <strong>{overallCfg.label.toLowerCase()}</strong> compared to {peers.length} similar-sized SaaS and tech companies.
-                  </p>
-                </div>
-                <div className={`w-16 h-16 rounded-2xl flex items-center justify-center text-2xl font-black ${overallCfg.color} bg-white/50 border ${overallCfg.border}`}>
-                  {({ top: '1st', 'above-median': '2nd', 'below-median': '3rd', bottom: '4th' })[summary.overallPosition]}
-                  <span className="text-xs">Q</span>
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-4 mt-5">
-                <div className="bg-white/60 rounded-xl p-4 border border-white">
-                  <p className="text-xs font-semibold text-gray-500 mb-2 flex items-center gap-1.5"><Star size={11} className="text-emerald-500" />Strengths</p>
-                  {summary.topDepts.length > 0 ? (
-                    <div className="space-y-1">
-                      {summary.topDepts.slice(0, 3).map(b => (
-                        <div key={b.department} className="flex items-center justify-between">
-                          <span className="text-xs text-gray-700">{b.department}</span>
-                          <QuartileBadge pos={b.position} />
+            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+              {/* Top accent bar — thin color strip keyed to position */}
+              <div className={`h-1 w-full ${
+                summary.overallPosition === 'top' ? 'bg-emerald-400' :
+                summary.overallPosition === 'above-median' ? 'bg-sky-400' :
+                summary.overallPosition === 'below-median' ? 'bg-amber-400' :
+                'bg-gray-400'
+              }`} />
+              <div className="p-6">
+                <div className="flex items-start justify-between gap-6">
+                  <div className="flex-1">
+                    <p className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-2">Overall benchmark position</p>
+                    <h2 className="text-2xl font-bold text-gray-900">{overallCfg.label}</h2>
+                    <p className="text-sm text-gray-500 mt-1.5 max-w-lg">
+                      Across skill competency, compensation, and org structure vs {peers.length} similar-sized SaaS companies.
+                    </p>
+                  </div>
+
+                  {/* Quartile ladder */}
+                  <div className="flex-shrink-0 flex flex-col gap-1.5 pt-1">
+                    {(['top', 'above-median', 'below-median', 'bottom'] as const).map(pos => {
+                      const cfg = QUARTILE_CONFIG[pos];
+                      const active = pos === summary.overallPosition;
+                      return (
+                        <div key={pos} className={`flex items-center gap-2 px-3 py-1.5 rounded-lg transition-all ${
+                          active ? `${cfg.bg} ${cfg.border} border` : 'opacity-30'
+                        }`}>
+                          <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${active ? cfg.dot : 'bg-gray-300'}`} />
+                          <span className={`text-xs font-semibold ${active ? cfg.color : 'text-gray-400'}`}>{cfg.label}</span>
+                          {active && <span className={`text-[10px] font-bold ml-1 ${cfg.color}`}>← you</span>}
                         </div>
-                      ))}
-                    </div>
-                  ) : <p className="text-xs text-gray-400">No top-quartile departments yet</p>}
+                      );
+                    })}
+                  </div>
                 </div>
-                <div className="bg-white/60 rounded-xl p-4 border border-white">
-                  <p className="text-xs font-semibold text-gray-500 mb-2 flex items-center gap-1.5"><AlertTriangle size={11} className="text-red-400" />Areas to close</p>
-                  {summary.gapDepts.length > 0 ? (
-                    <div className="space-y-1">
-                      {summary.gapDepts.slice(0, 3).map(b => (
-                        <div key={b.department} className="flex items-center justify-between">
-                          <span className="text-xs text-gray-700">{b.department}</span>
-                          <QuartileBadge pos={b.position} />
-                        </div>
-                      ))}
-                    </div>
-                  ) : <p className="text-xs text-gray-400">All departments at or above median</p>}
+
+                {/* Strengths / gaps row */}
+                <div className="grid grid-cols-2 gap-4 mt-5 pt-5 border-t border-gray-50">
+                  <div>
+                    <p className="text-xs font-semibold text-gray-400 mb-2 flex items-center gap-1.5">
+                      <Star size={11} className="text-emerald-400" />Strengths
+                    </p>
+                    {summary.topDepts.length > 0 ? (
+                      <div className="space-y-1.5">
+                        {summary.topDepts.slice(0, 3).map(b => (
+                          <div key={b.department} className="flex items-center justify-between">
+                            <span className="text-xs text-gray-700">{b.department}</span>
+                            <QuartileBadge pos={b.position} />
+                          </div>
+                        ))}
+                      </div>
+                    ) : <p className="text-xs text-gray-400">No top-quartile departments yet</p>}
+                  </div>
+                  <div>
+                    <p className="text-xs font-semibold text-gray-400 mb-2 flex items-center gap-1.5">
+                      <TrendingDown size={11} className="text-gray-400" />Areas to close
+                    </p>
+                    {summary.gapDepts.length > 0 ? (
+                      <div className="space-y-1.5">
+                        {summary.gapDepts.slice(0, 3).map(b => (
+                          <div key={b.department} className="flex items-center justify-between">
+                            <span className="text-xs text-gray-700">{b.department}</span>
+                            <QuartileBadge pos={b.position} />
+                          </div>
+                        ))}
+                      </div>
+                    ) : <p className="text-xs text-gray-400">All departments at or above median</p>}
+                  </div>
                 </div>
               </div>
             </div>
