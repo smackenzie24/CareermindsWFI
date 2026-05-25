@@ -350,10 +350,10 @@ export function groupByTier(results: ReadinessResult[]): Record<ReadinessTier, n
 }
 
 export const TIER_CONFIG: Record<ReadinessTier, { label: string; color: string; bg: string; border: string; badge: string; barColor: string }> = {
-  'near-ready': { label: 'Near Ready', color: 'text-emerald-700', bg: 'bg-emerald-50', border: 'border-emerald-200', badge: 'bg-emerald-100 text-emerald-800', barColor: 'bg-emerald-500' },
-  'progressing': { label: 'Progressing', color: 'text-sky-700', bg: 'bg-sky-50', border: 'border-sky-200', badge: 'bg-sky-100 text-sky-800', barColor: 'bg-sky-500' },
-  'developing': { label: 'Developing', color: 'text-amber-700', bg: 'bg-amber-50', border: 'border-amber-200', badge: 'bg-amber-100 text-amber-800', barColor: 'bg-amber-400' },
-  'early': { label: 'Early Stage', color: 'text-gray-500', bg: 'bg-gray-50', border: 'border-gray-200', badge: 'bg-gray-100 text-gray-600', barColor: 'bg-gray-300' },
+  'near-ready': { label: 'Near Ready', color: 'text-emerald-700', bg: 'bg-emerald-50', border: 'border-emerald-200', badge: 'bg-emerald-50 text-emerald-700', barColor: 'bg-emerald-300' },
+  'progressing': { label: 'Progressing', color: 'text-sky-700', bg: 'bg-sky-50', border: 'border-sky-200', badge: 'bg-sky-50 text-sky-700', barColor: 'bg-sky-300' },
+  'developing': { label: 'Developing', color: 'text-amber-700', bg: 'bg-amber-50', border: 'border-amber-200', badge: 'bg-amber-50 text-amber-700', barColor: 'bg-amber-200' },
+  'early': { label: 'Early Stage', color: 'text-gray-500', bg: 'bg-gray-50', border: 'border-gray-200', badge: 'bg-gray-50 text-gray-500', barColor: 'bg-gray-200' },
 };
 
 export function computeReadiness(person: Person, framework: LevelFramework, levelLabel: string): ReadinessResult {

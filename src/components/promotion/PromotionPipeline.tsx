@@ -208,7 +208,7 @@ export function PromotionPipeline({ initialDepartment, initialTab, initialPerson
           <div className="flex items-center gap-3">
             <ExportButtons title="Promotion Readiness Pipeline" buildContent={buildExportContent} />
             <div className="flex items-center gap-2 text-xs text-gray-400">
-              <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+              <div className="w-2 h-2 rounded-full bg-emerald-300 animate-pulse" />
               Acme Corp
             </div>
           </div>
@@ -226,15 +226,15 @@ export function PromotionPipeline({ initialDepartment, initialTab, initialPerson
             label="Near ready (90%+)"
             value={orgStats.nearReady}
             sub="meet 90%+ of next-level criteria"
-            color="text-emerald-600"
-            icon={<Star size={14} className="text-emerald-400" />}
+            color="text-emerald-700"
+            icon={<Star size={14} className="text-emerald-300" />}
           />
           <StatCard
             label="Progressing (70–89%)"
             value={orgStats.progressing}
             sub="on track, closing gaps"
-            color="text-sky-600"
-            icon={<TrendingUp size={14} className="text-sky-400" />}
+            color="text-sky-700"
+            icon={<TrendingUp size={14} className="text-sky-300" />}
           />
           <StatCard
             label="Avg readiness score"
@@ -264,14 +264,14 @@ export function PromotionPipeline({ initialDepartment, initialTab, initialPerson
           onClick={() => setActiveTab('hidden-talent')}
           className={`flex items-center gap-2 px-4 py-3.5 text-sm font-semibold border-b-2 transition-all ${
             activeTab === 'hidden-talent'
-              ? 'border-sky-500 text-sky-700'
+              ? 'border-sky-400 text-sky-700'
               : 'border-transparent text-gray-400 hover:text-gray-700'
           }`}
         >
           <Sparkles size={14} />
           Hidden Talent
           {hiddenTalentCount > 0 && (
-            <span className="text-[10px] font-bold bg-sky-100 text-sky-700 px-1.5 py-0.5 rounded-full">
+            <span className="text-[10px] font-bold bg-sky-50 text-sky-600 px-1.5 py-0.5 rounded-full">
               {hiddenTalentCount}
             </span>
           )}
@@ -280,14 +280,14 @@ export function PromotionPipeline({ initialDepartment, initialTab, initialPerson
           onClick={() => setActiveTab('flight-risk')}
           className={`flex items-center gap-2 px-4 py-3.5 text-sm font-semibold border-b-2 transition-all ${
             activeTab === 'flight-risk'
-              ? 'border-red-500 text-red-700'
+              ? 'border-red-400 text-red-700'
               : 'border-transparent text-gray-400 hover:text-gray-700'
           }`}
         >
           <AlertTriangle size={14} />
           Flight Risk
           {flightRiskHighCount > 0 && (
-            <span className="text-[10px] font-bold bg-red-100 text-red-700 px-1.5 py-0.5 rounded-full">
+            <span className="text-[10px] font-bold bg-red-50 text-red-600 px-1.5 py-0.5 rounded-full">
               {flightRiskHighCount}
             </span>
           )}
@@ -365,16 +365,16 @@ export function PromotionPipeline({ initialDepartment, initialTab, initialPerson
                     </div>
                     <div className="flex h-3 rounded-full overflow-hidden gap-px bg-gray-100">
                       {dept.nearReady > 0 && (
-                        <div className="bg-emerald-500 transition-all" style={{ width: `${(dept.nearReady / dept.total) * 100}%` }} title={`${dept.nearReady} near ready`} />
+                        <div className="bg-emerald-300 transition-all" style={{ width: `${(dept.nearReady / dept.total) * 100}%` }} title={`${dept.nearReady} near ready`} />
                       )}
                       {dept.progressing > 0 && (
-                        <div className="bg-sky-500 transition-all" style={{ width: `${(dept.progressing / dept.total) * 100}%` }} title={`${dept.progressing} progressing`} />
+                        <div className="bg-sky-300 transition-all" style={{ width: `${(dept.progressing / dept.total) * 100}%` }} title={`${dept.progressing} progressing`} />
                       )}
                       {dept.developing > 0 && (
-                        <div className="bg-amber-400 transition-all" style={{ width: `${(dept.developing / dept.total) * 100}%` }} title={`${dept.developing} developing`} />
+                        <div className="bg-amber-200 transition-all" style={{ width: `${(dept.developing / dept.total) * 100}%` }} title={`${dept.developing} developing`} />
                       )}
                       {dept.early > 0 && (
-                        <div className="bg-gray-300 transition-all" style={{ width: `${(dept.early / dept.total) * 100}%` }} title={`${dept.early} early stage`} />
+                        <div className="bg-gray-200 transition-all" style={{ width: `${(dept.early / dept.total) * 100}%` }} title={`${dept.early} early stage`} />
                       )}
                     </div>
                   </div>
@@ -393,7 +393,7 @@ export function PromotionPipeline({ initialDepartment, initialTab, initialPerson
 
                   {dept.nearReady > 0 ? (
                     <div className="flex items-center gap-2 text-xs text-gray-600 bg-emerald-50 rounded-lg px-3 py-2 border border-emerald-100">
-                      <Star size={11} className="text-emerald-500 flex-shrink-0" />
+                      <Star size={11} className="text-emerald-400 flex-shrink-0" />
                       <span>Top candidate: <strong>{dept.topCandidate}</strong> ({dept.topCandidatePct}% ready)</span>
                     </div>
                   ) : (
