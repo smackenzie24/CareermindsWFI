@@ -1247,7 +1247,6 @@ export function AskAIPage({ initialQuestion, onNavigate }: Props) {
                 <Sparkles size={11} className="text-white" />
               </div>
               <span className="text-sm font-bold text-white">Workforce AI</span>
-              <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-sky-400/30 text-sky-100 tracking-wide border border-sky-400/40">BETA</span>
             </div>
             <div className="flex items-center gap-1">
               <button

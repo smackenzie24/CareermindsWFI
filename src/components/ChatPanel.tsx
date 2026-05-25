@@ -133,10 +133,7 @@ export function ChatPanel({ open, onClose, initialQuestion, onNavigate }: Props)
               <Sparkles size={15} className="text-white" />
             </div>
             <div className="flex-1">
-              <div className="flex items-center gap-1.5">
-                <p className="text-sm font-bold text-gray-900">Workforce AI</p>
-                <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-sky-50 text-sky-600 tracking-wide border border-sky-200">BETA</span>
-              </div>
+              <p className="text-sm font-bold text-gray-900">Workforce AI</p>
               <p className="text-[11px] text-gray-400">Quick query panel</p>
             </div>
             <button onClick={onClose} className="w-8 h-8 rounded-lg flex items-center justify-center text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-all">
