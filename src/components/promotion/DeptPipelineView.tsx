@@ -420,6 +420,11 @@ function NoCheckInCollapsible({ items, expandedId, onToggle, onViewCheckIn, onAs
   );
 }
 
+// A person has "no check-in data" if they have no lastCheckIn OR zero criteria met
+function hasNoCheckIn(r: ReadinessResult): boolean {
+  return !r.person.lastCheckIn || r.criteriaMet === 0;
+}
+
 export function DeptPipelineView({ department, onBack, onNavigateToGapReport, onNavigateToManagers, onViewCheckIn, onAskAI, initialPersonId }: Props) {
   const allResults = useMemo(() => getAllReadiness(), []);
   const deptResults = useMemo(
@@ -539,8 +544,8 @@ export function DeptPipelineView({ department, onBack, onNavigateToGapReport, on
                 </div>
                 <div className="space-y-2.5">
                   {(() => {
-                    const withCheckIn = items.filter(r => r.person.lastCheckIn);
-                    const noCheckIn   = items.filter(r => !r.person.lastCheckIn);
+                    const withCheckIn = items.filter(r => !hasNoCheckIn(r));
+                    const noCheckIn   = items.filter(r => hasNoCheckIn(r));
                     return (
                       <>
                         {withCheckIn.map(result => (
