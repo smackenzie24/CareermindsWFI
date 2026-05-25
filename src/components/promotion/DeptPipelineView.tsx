@@ -596,10 +596,11 @@ export function DeptPipelineView({ department, onBack, onNavigateToGapReport, on
           <FlightRiskTab
             department={department}
             onSwitchToHiddenTalent={() => setActiveTab('hidden-talent')}
+            onAskAI={onAskAI}
           />
         )}
         {activeTab === 'hidden-talent' && (
-          <HiddenTalent filterDept={department} />
+          <HiddenTalent filterDept={department} onAskAI={onAskAI} />
         )}
         {activeTab === 'pipeline' && (
         <>

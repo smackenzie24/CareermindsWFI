@@ -282,9 +282,10 @@ function PersonCard({ entry, onViewOpportunity }: { entry: FlightRiskPerson; onV
 interface Props {
   onSwitchToHiddenTalent?: () => void;
   department?: Department;
+  onAskAI?: (question: string) => void;
 }
 
-export function FlightRiskTab({ onSwitchToHiddenTalent, department }: Props) {
+export function FlightRiskTab({ onSwitchToHiddenTalent, department, onAskAI }: Props) {
   const [filter, setFilter] = useState<RiskFilter>('all');
   const allGlobal = useMemo(() => getFlightRiskPeople('medium'), []);
   const all = useMemo(
@@ -402,6 +403,20 @@ export function FlightRiskTab({ onSwitchToHiddenTalent, department }: Props) {
 
       <MostExpensiveToLose limit={5} showMethodology department={department} />
       <FlightRecsPanel recs={recs} />
+      {onAskAI && (
+        <div className="flex justify-center">
+          <button
+            onClick={() => onAskAI(department
+              ? `What are the biggest flight risk concerns in ${department} and what retention actions should I take?`
+              : `Who are my highest flight risks across the org and what should I do about them?`
+            )}
+            className="inline-flex items-center gap-2 text-sm font-semibold text-sky-700 bg-sky-50 hover:bg-sky-100 border border-sky-200 hover:border-sky-300 px-5 py-2.5 rounded-xl transition-all shadow-sm hover:shadow"
+          >
+            <Sparkles size={14} className="text-sky-400" />
+            Ask AI about flight risk
+          </button>
+        </div>
+      )}
       <UpsellBanner variant="outplacement" />
       <FeedbackBanner context="Talent Signals" />
     </div>

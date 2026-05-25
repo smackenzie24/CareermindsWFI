@@ -372,9 +372,10 @@ function CandidateCard({ result }: { result: CrossDeptFitResult }) {
 
 interface Props {
   filterDept?: Department | null;
+  onAskAI?: (question: string) => void;
 }
 
-export function HiddenTalent({ filterDept }: Props) {
+export function HiddenTalent({ filterDept, onAskAI }: Props) {
   const [selectedDept, setSelectedDept] = useState<Department | 'all'>('all');
   const [sortMode, setSortMode] = useState<SortMode>('urgency');
   const allCandidates = useMemo(() => getCrossDeptFitCandidates(), []);
@@ -517,6 +518,20 @@ export function HiddenTalent({ filterDept }: Props) {
       )}
 
       <HiddenRecsPanel recs={recs} />
+      {onAskAI && (
+        <div className="flex justify-center">
+          <button
+            onClick={() => onAskAI(filterDept
+              ? `Who in ${filterDept} is a strong candidate for an internal move and what's driving that fit signal?`
+              : `Which employees have the strongest cross-department fit signals and who should I act on first?`
+            )}
+            className="inline-flex items-center gap-2 text-sm font-semibold text-sky-700 bg-sky-50 hover:bg-sky-100 border border-sky-200 hover:border-sky-300 px-5 py-2.5 rounded-xl transition-all shadow-sm hover:shadow"
+          >
+            <Sparkles size={14} className="text-sky-400" />
+            Ask AI about hidden talent
+          </button>
+        </div>
+      )}
       <UpsellBanner variant="talent-development" />
       <FeedbackBanner context="Talent Signals" />
     </div>
