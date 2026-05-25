@@ -488,12 +488,7 @@ export function DeptPipelineView({ department, onBack, onNavigateToGapReport, on
             All departments
           </button>
           <span className="text-gray-300">/</span>
-          <div className="flex items-center gap-2">
-            <div className="w-5 h-5 rounded flex items-center justify-center text-white text-[10px] font-bold" style={{ background: deptColor }}>
-              {department[0]}
-            </div>
-            <span className="text-sm font-semibold text-gray-900">{department}</span>
-          </div>
+          <span className="text-sm font-semibold text-gray-900">{department}</span>
         </div>
 
         <div className="flex items-center justify-between">
