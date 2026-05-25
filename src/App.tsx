@@ -116,8 +116,9 @@ export default function App() {
       {/* Global nav strip */}
       <nav className="bg-brand-navy flex-shrink-0 flex items-center h-11 z-50 min-w-0">
         {/* Logo — always visible */}
-        <div className="flex items-center pl-4 pr-4 flex-shrink-0">
+        <div className="flex items-center gap-2 pl-4 pr-4 flex-shrink-0">
           <img src="/Progression_by_careerminds.svg" alt="Progression by CareerMinds" className="h-6 w-auto" />
+          <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-white/10 text-white/70 tracking-wide border border-white/20">BETA</span>
         </div>
 
         {/* Tour mode toggle — next to logo */}
