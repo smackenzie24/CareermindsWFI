@@ -1,5 +1,5 @@
 import { useMemo, useState, useCallback } from 'react';
-import { ChevronRight, Users, TrendingDown, AlertTriangle, CalendarCheck, RefreshCw } from 'lucide-react';
+import { ChevronRight, Users, TrendingDown, AlertTriangle, BarChart2, RefreshCw, CalendarCheck, DollarSign, ChevronDown, ChevronUp } from 'lucide-react';
 import { SKILLS_DATA, DEPARTMENTS, DEPT_COLORS, type Department } from '../data/mockData';
 import { PEOPLE } from '../data/promotionData';
 import { FeedbackBanner } from './feedback/FeedbackBanner';
@@ -87,6 +87,84 @@ const SEVERITY_CONFIG = {
   developing: { label: 'Developing', badge: 'bg-amber-50 text-amber-600',     bar: 'bg-amber-200',    tile: 'bg-amber-50',    tileColor: 'text-amber-600'  },
   good:       { label: 'On Track',   badge: 'bg-emerald-50 text-emerald-600', bar: 'bg-emerald-200',  tile: 'bg-emerald-50',  tileColor: 'text-emerald-600' },
 };
+
+function OrgSummarySecondary({ checkInCoverage, totalCost, avgSalary, deptBreakdown }: {
+  checkInCoverage: number;
+  totalCost: number;
+  avgSalary: number;
+  deptBreakdown: { dept: Department; count: number }[];
+}) {
+  const [open, setOpen] = useState(false);
+  const maxCount = Math.max(...deptBreakdown.map(d => d.count), 1);
+
+  return (
+    <div className="mt-3">
+      <button
+        onClick={() => setOpen(o => !o)}
+        className="flex items-center gap-1.5 text-xs font-medium text-gray-500 hover:text-gray-800 transition-colors"
+      >
+        {open ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
+        {open ? 'Hide org summary' : 'Show org summary'}
+      </button>
+
+      {open && (
+        <div className="mt-3 grid grid-cols-4 gap-4">
+          {/* Check-in coverage */}
+          <div className="bg-gray-50 rounded-xl p-4 border border-gray-100">
+            <div className="flex items-center gap-1.5 mb-2">
+              <CalendarCheck size={14} className={checkInCoverage >= 80 ? 'text-emerald-300' : 'text-amber-300'} />
+              <span className="text-xs text-gray-500">Check-in Coverage</span>
+            </div>
+            <p className={`text-2xl font-bold ${checkInCoverage >= 80 ? 'text-emerald-500' : 'text-amber-500'}`}>{checkInCoverage}%</p>
+            <p className="text-[11px] text-gray-400 mt-0.5">checked in (30d)</p>
+          </div>
+
+          {/* Est. total cost */}
+          <div className="bg-gray-50 rounded-xl p-4 border border-gray-100">
+            <div className="flex items-center gap-1.5 mb-2">
+              <DollarSign size={14} className="text-gray-400" />
+              <span className="text-xs text-gray-500">Est. Total Cost</span>
+            </div>
+            <p className="text-2xl font-bold text-gray-700">{fmtCurrency(totalCost)}</p>
+            <p className="text-[11px] text-gray-400 mt-0.5">annual salaries</p>
+          </div>
+
+          {/* Avg salary */}
+          <div className="bg-gray-50 rounded-xl p-4 border border-gray-100">
+            <div className="flex items-center gap-1.5 mb-2">
+              <DollarSign size={14} className="text-gray-400" />
+              <span className="text-xs text-gray-500">Avg Salary</span>
+            </div>
+            <p className="text-2xl font-bold text-gray-700">{fmtCurrency(avgSalary)}</p>
+            <p className="text-[11px] text-gray-400 mt-0.5">per employee</p>
+          </div>
+
+          {/* Team headcount mini bar chart */}
+          <div className="bg-gray-50 rounded-xl p-4 border border-gray-100">
+            <div className="flex items-center gap-1.5 mb-3">
+              <Users size={14} className="text-gray-400" />
+              <span className="text-xs text-gray-500">Team Headcount</span>
+            </div>
+            <div className="space-y-1.5">
+              {deptBreakdown.map(({ dept, count }) => (
+                <div key={dept} className="flex items-center gap-2">
+                  <span className="text-[10px] text-gray-500 w-16 truncate flex-shrink-0">{dept}</span>
+                  <div className="flex-1 bg-gray-200 rounded-full h-1.5 overflow-hidden">
+                    <div
+                      className="h-full rounded-full"
+                      style={{ width: `${(count / maxCount) * 100}%`, background: DEPT_COLORS[dept] }}
+                    />
+                  </div>
+                  <span className="text-[10px] font-semibold text-gray-600 w-4 text-right flex-shrink-0">{count}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
 
 interface Props {
   onSelectDepartment: (dept: Department) => void;
@@ -269,13 +347,13 @@ export function DepartmentOverview({ onSelectDepartment }: Props) {
           </div>
         </div>
 
-        {/* Org-level summary strip */}
+        {/* Org-level summary strip — §2.1 primary KPIs */}
         <div className="mt-5 grid grid-cols-4 gap-4" data-tour="heatmap-header-stats">
           {[
             { label: 'Total headcount', value: orgStats.totalHead, sub: 'across all depts', color: 'text-gray-900', icon: <Users size={14} className="text-gray-400" /> },
             { label: 'Below target (org)', value: `${orgStats.pct}%`, sub: 'of workforce', color: 'text-red-500', icon: <TrendingDown size={14} className="text-red-300" /> },
             { label: 'Skills below target', value: orgStats.critical, sub: '60%+ of team below expected', color: 'text-orange-500', icon: <AlertTriangle size={14} className="text-orange-300" /> },
-            { label: 'Check-in Coverage', value: `${ORG_SUMMARY.checkInCoverage}%`, sub: 'checked in (30d)', color: ORG_SUMMARY.checkInCoverage >= 80 ? 'text-emerald-500' : 'text-amber-500', icon: <CalendarCheck size={14} className={ORG_SUMMARY.checkInCoverage >= 80 ? 'text-emerald-300' : 'text-amber-300'} /> },
+            { label: 'Median gap score', value: orgStats.medGap.toFixed(1), sub: 'across org (0–5)', color: 'text-gray-700', icon: <BarChart2 size={14} className="text-gray-400" /> },
           ].map(({ label, value, sub, color, icon }) => (
             <div key={label} className="bg-gray-50 rounded-xl p-4 border border-gray-100">
               <div className="flex items-center gap-1.5 mb-2">{icon}<span className="text-xs text-gray-500">{label}</span></div>
@@ -284,6 +362,9 @@ export function DepartmentOverview({ onSelectDepartment }: Props) {
             </div>
           ))}
         </div>
+
+        {/* §2.1 Secondary tiles — toggle */}
+        <OrgSummarySecondary checkInCoverage={ORG_SUMMARY.checkInCoverage} totalCost={ORG_SUMMARY.totalCost} avgSalary={ORG_SUMMARY.avgSalary} deptBreakdown={ORG_SUMMARY.deptBreakdown} />
 
       </header>
 

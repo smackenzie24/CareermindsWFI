@@ -62,6 +62,7 @@ interface NavState {
   managerId?: string;
   aiQuestion?: string;
   pipelineTab?: 'pipeline' | 'hidden-talent' | 'flight-risk';
+  personId?: string;
 }
 
 export default function App() {
@@ -202,6 +203,7 @@ export default function App() {
         {nav.view === 'heatmap' && (
           <SkillsGapHeatmap
             onNavigateToPipeline={() => setView('pipeline')}
+            onNavigateToPerson={(personId, dept) => setNav({ view: 'pipeline', department: dept as Department, personId })}
             onAskAI={openAI}
             tourActive={tourActive}
             initialDepartment={nav.department}
@@ -211,6 +213,7 @@ export default function App() {
           <PromotionPipeline
             initialDepartment={nav.department}
             initialTab={nav.pipelineTab}
+            initialPersonId={nav.personId}
             onSelectDept={setPipelineDept}
             onNavigateToManagers={(managerId) => setNav({ view: 'managers', managerId })}
             onViewCheckIn={() => setNav({ view: 'journal' })}

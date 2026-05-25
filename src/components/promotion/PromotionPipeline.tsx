@@ -90,6 +90,7 @@ function StatCard({ label, value, sub, color, icon }: { label: string; value: st
 interface Props {
   initialDepartment?: Department;
   initialTab?: 'pipeline' | 'hidden-talent' | 'flight-risk';
+  initialPersonId?: string;
   selectedDept?: Department | null;
   onSelectDept?: (dept: Department | null) => void;
   onNavigateToGapReport?: (dept: Department) => void;
@@ -98,7 +99,7 @@ interface Props {
   onAskAI?: (question: string) => void;
 }
 
-export function PromotionPipeline({ initialDepartment, initialTab, selectedDept: selectedDeptProp, onSelectDept, onNavigateToGapReport, onNavigateToManagers, onViewCheckIn, onAskAI }: Props) {
+export function PromotionPipeline({ initialDepartment, initialTab, initialPersonId, selectedDept: selectedDeptProp, onSelectDept, onNavigateToGapReport, onNavigateToManagers, onViewCheckIn, onAskAI }: Props) {
   const [internalDept, setInternalDept] = useState<Department | null>(initialDepartment ?? null);
   const selectedDept = selectedDeptProp !== undefined ? selectedDeptProp : internalDept;
   const setSelectedDept = (dept: Department | null) => {
@@ -187,6 +188,7 @@ export function PromotionPipeline({ initialDepartment, initialTab, selectedDept:
         onNavigateToManagers={onNavigateToManagers}
         onViewCheckIn={onViewCheckIn}
         onAskAI={onAskAI}
+        initialPersonId={initialPersonId}
       />
     );
   }

@@ -16,6 +16,7 @@ interface DrilldownPanelProps {
   department?: string; // present when viewing a specific dept heatmap
   onClose: () => void;
   onNavigateToPipeline?: () => void;
+  onNavigateToPerson?: (personId: string, department: string) => void;
   onAskAI?: (question: string) => void;
 }
 
@@ -33,14 +34,17 @@ function getBadgeColor(pct: number): string {
   return 'bg-red-100 text-red-700';
 }
 
-function CandidateChip({ match, variant }: { match: SkillCandidateMatch; variant: 'met' | 'blocked' }) {
+function CandidateChip({ match, variant, onNavigateToPerson }: { match: SkillCandidateMatch; variant: 'met' | 'blocked'; onNavigateToPerson?: (personId: string, department: string) => void }) {
   const tier = getReadinessTier(match.readinessPct);
   const cfg = TIER_CONFIG[tier];
   const initials = match.person.name.split(' ').map(n => n[0]).join('');
   const nextTitle = match.targetLevelLabel.split('·')[1]?.trim() ?? match.targetLevelLabel;
 
   return (
-    <div className={`flex items-center gap-2.5 p-2.5 rounded-lg border ${variant === 'met' ? 'bg-teal-50 border-teal-100' : 'bg-red-50 border-red-100'}`}>
+    <button
+      onClick={() => onNavigateToPerson?.(match.person.id, match.person.department)}
+      className={`w-full text-left flex items-center gap-2.5 p-2.5 rounded-lg border transition-all ${variant === 'met' ? 'bg-teal-50 border-teal-100 hover:bg-teal-100 hover:border-teal-200' : 'bg-red-50 border-red-100 hover:bg-red-100 hover:border-red-200'} ${onNavigateToPerson ? 'cursor-pointer' : 'cursor-default'}`}
+    >
       <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-slate-600 to-slate-800 flex items-center justify-center text-white text-[10px] font-bold flex-shrink-0">
         {initials}
       </div>
@@ -58,11 +62,11 @@ function CandidateChip({ match, variant }: { match: SkillCandidateMatch; variant
           <span className="text-[10px] font-semibold text-red-500">{match.actualRating}/{match.requiredRating}</span>
         )}
       </div>
-    </div>
+    </button>
   );
 }
 
-export function DrilldownPanel({ skill, entries, groupBy, department, onClose, onNavigateToPipeline, onAskAI }: DrilldownPanelProps) {
+export function DrilldownPanel({ skill, entries, groupBy, department, onClose, onNavigateToPipeline, onNavigateToPerson, onAskAI }: DrilldownPanelProps) {
   const [pipelineCollapsed, setPipelineCollapsed] = useState(false);
 
   const sorted = [...entries].sort((a, b) => {
@@ -179,7 +183,7 @@ export function DrilldownPanel({ skill, entries, groupBy, department, onClose, o
                     </div>
                     <div className="space-y-1.5">
                       {promoCandidates.map(m => (
-                        <CandidateChip key={m.person.id} match={m} variant="met" />
+                        <CandidateChip key={m.person.id} match={m} variant="met" onNavigateToPerson={onNavigateToPerson} />
                       ))}
                     </div>
                   </div>
@@ -196,7 +200,7 @@ export function DrilldownPanel({ skill, entries, groupBy, department, onClose, o
                     </div>
                     <div className="space-y-1.5">
                       {blockedCandidates.map(m => (
-                        <CandidateChip key={m.person.id} match={m} variant="blocked" />
+                        <CandidateChip key={m.person.id} match={m} variant="blocked" onNavigateToPerson={onNavigateToPerson} />
                       ))}
                     </div>
                   </div>
@@ -206,6 +210,56 @@ export function DrilldownPanel({ skill, entries, groupBy, department, onClose, o
           </div>
         )}
 
+        {/* Breakdown bars — §5.7 */}
+        <div className="border-b border-gray-100 px-6 py-5">
+          <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-4">
+            Breakdown by {groupBy === 'manager' ? 'team' : groupBy === 'location' ? 'location' : 'department'}
+          </p>
+          <div className="space-y-4">
+            {sorted.map((entry, i) => {
+              const pct = entry.headcount > 0 ? Math.round((entry.belowTarget / entry.headcount) * 100) : 0;
+              const isEntryExceeding = entry.averageActual > entry.expectedLevel;
+              const label = groupBy === 'manager' ? entry.team : groupBy === 'location' ? entry.location : entry.department;
+              const surplus = isEntryExceeding ? parseFloat((entry.averageActual - entry.expectedLevel).toFixed(1)) : 0;
+              return (
+                <div key={i}>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <div className="flex items-center gap-1.5 min-w-0">
+                      <span className="text-xs font-semibold text-gray-700 truncate">{label}</span>
+                      {groupBy === 'manager' && (
+                        <span className="text-[10px] text-gray-400 truncate">{entry.team}</span>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-1.5 flex-shrink-0 ml-2">
+                      {isEntryExceeding ? (
+                        <span className="text-[10px] font-bold bg-teal-100 text-teal-700 px-1.5 py-0.5 rounded-full">+{surplus}</span>
+                      ) : (
+                        <>
+                          <span className="text-[10px] text-gray-400">{entry.belowTarget}/{entry.headcount}</span>
+                          <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${getBadgeColor(pct)}`}>{pct}%</span>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                  <div className="relative h-2 bg-gray-100 rounded-full overflow-hidden mb-1">
+                    {isEntryExceeding ? (
+                      <div className="absolute inset-0 bg-sky-200 rounded-full" />
+                    ) : (
+                      <div
+                        className={`absolute left-0 top-0 h-full rounded-full ${getBarColor(pct)}`}
+                        style={{ width: `${pct}%` }}
+                      />
+                    )}
+                  </div>
+                  <div className="flex justify-between text-[10px] text-gray-400">
+                    <span>Actual: {entry.averageActual.toFixed(1)}</span>
+                    <span>Expected: {entry.expectedLevel}.0</span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
       </div>
 
       {/* Action footer */}

@@ -1,3 +1,4 @@
+import { TrendingUp } from 'lucide-react';
 import { Tooltip } from './Tooltip';
 
 interface CellData {
@@ -15,6 +16,7 @@ interface HeatmapCellProps {
   data: CellData | null;
   onClick?: () => void;
   selected?: boolean;
+  groupBy?: 'location' | 'manager' | 'department';
 }
 
 function getGapScore(actual: number, expected: number): number {
@@ -57,7 +59,7 @@ function getPctBelowTarget(belowTarget: number, headcount: number): number {
   return Math.round((belowTarget / headcount) * 100);
 }
 
-export function HeatmapCell({ data, onClick, selected }: HeatmapCellProps) {
+export function HeatmapCell({ data, onClick, selected, groupBy }: HeatmapCellProps) {
   if (!data) {
     return (
       <div className="w-full h-14 rounded-md bg-gray-50 border border-dashed border-gray-200 flex items-center justify-center">
@@ -103,7 +105,7 @@ export function HeatmapCell({ data, onClick, selected }: HeatmapCellProps) {
           <span className="text-amber-300 font-medium">Only {data.headcount === 1 ? '1 person' : `${data.headcount} people`}</span>
         </div>
       )}
-      {data.team && (
+      {groupBy === 'manager' && data.team && (
         <div className="flex justify-between gap-4">
           <span className="text-gray-400">Team</span>
           <span className="text-white">{data.team}</span>
@@ -128,6 +130,7 @@ export function HeatmapCell({ data, onClick, selected }: HeatmapCellProps) {
       >
         {exceeding ? (
           <>
+            <TrendingUp size={12} className="text-emerald-600 leading-none" />
             <span className={`text-base font-bold ${textColor} leading-none`}>{data.averageActual.toFixed(1)}</span>
             <span className="text-[10px] font-medium text-emerald-600 leading-none">+{surplus} above</span>
           </>

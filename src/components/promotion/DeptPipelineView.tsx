@@ -19,6 +19,7 @@ interface Props {
   onNavigateToManagers?: (managerId?: string) => void;
   onViewCheckIn?: () => void;
   onAskAI?: (question: string) => void;
+  initialPersonId?: string;
 }
 
 function CandidateCard({ result, onClick }: { result: ReadinessResult; onClick: () => void }) {
@@ -75,8 +76,19 @@ interface Selection {
   index: number;
 }
 
-export function DeptPipelineView({ department, onBack, onNavigateToGapReport, onNavigateToManagers, onViewCheckIn, onAskAI }: Props) {
-  const [selection, setSelection] = useState<Selection | null>(null);
+export function DeptPipelineView({ department, onBack, onNavigateToGapReport, onNavigateToManagers, onViewCheckIn, onAskAI, initialPersonId }: Props) {
+  const allResults = useMemo(() => getAllReadiness(), []);
+  const deptResults = useMemo(
+    () => allResults.filter(r => r.person.department === department),
+    [allResults, department]
+  );
+  const [selection, setSelection] = useState<Selection | null>(() => {
+    if (!initialPersonId) return null;
+    const result = allResults.find(r => r.person.id === initialPersonId);
+    if (!result) return null;
+    const peers = allResults.filter(r => r.person.department === result.person.department);
+    return { result, peers, index: peers.indexOf(result) };
+  });
 
   function buildExportContent(): string {
     const lines: string[] = [
@@ -107,13 +119,6 @@ export function DeptPipelineView({ department, onBack, onNavigateToGapReport, on
     const result = selection.peers[index];
     if (result) setSelection({ ...selection, result, index });
   }
-
-  const allResults = useMemo(() => getAllReadiness(), []);
-
-  const deptResults = useMemo(
-    () => allResults.filter(r => r.person.department === department),
-    [allResults, department]
-  );
 
   // Group by transition (current level → next level)
   const transitions = useMemo(() => {

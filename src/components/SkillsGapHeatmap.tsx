@@ -1,9 +1,10 @@
 import { useState, useMemo, useEffect } from 'react';
-import { Filter, ChevronDown, LayoutGrid, Info, ArrowLeft, PanelRightClose, PanelRightOpen, CalendarX, Users, AlertTriangle, Target } from 'lucide-react';
+import { Filter, ChevronDown, LayoutGrid, Info, ArrowLeft, PanelRightClose, PanelRightOpen, CalendarX, Users, AlertTriangle, Target, Map } from 'lucide-react';
 import { ExportButtons } from './ExportButtons';
 import {
   SKILLS_DATA,
   LEVELS,
+  LOCATIONS,
   DEPT_COLORS,
   type Department,
   type Location,
@@ -161,7 +162,7 @@ function CheckInPanel({ department }: { department: Department }) {
   );
 }
 
-type GroupBy = 'department' | 'manager';
+type GroupBy = 'location' | 'manager' | 'department';
 
 function FilterPill({
   label,
@@ -203,12 +204,13 @@ function LegendItem({ label, colorClass }: { label: string; colorClass: string }
 interface DrilldownPanelWrapperProps {
   skill: string;
   entries: SkillGapEntry[];
-  groupBy: 'department' | 'manager';
+  groupBy: GroupBy;
   department?: Department;
   onClose: () => void;
   collapsed: boolean;
   onToggleCollapse: () => void;
   onNavigateToPipeline?: () => void;
+  onNavigateToPerson?: (personId: string, department: string) => void;
   onAskAI?: (question: string) => void;
 }
 
@@ -324,13 +326,15 @@ interface DeptHeatmapProps {
   department: Department;
   onBack: () => void;
   onNavigateToPipeline?: () => void;
+  onNavigateToPerson?: (personId: string, department: string) => void;
   onAskAI?: (question: string) => void;
   tourActive?: boolean;
 }
 
-function DeptHeatmap({ department, onBack, onNavigateToPipeline, onAskAI, tourActive }: DeptHeatmapProps) {
-  const [groupBy, setGroupBy] = useState<GroupBy>('manager');
+function DeptHeatmap({ department, onBack, onNavigateToPipeline, onNavigateToPerson, onAskAI, tourActive }: DeptHeatmapProps) {
+  const [groupBy, setGroupBy] = useState<GroupBy>('location');
   const [filterLevel, setFilterLevel] = useState<string>('');
+  const [filterLocation, setFilterLocation] = useState<string>('');
   const [selectedSkill, setSelectedSkill] = useState<string | null>(null); // '__checkins__' for check-in panel
   const [panelCollapsed, setPanelCollapsed] = useState(false);
 
@@ -338,9 +342,16 @@ function DeptHeatmap({ department, onBack, onNavigateToPipeline, onAskAI, tourAc
     return SKILLS_DATA.filter((d) => {
       if (d.department !== department) return false;
       if (filterLevel && d.level !== filterLevel) return false;
+      if (filterLocation && d.location !== filterLocation) return false;
       return true;
     });
-  }, [department, filterLevel]);
+  }, [department, filterLevel, filterLocation]);
+
+  // Dynamic location options for this department
+  const deptLocations = useMemo(() => {
+    const locs = Array.from(new Set(SKILLS_DATA.filter(d => d.department === department).map(d => d.location)));
+    return LOCATIONS.filter(l => locs.includes(l));
+  }, [department]);
 
   const skills = useMemo(() => {
     return Array.from(new Set(filtered.map((d) => d.skill)));
@@ -362,8 +373,14 @@ function DeptHeatmap({ department, onBack, onNavigateToPipeline, onAskAI, tourAc
     if (groupBy === 'manager') {
       return deptManagers.map((m) => m.name);
     }
+    if (groupBy === 'location') {
+      // When a location filter is active, collapse to single column
+      if (filterLocation) return [filterLocation];
+      const locs = Array.from(new Set(filtered.map(d => d.location)));
+      return LOCATIONS.filter(l => locs.includes(l));
+    }
     return [department];
-  }, [groupBy, department, deptManagers]);
+  }, [groupBy, department, deptManagers, filtered, filterLocation]);
 
   const cellData = useMemo(() => {
     const map: Record<string, Record<string, SkillGapEntry[]>> = {};
@@ -375,6 +392,9 @@ function DeptHeatmap({ department, onBack, onNavigateToPipeline, onAskAI, tourAc
           if (groupBy === 'manager') {
             const mgr = deptManagers.find((m) => m.name === key);
             return mgr ? mgr.teams.includes(d.team) : false;
+          }
+          if (groupBy === 'location') {
+            return d.location === key;
           }
           return d.department === key;
         });
@@ -564,12 +584,22 @@ function DeptHeatmap({ department, onBack, onNavigateToPipeline, onAskAI, tourAc
               <Filter size={14} />
               <span>Filter</span>
             </div>
+            <FilterPill label="Location" options={deptLocations} value={filterLocation} onChange={setFilterLocation} />
             <FilterPill label="Level" options={LEVELS} value={filterLevel} onChange={setFilterLevel} />
 
             <div className="flex-1" />
 
             {/* Group by toggle */}
             <div className="flex items-center bg-gray-100 rounded-lg p-1 gap-1">
+              <button
+                onClick={() => setGroupBy('location')}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-all ${
+                  groupBy === 'location' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'
+                }`}
+              >
+                <Map size={13} />
+                By Location
+              </button>
               <button
                 onClick={() => setGroupBy('manager')}
                 className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-all ${
@@ -619,8 +649,19 @@ function DeptHeatmap({ department, onBack, onNavigateToPipeline, onAskAI, tourAc
         {/* Heatmap grid */}
         <div className="flex-1 overflow-auto p-8" data-tour="heatmap-grid">
           {skills.length === 0 ? (
-            <div className="flex items-center justify-center h-64 text-gray-400 text-sm">
-              No data matches your filters.
+            <div className="flex flex-col items-center justify-center h-64 gap-3">
+              <p className="text-sm font-semibold text-gray-600">
+                No data for{filterLevel ? ` ${filterLevel}` : ''}{filterLocation ? ` in ${filterLocation}` : ''}
+              </p>
+              <p className="text-xs text-gray-400 max-w-xs text-center">
+                No employees match this filter combination for {department}. Try adjusting your filters.
+              </p>
+              <button
+                onClick={() => { setFilterLevel(''); setFilterLocation(''); }}
+                className="text-xs font-semibold text-gray-700 bg-white border border-gray-200 rounded-lg px-3 py-1.5 hover:bg-gray-50 transition-colors"
+              >
+                Clear filters
+              </button>
             </div>
           ) : (
             <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
@@ -694,6 +735,7 @@ function DeptHeatmap({ department, onBack, onNavigateToPipeline, onAskAI, tourAc
                             <HeatmapCell
                               data={agg}
                               selected={selectedSkill === skill}
+                              groupBy={groupBy}
                               onClick={() => { const next = skill === selectedSkill ? null : skill; setSelectedSkill(next); if (next) setPanelCollapsed(false); }}
                             />
                           </div>
@@ -706,14 +748,15 @@ function DeptHeatmap({ department, onBack, onNavigateToPipeline, onAskAI, tourAc
             </div>
           )}
 
-          {/* Legend */}
+          {/* Legend — §3.4: 6 cell colour levels */}
           <div className="mt-4 flex items-center gap-1.5 flex-wrap" data-tour="heatmap-legend">
             <span className="text-xs text-gray-400 mr-2">Gap severity:</span>
-            <LegendItem label="Exceeding" colorClass="bg-emerald-100 border-emerald-200" />
-            <LegendItem label="On track" colorClass="bg-emerald-50 border-emerald-100" />
-            <LegendItem label="Developing" colorClass="bg-amber-50 border-amber-100" />
-            <LegendItem label="At risk" colorClass="bg-orange-100 border-orange-200" />
-            <LegendItem label="Critical" colorClass="bg-red-100 border-red-200" />
+            <LegendItem label="Exceeding target" colorClass="bg-emerald-100 border-emerald-200" />
+            <LegendItem label="On track (<30%)" colorClass="bg-emerald-50 border-emerald-100" />
+            <LegendItem label="Mild (30–49%)" colorClass="bg-amber-50 border-amber-100" />
+            <LegendItem label="Moderate (50–69%)" colorClass="bg-orange-100 border-orange-200" />
+            <LegendItem label="Severe (70–84%)" colorClass="bg-red-100 border-red-200" />
+            <LegendItem label="Critical (85%+)" colorClass="bg-red-200 border-red-300" />
           </div>
 
           {/* Careerminds upsell — talent development */}
@@ -734,6 +777,7 @@ function DeptHeatmap({ department, onBack, onNavigateToPipeline, onAskAI, tourAc
           collapsed={panelCollapsed}
           onToggleCollapse={() => setPanelCollapsed(c => !c)}
           onNavigateToPipeline={onNavigateToPipeline}
+          onNavigateToPerson={onNavigateToPerson}
           onAskAI={onAskAI}
         />
       )}
@@ -743,12 +787,13 @@ function DeptHeatmap({ department, onBack, onNavigateToPipeline, onAskAI, tourAc
 
 interface SkillsGapHeatmapProps {
   onNavigateToPipeline?: () => void;
+  onNavigateToPerson?: (personId: string, department: string) => void;
   onAskAI?: (question: string) => void;
   tourActive?: boolean;
   initialDepartment?: Department;
 }
 
-export function SkillsGapHeatmap({ onNavigateToPipeline, onAskAI, tourActive, initialDepartment }: SkillsGapHeatmapProps) {
+export function SkillsGapHeatmap({ onNavigateToPipeline, onNavigateToPerson, onAskAI, tourActive, initialDepartment }: SkillsGapHeatmapProps) {
   const [selectedDept, setSelectedDept] = useState<Department | null>(initialDepartment ?? null);
 
   if (selectedDept) {
@@ -757,6 +802,7 @@ export function SkillsGapHeatmap({ onNavigateToPipeline, onAskAI, tourActive, in
         department={selectedDept}
         onBack={() => setSelectedDept(null)}
         onNavigateToPipeline={onNavigateToPipeline}
+        onNavigateToPerson={onNavigateToPerson}
         onAskAI={onAskAI}
         tourActive={tourActive}
       />
