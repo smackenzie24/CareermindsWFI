@@ -907,10 +907,6 @@ export function ResultsBlock({ results, onSend, onNavigate, wide }: { results: Q
               <div className="flex items-center gap-2 mb-1">
                 <Sparkles size={12} className="text-sky-500" />
                 <span className="text-xs font-semibold text-sky-700">Hidden Talent — LinkedIn-inferred</span>
-                <div className="flex items-center gap-1 bg-amber-50 border border-amber-100 rounded-lg px-2 py-1 ml-auto">
-                  <Info size={10} className="text-amber-500" />
-                  <span className="text-[10px] text-amber-700 font-medium">For managers only</span>
-                </div>
               </div>
               {r.items.map((item, j) => <RoleFitCard key={j} result={item} />)}
             </div>

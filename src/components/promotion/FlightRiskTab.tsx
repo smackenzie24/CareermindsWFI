@@ -319,10 +319,6 @@ export function FlightRiskTab({ onSwitchToHiddenTalent, department, onAskAI }: P
             Employees flagged by Revelio Labs' job-switching propensity model. Sorted by risk level and days since last check-in.
           </p>
         </div>
-        <div className="flex items-center gap-2 bg-amber-50 border border-amber-100 rounded-xl px-3 py-2 flex-shrink-0">
-          <Shield size={13} className="text-amber-500" />
-          <p className="text-[11px] text-amber-700 font-medium">For managers only · Confidential</p>
-        </div>
       </div>
 
       {/* Summary stat strip */}

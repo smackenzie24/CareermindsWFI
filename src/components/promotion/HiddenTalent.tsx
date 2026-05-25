@@ -417,10 +417,6 @@ export function HiddenTalent({ filterDept, onAskAI }: Props) {
             People whose inferred skills suggest a better-fit function. Flight risk signals from Revelio Labs show who needs a conversation now.
           </p>
         </div>
-        <div className="flex items-center gap-2 bg-amber-50 border border-amber-100 rounded-xl px-3 py-2 flex-shrink-0">
-          <AlertTriangle size={13} className="text-amber-500" />
-          <p className="text-[11px] text-amber-700 font-medium">For managers only · Not visible to employees</p>
-        </div>
       </div>
 
       {/* Summary strip */}
