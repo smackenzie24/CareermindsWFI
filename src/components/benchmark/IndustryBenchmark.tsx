@@ -4,6 +4,7 @@ import {
   BarChart3, Globe, Star, AlertTriangle, ChevronDown, ChevronUp, Info,
   LogOut, Calendar, Building2, Lightbulb, Clock, ChevronRight,
   UserX, MessageSquareOff, TrendingUp as LevelStall, Banknote, RefreshCw,
+  ArrowRight, Briefcase,
 } from 'lucide-react';
 
 import { ExportButtons } from '../ExportButtons';
@@ -37,6 +38,7 @@ import {
   type QuartilePosition,
   type PeerCompany,
   type AttritionRecord,
+  type HireChannel,
 } from '../../data/benchmarkData';
 import { DEPT_COLORS } from '../../data/mockData';
 
@@ -262,6 +264,205 @@ const DESTINATION_TYPE_CONFIG: Record<AttritionRecord['destinationType'], { colo
 
 function fmtDate(iso: string): string {
   return new Date(iso).toLocaleDateString([], { day: 'numeric', month: 'short', year: 'numeric' });
+}
+
+// ── Source of hire panel ───────────────────────────────────────────────
+
+const HIRE_CHANNEL_LABELS: Record<HireChannel, string> = {
+  referral:            'Referral',
+  recruiter:           'Recruiter',
+  inbound:             'Inbound',
+  agency:              'Agency',
+  'internal-transfer': 'Internal transfer',
+};
+
+const HIRE_CHANNEL_COLORS: Record<HireChannel, { dot: string; bar: string; text: string; bg: string; border: string }> = {
+  referral:            { dot: 'bg-emerald-500', bar: 'bg-emerald-400', text: 'text-emerald-700', bg: 'bg-emerald-50', border: 'border-emerald-200' },
+  recruiter:           { dot: 'bg-sky-500',     bar: 'bg-sky-400',     text: 'text-sky-700',     bg: 'bg-sky-50',     border: 'border-sky-200'     },
+  inbound:             { dot: 'bg-amber-500',   bar: 'bg-amber-400',   text: 'text-amber-700',   bg: 'bg-amber-50',   border: 'border-amber-200'   },
+  agency:              { dot: 'bg-red-400',     bar: 'bg-red-400',     text: 'text-red-700',     bg: 'bg-red-50',     border: 'border-red-200'     },
+  'internal-transfer': { dot: 'bg-gray-400',    bar: 'bg-gray-400',    text: 'text-gray-600',    bg: 'bg-gray-100',   border: 'border-gray-200'    },
+};
+
+function SourceOfHirePanel({ records }: { records: AttritionRecord[] }) {
+  const n = records.length;
+  if (n === 0) return null;
+
+  // Source type breakdown (where they came from)
+  const sourceTypeCounts = new Map<string, number>();
+  const sourceCompanyCounts = new Map<string, { count: number; type: string }>();
+  for (const r of records) {
+    if (r.sourceType) sourceTypeCounts.set(r.sourceType, (sourceTypeCounts.get(r.sourceType) ?? 0) + 1);
+    if (r.sourcePreviousCompany) {
+      const existing = sourceCompanyCounts.get(r.sourcePreviousCompany);
+      sourceCompanyCounts.set(r.sourcePreviousCompany, {
+        count: (existing?.count ?? 0) + 1,
+        type: r.sourceType ?? 'Unknown',
+      });
+    }
+  }
+  const topSources = Array.from(sourceCompanyCounts.entries())
+    .map(([company, v]) => ({ company, ...v }))
+    .sort((a, b) => b.count - a.count)
+    .slice(0, 6);
+
+  // Hire channel breakdown
+  const channelCounts = new Map<HireChannel, { count: number; avgTenure: number; tenureSum: number }>();
+  for (const r of records) {
+    if (r.hireChannel) {
+      const existing = channelCounts.get(r.hireChannel);
+      channelCounts.set(r.hireChannel, {
+        count: (existing?.count ?? 0) + 1,
+        tenureSum: (existing?.tenureSum ?? 0) + r.tenureMonths,
+        avgTenure: 0,
+      });
+    }
+  }
+  const channels = Array.from(channelCounts.entries())
+    .map(([channel, v]) => ({ channel, count: v.count, avgTenure: Math.round(v.tenureSum / v.count) }))
+    .sort((a, b) => b.count - a.count);
+
+  // Hire-to-leave flow: did people return to where they came from?
+  const returnedToOrigin = records.filter(r =>
+    r.sourceType && r.destinationType && r.sourceType === r.destinationType
+  ).length;
+  const returnedToOriginPct = n > 0 ? Math.round((returnedToOrigin / n) * 100) : 0;
+
+  // Avg tenure by source type
+  const tenureBySource = new Map<string, number[]>();
+  for (const r of records) {
+    if (r.sourceType) {
+      if (!tenureBySource.has(r.sourceType)) tenureBySource.set(r.sourceType, []);
+      tenureBySource.get(r.sourceType)!.push(r.tenureMonths);
+    }
+  }
+  const avgTenureBySource = Array.from(tenureBySource.entries())
+    .map(([type, tenures]) => ({
+      type,
+      avg: Math.round(tenures.reduce((s, t) => s + t, 0) / tenures.length),
+      count: tenures.length,
+    }))
+    .sort((a, b) => b.avg - a.avg);
+
+  return (
+    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+      <div className="px-6 py-4 border-b border-gray-100 flex items-center gap-3">
+        <Briefcase size={15} className="text-gray-400" />
+        <div>
+          <h3 className="text-sm font-bold text-gray-900">Where they came from</h3>
+          <p className="text-xs text-gray-400 mt-0.5">Previous employers, hire channels, and how source background correlates with tenure</p>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-3 divide-x divide-gray-100">
+        {/* Top previous companies */}
+        <div className="p-5">
+          <p className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-4">Previous employers</p>
+          <div className="space-y-2.5">
+            {topSources.map((s, i) => {
+              const cfg = DESTINATION_TYPE_CONFIG[s.type as AttritionRecord['destinationType']] ?? DESTINATION_TYPE_CONFIG['Unknown'];
+              const barW = Math.round((s.count / topSources[0].count) * 100);
+              return (
+                <div key={s.company}>
+                  <div className="flex items-center justify-between mb-1">
+                    <div className="flex items-center gap-1.5 min-w-0">
+                      <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${cfg.dot}`} />
+                      <span className="text-xs font-medium text-gray-700 truncate">{s.company}</span>
+                    </div>
+                    <span className="text-xs font-bold text-gray-600 ml-2 flex-shrink-0">{s.count}</span>
+                  </div>
+                  <div className="w-full bg-gray-100 rounded-full h-1.5 overflow-hidden">
+                    <div className={`h-full rounded-full ${cfg.dot}`} style={{ width: `${barW}%` }} />
+                  </div>
+                  {i === topSources.length - 1 && sourceCompanyCounts.size > 6 && (
+                    <p className="text-[10px] text-gray-400 mt-2">+{sourceCompanyCounts.size - 6} more</p>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Hire channel breakdown */}
+        <div className="p-5">
+          <p className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-4">Hire channel</p>
+          <div className="space-y-3">
+            {channels.map(ch => {
+              const cfg = HIRE_CHANNEL_COLORS[ch.channel];
+              const pct = Math.round((ch.count / n) * 100);
+              return (
+                <div key={ch.channel}>
+                  <div className="flex items-center justify-between mb-1">
+                    <span className={`text-xs font-semibold flex items-center gap-1.5 ${cfg.text}`}>
+                      <span className={`w-2 h-2 rounded-full ${cfg.dot}`} />
+                      {HIRE_CHANNEL_LABELS[ch.channel]}
+                    </span>
+                    <div className="text-right">
+                      <span className="text-xs font-bold text-gray-700">{ch.count}</span>
+                      <span className="text-[10px] text-gray-400 ml-1">({pct}%)</span>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="flex-1 bg-gray-100 rounded-full h-1.5 overflow-hidden">
+                      <div className={`h-full rounded-full ${cfg.bar}`} style={{ width: `${pct}%` }} />
+                    </div>
+                    <span className="text-[10px] text-gray-400 flex-shrink-0 w-14 text-right">avg {ch.avgTenure}m</span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+          <div className="mt-4 pt-3 border-t border-gray-100">
+            <p className="text-[10px] text-gray-400 leading-relaxed">Avg tenure shown per channel — longer tenure = better hiring ROI for that source.</p>
+          </div>
+        </div>
+
+        {/* Hire-to-leave insights */}
+        <div className="p-5">
+          <p className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-4">Origin vs destination</p>
+
+          {/* Return rate */}
+          <div className="bg-gray-50 rounded-xl p-3 mb-4 border border-gray-100">
+            <div className="flex items-center gap-2 mb-1">
+              <ArrowRight size={12} className="text-gray-400" />
+              <span className="text-xs font-semibold text-gray-700">Returned to origin type</span>
+            </div>
+            <div className="flex items-baseline gap-1.5">
+              <span className={`text-2xl font-black ${returnedToOriginPct >= 40 ? 'text-amber-600' : 'text-gray-700'}`}>
+                {returnedToOriginPct}%
+              </span>
+              <span className="text-xs text-gray-400">of leavers</span>
+            </div>
+            <p className="text-[10px] text-gray-400 mt-1 leading-relaxed">
+              {returnedToOrigin} of {n} people left to the same category of company they came from.
+            </p>
+          </div>
+
+          {/* Tenure by source type */}
+          <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-2">Avg tenure by source</p>
+          <div className="space-y-2">
+            {avgTenureBySource.map(s => {
+              const cfg = DESTINATION_TYPE_CONFIG[s.type as AttritionRecord['destinationType']] ?? DESTINATION_TYPE_CONFIG['Unknown'];
+              const maxAvg = avgTenureBySource[0]?.avg || 1;
+              return (
+                <div key={s.type} className="flex items-center gap-2">
+                  <span className={`text-[10px] font-semibold w-20 flex-shrink-0 flex items-center gap-1 ${cfg.color}`}>
+                    <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${cfg.dot}`} />
+                    {s.type}
+                  </span>
+                  <div className="flex-1 bg-gray-100 rounded-full h-1.5 overflow-hidden">
+                    <div className={`h-full rounded-full ${cfg.dot}`} style={{ width: `${(s.avg / maxAvg) * 100}%` }} />
+                  </div>
+                  <span className="text-[10px] font-bold text-gray-600 flex-shrink-0 w-8 text-right">{s.avg}m</span>
+                </div>
+              );
+            })}
+          </div>
+          <p className="text-[10px] text-gray-400 mt-3 leading-relaxed">Hires from Big Tech tend to have shorter tenure — they leave for familiar pay levels sooner.</p>
+        </div>
+      </div>
+    </div>
+  );
 }
 
 // ── Retention signal chips & commonalities ─────────────────────────────
@@ -1013,6 +1214,9 @@ export function IndustryBenchmark({ onNavigateToGapReport }: Props) {
               </div>
             </div>
 
+            {/* Source of hire */}
+            <SourceOfHirePanel records={filteredAttrition} />
+
             {/* Leaver commonalities */}
             <CommonalitiesPanel records={filteredAttrition} />
 
@@ -1022,25 +1226,39 @@ export function IndustryBenchmark({ onNavigateToGapReport }: Props) {
                 <h3 className="text-sm font-bold text-gray-900">Departure log</h3>
                 <p className="text-xs text-gray-400 mt-0.5">{filteredAttrition.length} records · sorted by most recent</p>
               </div>
-              <div className="grid grid-cols-[140px_160px_110px_150px_80px_1fr] gap-3 px-6 py-2.5 border-b border-gray-100 bg-gray-50">
-                {['Date', 'Person', 'Dept', 'Destination', 'Tenure', 'Risk signals'].map(h => (
+              <div className="grid grid-cols-[130px_150px_100px_140px_140px_70px_1fr] gap-3 px-6 py-2.5 border-b border-gray-100 bg-gray-50">
+                {['Date', 'Person', 'Dept', 'Came from', 'Went to', 'Tenure', 'Risk signals'].map(h => (
                   <span key={h} className="text-[10px] font-bold uppercase tracking-wider text-gray-400">{h}</span>
                 ))}
               </div>
               {visibleRecords.map((r, i) => {
                 const typeCfg = DESTINATION_TYPE_CONFIG[r.destinationType];
+                const srcCfg  = DESTINATION_TYPE_CONFIG[(r.sourceType ?? 'Unknown') as AttritionRecord['destinationType']];
                 const chips = getSignalChips(r);
                 return (
                   <div
                     key={`${r.name}-${r.date}`}
-                    className={`grid grid-cols-[140px_160px_110px_150px_80px_1fr] gap-3 px-6 py-3 items-start ${i % 2 === 0 ? 'bg-white' : 'bg-gray-50/40'}`}
+                    className={`grid grid-cols-[130px_150px_100px_140px_140px_70px_1fr] gap-3 px-6 py-3 items-start ${i % 2 === 0 ? 'bg-white' : 'bg-gray-50/40'}`}
                   >
                     <span className="text-xs text-gray-500 pt-0.5">{fmtDate(r.date)}</span>
                     <div className="min-w-0">
                       <p className="text-xs font-semibold text-gray-800 truncate">{r.name}</p>
-                      <p className="text-[10px] text-gray-400 mt-0.5">{r.level}</p>
+                      <p className="text-[10px] text-gray-400 mt-0.5">{r.level}{r.hireChannel ? ` · via ${HIRE_CHANNEL_LABELS[r.hireChannel]}` : ''}</p>
                     </div>
                     <span className="text-xs text-gray-500 pt-0.5">{r.department}</span>
+                    <div className="flex items-start gap-1.5 min-w-0 pt-0.5">
+                      {r.sourcePreviousCompany ? (
+                        <>
+                          <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 mt-1 ${srcCfg.dot}`} />
+                          <div>
+                            <span className="text-xs font-medium text-gray-700 truncate block">{r.sourcePreviousCompany}</span>
+                            <span className={`text-[10px] ${srcCfg.color}`}>{r.sourceType}</span>
+                          </div>
+                        </>
+                      ) : (
+                        <span className="text-[10px] text-gray-300">—</span>
+                      )}
+                    </div>
                     <div className="flex items-start gap-1.5 min-w-0 pt-0.5">
                       <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 mt-1 ${typeCfg.dot}`} />
                       <div>
