@@ -261,7 +261,7 @@ export const QUARTILE_CONFIG: Record<QuartilePosition, { label: string; short: s
   top:           { label: 'Top quartile',    short: 'Top',    rank: '1st', color: 'text-emerald-700', bg: 'bg-emerald-50',  border: 'border-emerald-200', dot: 'bg-emerald-500' },
   'above-median':{ label: 'Above median',    short: 'Above',  rank: '2nd', color: 'text-sky-700',     bg: 'bg-sky-50',      border: 'border-sky-200',     dot: 'bg-sky-500'     },
   'below-median':{ label: 'Below median',    short: 'Below',  rank: '3rd', color: 'text-amber-700',   bg: 'bg-amber-50',    border: 'border-amber-200',   dot: 'bg-amber-400'   },
-  bottom:        { label: 'Bottom quartile', short: 'Bottom', rank: '4th', color: 'text-gray-700',   bg: 'bg-gray-100',    border: 'border-gray-300',    dot: 'bg-gray-500'    },
+  bottom:        { label: 'Bottom quartile', short: 'Bottom', rank: '4th', color: 'text-rose-700',   bg: 'bg-rose-50',     border: 'border-rose-200',    dot: 'bg-rose-400'    },
 };
 
 // ── Acme dept headcount as % of total ──────────────────────────────────
