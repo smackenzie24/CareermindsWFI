@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { ArrowLeft, Clock, MapPin, ExternalLink, ChevronDown, CheckCircle, AlertCircle, CalendarDays, Sparkles } from 'lucide-react';
+import { ArrowLeft, Clock, MapPin, ExternalLink, ChevronDown, CheckCircle, AlertCircle, CalendarDays, Sparkles, Lightbulb, ChevronRight } from 'lucide-react';
 import { ExportButtons } from '../ExportButtons';
 import {
   getAllReadiness,
@@ -211,6 +211,176 @@ function CandidateCard({
   );
 }
 
+type RecPriority = 'critical' | 'high' | 'medium';
+interface PipelineRec {
+  id: string;
+  priority: RecPriority;
+  title: string;
+  rationale: string;
+  timeframe: string;
+  actions: string[];
+}
+
+const PRIORITY_CFG: Record<RecPriority, { label: string; color: string; bg: string; border: string; dot: string }> = {
+  critical: { label: 'Critical', color: 'text-red-700',   bg: 'bg-red-50',   border: 'border-red-200',   dot: 'bg-red-500'  },
+  high:     { label: 'High',     color: 'text-amber-700', bg: 'bg-amber-50', border: 'border-amber-200', dot: 'bg-amber-400' },
+  medium:   { label: 'Medium',   color: 'text-sky-700',   bg: 'bg-sky-50',   border: 'border-sky-200',   dot: 'bg-sky-500'  },
+};
+
+function buildRecommendations(results: ReadinessResult[], department: string): PipelineRec[] {
+  const recs: PipelineRec[] = [];
+  const highRisk  = results.filter(r => r.flightRisk === 'high');
+  const medRisk   = results.filter(r => r.flightRisk === 'medium');
+  const nearReady = results.filter(r => r.readinessPct >= 90);
+  const stalled   = results.filter(r => r.readinessPct < 50);
+  const total     = results.length;
+
+  if (highRisk.length > 0) {
+    const names = highRisk.map(r => r.person.name.split(' ')[0]).join(', ');
+    recs.push({
+      id: 'flight-high',
+      priority: 'critical',
+      title: `Immediate retention action needed for ${highRisk.length === 1 ? names : `${highRisk.length} high-risk employees`}`,
+      rationale: `${names} ${highRisk.length === 1 ? 'shows' : 'show'} high flight-risk signals. Losing near-ready or progressing talent stalls the ${department} pipeline and drives up replacement costs.`,
+      timeframe: 'This week',
+      actions: [
+        `Schedule 1:1 stay interviews with ${names} to surface unmet needs`,
+        'Review compensation and title against market benchmarks',
+        'Identify and accelerate one stretch project or visibility opportunity',
+        'Loop in their manager with specific retention talking points',
+      ],
+    });
+  }
+
+  if (medRisk.length > 0) {
+    const names = medRisk.map(r => r.person.name.split(' ')[0]).slice(0, 3).join(', ');
+    recs.push({
+      id: 'flight-medium',
+      priority: 'high',
+      title: `Monitor and engage ${medRisk.length} at-risk employee${medRisk.length > 1 ? 's' : ''} in ${department}`,
+      rationale: `${names}${medRisk.length > 3 ? ' and others' : ''} carry medium flight-risk signals. Early engagement prevents escalation to high risk.`,
+      timeframe: 'This month',
+      actions: [
+        'Add a career-growth conversation to the next monthly 1:1',
+        'Confirm their promotion timeline is clear and documented',
+        'Identify one concrete milestone they can hit in the next 30 days',
+      ],
+    });
+  }
+
+  if (nearReady.length > 0) {
+    const names = nearReady.map(r => r.person.name.split(' ')[0]).slice(0, 3).join(', ');
+    recs.push({
+      id: 'near-ready',
+      priority: nearReady.length >= 3 ? 'high' : 'medium',
+      title: `${nearReady.length} near-ready employee${nearReady.length > 1 ? 's' : ''} ready to promote in ${department}`,
+      rationale: `${names}${nearReady.length > 3 ? ' and others are' : nearReady.length === 1 ? ' is' : ' are'} at 90%+ readiness. Delaying promotion risks disengagement and flight risk.`,
+      timeframe: 'Next 30 days',
+      actions: [
+        `Open promotion cases for ${names}${nearReady.length > 3 ? ' and others' : ''} in the next review cycle`,
+        'Confirm leveling committee has visibility into their readiness data',
+        'Prepare a promotion narrative with specific criteria evidence',
+        nearReady.length > 1 ? 'Avoid promoting in a cluster — stagger by 1–2 weeks to preserve team dynamics' : 'Communicate timeline to the individual to keep them engaged',
+      ],
+    });
+  }
+
+  if (stalled.length > 0 && total > 3) {
+    recs.push({
+      id: 'stalled',
+      priority: 'medium',
+      title: `${stalled.length} employee${stalled.length > 1 ? 's' : ''} in early stage — structured development needed`,
+      rationale: `${Math.round((stalled.length / total) * 100)}% of ${department} is below 50% readiness. Without a development plan, this creates a long-term pipeline bottleneck.`,
+      timeframe: 'Next quarter',
+      actions: [
+        'Assign each early-stage employee a senior mentor or buddy',
+        'Build individual development plans (IDPs) with quarterly skill milestones',
+        'Identify 1–2 cross-functional projects to accelerate skill breadth',
+        'Review in 90 days to track progress and adjust plans',
+      ],
+    });
+  }
+
+  return recs;
+}
+
+function RecCard({ rec }: { rec: PipelineRec }) {
+  const [expanded, setExpanded] = useState(false);
+  const pc = PRIORITY_CFG[rec.priority];
+  return (
+    <div className={`rounded-xl border bg-white overflow-hidden transition-shadow hover:shadow-sm ${pc.border}`}>
+      <button className="w-full text-left px-5 py-4 flex items-start gap-4" onClick={() => setExpanded(e => !e)}>
+        <div className={`mt-1 w-2 h-2 rounded-full flex-shrink-0 ${pc.dot}`} />
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 flex-wrap mb-1">
+            <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${pc.bg} ${pc.border} ${pc.color}`}>
+              {pc.label}
+            </span>
+          </div>
+          <p className="text-sm font-semibold text-gray-800 leading-snug">{rec.title}</p>
+          <p className="text-xs text-gray-500 mt-1 leading-relaxed">{rec.rationale}</p>
+        </div>
+        <div className="flex items-center gap-2 flex-shrink-0 mt-0.5">
+          <span className="text-[10px] text-gray-400 flex items-center gap-1 whitespace-nowrap">
+            <Clock size={10} />{rec.timeframe}
+          </span>
+          <ChevronRight size={14} className={`text-gray-300 transition-transform flex-shrink-0 ${expanded ? 'rotate-90' : ''}`} />
+        </div>
+      </button>
+      {expanded && (
+        <div className="px-5 pb-4 pt-0 border-t border-gray-50">
+          <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400 mt-3 mb-2">Action plan</p>
+          <ol className="space-y-2">
+            {rec.actions.map((action, i) => (
+              <li key={i} className="flex items-start gap-2.5">
+                <span className="w-4 h-4 rounded-full bg-gray-100 text-gray-500 text-[10px] font-bold flex items-center justify-center flex-shrink-0 mt-0.5">{i + 1}</span>
+                <span className="text-xs text-gray-600 leading-relaxed">{action}</span>
+              </li>
+            ))}
+          </ol>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function RecommendationsPanel({ recs }: { recs: PipelineRec[] }) {
+  const [open, setOpen] = useState(true);
+  if (recs.length === 0) return null;
+  const criticalCount = recs.filter(r => r.priority === 'critical').length;
+  const highCount     = recs.filter(r => r.priority === 'high').length;
+  return (
+    <div className="rounded-2xl border border-gray-200 overflow-hidden">
+      <button
+        onClick={() => setOpen(o => !o)}
+        className="w-full flex items-center justify-between px-6 py-4 bg-white hover:bg-gray-50 transition-colors"
+      >
+        <div className="flex items-center gap-3">
+          <Lightbulb size={15} className="text-amber-400" />
+          <span className="text-sm font-bold text-gray-900">Recommendations</span>
+          <div className="flex items-center gap-1.5">
+            {criticalCount > 0 && (
+              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-red-50 border border-red-200 text-red-700">{criticalCount} critical</span>
+            )}
+            {highCount > 0 && (
+              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-50 border border-amber-200 text-amber-700">{highCount} high priority</span>
+            )}
+            {criticalCount === 0 && highCount === 0 && (
+              <span className="text-[10px] text-gray-400">{recs.length} suggestions</span>
+            )}
+          </div>
+        </div>
+        <ChevronDown size={15} className={`text-gray-400 transition-transform ${open ? 'rotate-180' : ''}`} />
+      </button>
+      {open && (
+        <div className="px-6 pb-6 pt-2 bg-white border-t border-gray-100 space-y-3">
+          {recs.map(rec => <RecCard key={rec.id} rec={rec} />)}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function DeptPipelineView({ department, onBack, onNavigateToGapReport, onNavigateToManagers, onViewCheckIn, onAskAI, initialPersonId }: Props) {
   const allResults = useMemo(() => getAllReadiness(), []);
   const deptResults = useMemo(
@@ -247,6 +417,11 @@ export function DeptPipelineView({ department, onBack, onNavigateToGapReport, on
   const sortedDeptResults = useMemo(
     () => [...deptResults].sort((a, b) => b.readinessPct - a.readinessPct),
     [deptResults]
+  );
+
+  const recommendations = useMemo(
+    () => buildRecommendations(deptResults, department),
+    [deptResults, department]
   );
 
   const buckets = useMemo(() => sortedDeptResults.reduce<Record<string, ReadinessResult[]>>(
@@ -344,6 +519,12 @@ export function DeptPipelineView({ department, onBack, onNavigateToGapReport, on
             );
           })}
         </div>
+
+        {recommendations.length > 0 && (
+          <div className="mt-6">
+            <RecommendationsPanel recs={recommendations} />
+          </div>
+        )}
       </main>
     </div>
   );
