@@ -4,7 +4,7 @@ import {
   BarChart3, Globe, Star, AlertTriangle, ChevronDown, ChevronUp, Info,
   LogOut, Calendar, Building2, Lightbulb, Clock, ChevronRight,
   UserX, MessageSquareOff, TrendingUp as LevelStall, Banknote, RefreshCw,
-  ArrowRight, Briefcase,
+  ArrowRight, Briefcase, Zap,
 } from 'lucide-react';
 
 import { ExportButtons } from '../ExportButtons';
@@ -34,13 +34,16 @@ import {
   QUARTILE_CONFIG,
   PEER_COMPANIES,
   SIMILAR_PEERS,
+  getCategoryBenchmarks,
+  ACME_SKILL_COMPETENCY,
+  type CategoryBenchmark,
   type DeptBenchmark,
   type QuartilePosition,
   type PeerCompany,
   type AttritionRecord,
   type HireChannel,
 } from '../../data/benchmarkData';
-import { DEPT_COLORS } from '../../data/mockData';
+import { DEPT_COLORS, SKILLS_DATA, type Department } from '../../data/mockData';
 
 function fmtK(n: number) {
   return n >= 1000 ? `$${(n / 1000).toFixed(0)}K` : `$${n}`;
@@ -700,6 +703,34 @@ export function IndustryBenchmark({ onNavigateToGapReport }: Props) {
     : deptMetric === 'compensation' ? (v: number) => fmtK(v)
     : (v: number) => `${v.toFixed(1)}%`;
 
+  // Category skill gap benchmarks
+  const categoryBenchmarks = useMemo(() => getCategoryBenchmarks(peers), [peers]);
+
+  // Per-dept, per-category Acme competency (for the heatmap)
+  const deptCategoryMatrix = useMemo(() => {
+    const matrix: Record<string, Record<string, number>> = {};
+    for (const entry of SKILLS_DATA) {
+      const dept = entry.department as string;
+      const cat  = entry.category;
+      if (!matrix[dept]) matrix[dept] = {};
+      if (!matrix[dept][cat]) matrix[dept][cat] = 0;
+      // weighted mean
+      if (!matrix[dept][`${cat}__w`]) matrix[dept][`${cat}__w`] = 0;
+      matrix[dept][cat]         += entry.averageActual * entry.headcount;
+      matrix[dept][`${cat}__w`] += entry.headcount;
+    }
+    const result: Record<string, Record<string, number>> = {};
+    for (const [dept, cats] of Object.entries(matrix)) {
+      result[dept] = {};
+      for (const key of Object.keys(cats)) {
+        if (key.endsWith('__w')) continue;
+        const w = cats[`${key}__w`] ?? 1;
+        result[dept][key] = parseFloat((cats[key] / w).toFixed(2));
+      }
+    }
+    return result;
+  }, []);
+
   // Recommendations
   const overviewRecs     = useMemo(() => getOverviewRecommendations(peers),     [peers]);
   const skillsRecs       = useMemo(() => getSkillsRecommendations(peers),       [peers]);
@@ -1019,7 +1050,264 @@ export function IndustryBenchmark({ onNavigateToGapReport }: Props) {
           {/* Divider */}
           <div className="border-t border-gray-200" />
 
-          {/* ── Section 3: Talent Flow ───────────────────────────── */}
+          {/* ── Section 3: Skill Gaps vs Peers ──────────────────── */}
+          <section className="space-y-6">
+            <div className="flex items-center gap-3">
+              <Zap size={15} className="text-gray-400" />
+              <div>
+                <h2 className="text-base font-bold text-gray-900">Skill Gaps vs Peers</h2>
+              </div>
+            </div>
+
+            <div className="flex items-start gap-2 bg-sky-50 border border-sky-100 rounded-xl p-4">
+              <Info size={14} className="text-sky-500 mt-0.5 flex-shrink-0" />
+              <p className="text-xs text-sky-700">
+                Acme's average skill competency per category compared to the peer median. Categories below median are ranked by gap size — these represent the areas where competitors have a tangible talent advantage and where targeted hiring or upskilling will have the most impact.
+              </p>
+            </div>
+
+            {/* Gap callout cards — worst 4 categories */}
+            {(() => {
+              const gaps = categoryBenchmarks.filter(b => b.delta < 0).slice(0, 4);
+              if (gaps.length === 0) return (
+                <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-6 text-center">
+                  <p className="text-sm font-bold text-emerald-700">No categories below peer median</p>
+                  <p className="text-xs text-emerald-600 mt-1">Acme is at or above median across all skill categories for the selected peer group.</p>
+                </div>
+              );
+              return (
+                <div className="grid grid-cols-2 gap-4">
+                  {gaps.map((b, i) => {
+                    const isWorst = i === 0;
+                    const severity = b.delta < -0.5 ? 'critical' : b.delta < -0.25 ? 'high' : 'medium';
+                    const sev = {
+                      critical: { bg: 'bg-red-50',   border: 'border-red-200',   color: 'text-red-700',   bar: 'bg-red-400',   badge: 'bg-red-100 border-red-200 text-red-700',   label: 'Critical gap' },
+                      high:     { bg: 'bg-amber-50', border: 'border-amber-200', color: 'text-amber-700', bar: 'bg-amber-400', badge: 'bg-amber-100 border-amber-200 text-amber-700', label: 'High priority' },
+                      medium:   { bg: 'bg-sky-50',   border: 'border-sky-200',   color: 'text-sky-700',   bar: 'bg-sky-400',   badge: 'bg-sky-100 border-sky-200 text-sky-700',   label: 'Moderate gap' },
+                    }[severity];
+
+                    // Find which depts are weakest in this category
+                    const deptScores = Object.entries(deptCategoryMatrix)
+                      .filter(([, cats]) => cats[b.category] !== undefined)
+                      .map(([dept, cats]) => ({ dept: dept as Department, score: cats[b.category] }))
+                      .sort((a, c) => a.score - c.score)
+                      .slice(0, 3);
+
+                    return (
+                      <div key={b.category} className={`rounded-2xl border p-5 ${sev.bg} ${sev.border}`}>
+                        <div className="flex items-start justify-between mb-3">
+                          <div>
+                            <div className="flex items-center gap-2 mb-1">
+                              {isWorst && <AlertTriangle size={13} className={sev.color} />}
+                              <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${sev.badge}`}>{sev.label}</span>
+                            </div>
+                            <h3 className={`text-base font-black ${sev.color}`}>{b.category}</h3>
+                          </div>
+                          <div className="text-right">
+                            <p className={`text-2xl font-black leading-none ${sev.color}`}>{b.acmeValue.toFixed(1)}</p>
+                            <p className="text-[10px] text-gray-500 mt-0.5">Acme avg / 5</p>
+                          </div>
+                        </div>
+
+                        {/* Gap bar */}
+                        <div className="mb-3">
+                          <div className="flex items-center justify-between mb-1">
+                            <span className="text-[10px] text-gray-500">Peer median: <strong>{b.peerMedian.toFixed(1)}</strong></span>
+                            <span className={`text-[10px] font-bold ${sev.color}`}>{b.delta.toFixed(2)} behind</span>
+                          </div>
+                          <div className="relative h-3 bg-white/60 rounded-full overflow-hidden border border-white">
+                            <div className="absolute h-full bg-gray-200 rounded-full" style={{ width: `${(b.peerMedian / 5) * 100}%` }} />
+                            <div className={`absolute h-full rounded-full ${sev.bar}`} style={{ width: `${(b.acmeValue / 5) * 100}%` }} />
+                          </div>
+                          <div className="flex justify-between text-[9px] text-gray-400 mt-0.5">
+                            <span>0</span><span>5.0</span>
+                          </div>
+                        </div>
+
+                        {/* Weakest depts */}
+                        {deptScores.length > 0 && (
+                          <div>
+                            <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-1.5">Weakest in this category</p>
+                            <div className="flex flex-wrap gap-1.5">
+                              {deptScores.map(d => (
+                                <span
+                                  key={d.dept}
+                                  className="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full text-white"
+                                  style={{ background: DEPT_COLORS[d.dept] }}
+                                >
+                                  {d.dept} · {d.score.toFixed(1)}
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              );
+            })()}
+
+            {/* Full category ranking table */}
+            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+              <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
+                <div>
+                  <h3 className="text-sm font-bold text-gray-900">All skill categories ranked by gap</h3>
+                  <p className="text-xs text-gray-400 mt-0.5">{categoryBenchmarks.filter(b => b.delta < 0).length} categories below peer median · {categoryBenchmarks.filter(b => b.delta >= 0).length} at or above</p>
+                </div>
+                <div className="flex items-center gap-3 text-[10px] text-gray-400">
+                  <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-red-400 inline-block" />Below median</span>
+                  <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-emerald-400 inline-block" />Above median</span>
+                </div>
+              </div>
+              <div className="divide-y divide-gray-50">
+                {categoryBenchmarks.map((b) => {
+                  const isAbove = b.delta >= 0;
+                  const absGap  = Math.abs(b.delta);
+                  const maxGap  = Math.max(...categoryBenchmarks.map(c => Math.abs(c.delta)), 0.01);
+                  // Depts present in this category
+                  const deptsWithCat = Object.entries(deptCategoryMatrix)
+                    .filter(([, cats]) => cats[b.category] !== undefined)
+                    .map(([dept]) => dept as Department);
+
+                  return (
+                    <div key={b.category} className="flex items-center gap-4 px-6 py-3">
+                      {/* Category name + dept dots */}
+                      <div className="w-36 flex-shrink-0">
+                        <p className="text-xs font-semibold text-gray-800 truncate">{b.category}</p>
+                        <div className="flex gap-0.5 mt-1">
+                          {deptsWithCat.map(d => (
+                            <span key={d} className="w-2 h-2 rounded-full" style={{ background: DEPT_COLORS[d] }} title={d} />
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Acme score */}
+                      <div className="w-10 text-right flex-shrink-0">
+                        <span className={`text-sm font-black ${isAbove ? 'text-emerald-600' : 'text-red-600'}`}>{b.acmeValue.toFixed(1)}</span>
+                      </div>
+
+                      {/* Gap bar — centered on peer median */}
+                      <div className="flex-1 relative flex items-center" style={{ height: 20 }}>
+                        {/* Baseline tick (peer median) */}
+                        <div className="absolute left-1/2 top-0 bottom-0 w-px bg-gray-300" />
+                        {isAbove ? (
+                          <div
+                            className="absolute h-3 bg-emerald-400 rounded-r-full"
+                            style={{
+                              left: '50%',
+                              width: `${Math.min((absGap / maxGap) * 45, 45)}%`,
+                            }}
+                          />
+                        ) : (
+                          <div
+                            className={`absolute h-3 rounded-l-full ${absGap > 0.5 ? 'bg-red-400' : absGap > 0.25 ? 'bg-amber-400' : 'bg-amber-300'}`}
+                            style={{
+                              right: '50%',
+                              width: `${Math.min((absGap / maxGap) * 45, 45)}%`,
+                            }}
+                          />
+                        )}
+                      </div>
+
+                      {/* Peer median */}
+                      <div className="w-10 text-left flex-shrink-0">
+                        <span className="text-xs text-gray-400">{b.peerMedian.toFixed(1)}</span>
+                      </div>
+
+                      {/* Delta chip */}
+                      <div className="w-20 text-right flex-shrink-0">
+                        <span className={`text-xs font-bold ${isAbove ? 'text-emerald-600' : 'text-red-600'}`}>
+                          {isAbove ? '+' : ''}{b.delta.toFixed(2)}
+                        </span>
+                      </div>
+
+                      {/* Quartile badge */}
+                      <div className="w-24 flex-shrink-0 flex justify-end">
+                        <QuartileBadge pos={b.position} />
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+              {/* Legend footer */}
+              <div className="px-6 py-3 bg-gray-50 border-t border-gray-100 flex items-center gap-6 text-[10px] text-gray-400">
+                <span>Dept dots show which teams contribute to each category</span>
+                <span className="ml-auto">Acme score · ← Peer median → · Delta vs median · Quartile</span>
+              </div>
+            </div>
+
+            {/* Dept × Category mini-heatmap */}
+            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+              <div className="px-6 py-4 border-b border-gray-100">
+                <h3 className="text-sm font-bold text-gray-900">Department × skill category heatmap</h3>
+                <p className="text-xs text-gray-400 mt-0.5">Each cell shows Acme's average competency for that dept/category combination. Red cells are below the peer median for that category.</p>
+              </div>
+              <div className="overflow-x-auto">
+                {(() => {
+                  const depts = Object.keys(deptCategoryMatrix) as Department[];
+                  // Only show categories that appear in at least one dept
+                  const cats = categoryBenchmarks.filter(b =>
+                    depts.some(d => deptCategoryMatrix[d]?.[b.category] !== undefined)
+                  );
+
+                  return (
+                    <table className="w-full text-[10px]">
+                      <thead>
+                        <tr className="border-b border-gray-100">
+                          <th className="text-left px-4 py-2 text-gray-400 font-semibold w-28 sticky left-0 bg-white z-10">Category</th>
+                          {depts.map(d => (
+                            <th key={d} className="px-2 py-2 text-center font-bold min-w-[68px]">
+                              <div className="flex flex-col items-center gap-1">
+                                <div className="w-5 h-5 rounded-md flex items-center justify-center text-white text-[9px] font-black" style={{ background: DEPT_COLORS[d] }}>{d[0]}</div>
+                                <span className="text-gray-500 leading-tight text-[9px]">{d.split(' ')[0]}</span>
+                              </div>
+                            </th>
+                          ))}
+                          <th className="px-3 py-2 text-center text-gray-400 font-semibold min-w-[60px]">Peer<br/>median</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {cats.map((b, ri) => (
+                          <tr key={b.category} className={ri % 2 === 0 ? 'bg-white' : 'bg-gray-50/40'}>
+                            <td className="px-4 py-2 font-semibold text-gray-700 sticky left-0 bg-inherit z-10 whitespace-nowrap">{b.category}</td>
+                            {depts.map(d => {
+                              const val = deptCategoryMatrix[d]?.[b.category];
+                              if (val === undefined) return (
+                                <td key={d} className="px-2 py-2 text-center text-gray-200">—</td>
+                              );
+                              const belowMedian = val < b.peerMedian;
+                              const gap = val - b.peerMedian;
+                              const intensity = Math.min(Math.abs(gap) / 1.2, 1);
+                              const bgStyle = belowMedian
+                                ? `rgba(239,68,68,${0.08 + intensity * 0.22})`
+                                : `rgba(16,185,129,${0.08 + intensity * 0.18})`;
+                              return (
+                                <td key={d} className="px-2 py-2 text-center" style={{ background: bgStyle }}>
+                                  <span className={`font-bold ${belowMedian ? 'text-red-700' : 'text-emerald-700'}`}>{val.toFixed(1)}</span>
+                                </td>
+                              );
+                            })}
+                            <td className="px-3 py-2 text-center font-semibold text-gray-500">{b.peerMedian.toFixed(1)}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  );
+                })()}
+              </div>
+              <div className="px-6 py-3 bg-gray-50 border-t border-gray-100 flex items-center gap-4 text-[10px] text-gray-400">
+                <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded" style={{ background: 'rgba(239,68,68,0.25)' }} />Below peer median</span>
+                <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded" style={{ background: 'rgba(16,185,129,0.2)' }} />At or above peer median</span>
+                <span className="ml-auto">— = category not assessed for this department</span>
+              </div>
+            </div>
+          </section>
+
+          {/* Divider */}
+          <div className="border-t border-gray-200" />
+
+          {/* ── Section 4: Talent Flow ───────────────────────────── */}
           <section className="space-y-6">
             <div className="flex items-center gap-3">
               <LogOut size={15} className="text-gray-400" />
