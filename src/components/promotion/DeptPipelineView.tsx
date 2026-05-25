@@ -6,6 +6,7 @@ import {
   TIER_CONFIG,
   TIER_RANGES,
   getReadinessTier,
+  LEVEL_DEFINITIONS,
   type ReadinessResult,
   type Department,
   DEPT_COLORS,
@@ -26,6 +27,8 @@ function CandidateCard({ result, onClick }: { result: ReadinessResult; onClick: 
   const tier = getReadinessTier(result.readinessPct);
   const cfg = TIER_CONFIG[tier];
   const initials = result.person.name.split(' ').map(n => n[0]).join('');
+  const levelLabel = LEVEL_DEFINITIONS.find(l => l.id === result.person.currentLevelId)?.label ?? '';
+  const jobTitle = levelLabel.split('·')[1]?.trim() ?? levelLabel;
 
   return (
     <button
@@ -42,7 +45,8 @@ function CandidateCard({ result, onClick }: { result: ReadinessResult; onClick: 
             <p className="text-sm font-bold text-gray-900 truncate">{result.person.name}</p>
             <ChevronRight size={14} className="text-gray-400 group-hover:text-gray-600 flex-shrink-0 transition-colors" />
           </div>
-          <p className="text-[11px] text-gray-400 mt-0.5 truncate">{result.person.team}</p>
+          <p className="text-[11px] font-medium text-gray-600 mt-0.5 truncate">{jobTitle}</p>
+          <p className="text-[11px] text-gray-400 truncate">{result.person.team}</p>
         </div>
       </div>
 
