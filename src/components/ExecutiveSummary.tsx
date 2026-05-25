@@ -298,7 +298,7 @@ function sourceIcon(source: string) {
 
 function sourceLabel(source: string) {
   if (source === 'skills') return 'Skills Heatmap';
-  if (source === 'pipeline') return 'Promotion Pipeline';
+  if (source === 'pipeline') return 'Talent Signals';
   if (source === 'managers') return 'Manager Effectiveness';
   if (source === 'benchmark') return 'Industry Benchmark';
   return source;

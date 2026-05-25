@@ -512,14 +512,14 @@ export function DeptPipelineView({ department, onBack, onNavigateToGapReport, on
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div>
-              <p className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-0.5">Promotion Pipeline</p>
+              <p className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-0.5">Talent Signals</p>
               <h1 className="text-xl font-bold text-gray-900">{department}</h1>
               <p className="text-xs text-gray-400 mt-0.5">{deptResults.length} people tracked</p>
             </div>
           </div>
 
           <div className="flex items-center gap-3">
-            <ExportButtons title={`${department} — Promotion Pipeline`} buildContent={buildExportContent} />
+            <ExportButtons title={`${department} — Talent Signals`} buildContent={buildExportContent} />
             {onNavigateToGapReport && (
               <button
                 onClick={() => onNavigateToGapReport(department)}
@@ -670,7 +670,7 @@ export function DeptPipelineView({ department, onBack, onNavigateToGapReport, on
 
         <div className="mt-8 space-y-4">
           <UpsellBanner variant="leadership-dev" />
-          <FeedbackBanner context="Promotion Pipeline" />
+          <FeedbackBanner context="Talent Signals" />
         </div>
         </>
         )}

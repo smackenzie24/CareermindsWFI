@@ -71,7 +71,7 @@ const FEATURES: FeatureStep[] = [
     color: 'text-emerald-600',
     bgColor: 'bg-emerald-50',
     borderColor: 'border-emerald-200',
-    label: 'Promotion Pipeline',
+    label: 'Talent Signals',
     tagline: "Know who's ready now — and who needs 90 more days",
     description:
       'Every employee working toward a level transition is scored against the exact criteria in your level framework. Four tiers — Near Ready (90%+), Progressing, Developing, Early — show the depth of your succession bench in real time.',

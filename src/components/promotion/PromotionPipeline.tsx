@@ -195,13 +195,13 @@ export function PromotionPipeline({ initialDepartment, initialPersonId, selected
         <div className="flex items-center justify-between mb-6">
           <div>
             <p className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-1">Workforce Intelligence</p>
-            <h1 className="text-2xl font-bold text-gray-900">Promotion Readiness Pipeline</h1>
+            <h1 className="text-2xl font-bold text-gray-900">Talent Signals</h1>
             <p className="text-sm text-gray-500 mt-1 max-w-xl">
               Who's close to the next level? Click a department to see individual readiness scores and skill gaps.
             </p>
           </div>
           <div className="flex items-center gap-3">
-            <ExportButtons title="Promotion Readiness Pipeline" buildContent={buildExportContent} />
+            <ExportButtons title="Talent Signals" buildContent={buildExportContent} />
             <div className="flex items-center gap-2 text-xs text-gray-400">
               <div className="w-2 h-2 rounded-full bg-emerald-300 animate-pulse" />
               Acme Corp
@@ -346,7 +346,7 @@ export function PromotionPipeline({ initialDepartment, initialPersonId, selected
         {/* Keystone upsell — leadership development */}
         <MostExpensiveToLose limit={5} showMethodology className="mt-6" />
         <UpsellBanner variant="leadership-dev" className="mt-6" />
-        <FeedbackBanner context="Promotion Pipeline" className="mt-4" />
+        <FeedbackBanner context="Talent Signals" className="mt-4" />
       </main>
     </div>
   );
