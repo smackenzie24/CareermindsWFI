@@ -134,7 +134,8 @@ export function PromotionPipeline({ initialDepartment, initialTab, initialPerson
       const nearReady = tiers['near-ready'];
       const progressing = tiers['progressing'];
       const developing = tiers['developing'];
-      const early = tiers['early'];
+      const ready = tiers['ready'];
+      const building = tiers['building'];
       const n = results.length;
       const avgReadiness = n > 0 ? Math.round(results.reduce((s, r) => s + r.readinessPct, 0) / n) : 0;
       const top = results.reduce<typeof results[0] | null>((max, r) => !max || r.readinessPct > max.readinessPct ? r : max, null);
@@ -144,10 +145,11 @@ export function PromotionPipeline({ initialDepartment, initialTab, initialPerson
         department: dept,
         color: DEPT_COLORS[dept],
         total: results.length,
+        ready,
         nearReady,
         progressing,
         developing,
-        early,
+        building,
         avgReadiness,
         topCandidate: top?.person.name ?? '—',
         topCandidatePct: top?.readinessPct ?? 0,
@@ -358,6 +360,9 @@ export function PromotionPipeline({ initialDepartment, initialTab, initialPerson
                       <span className="text-xs font-bold text-gray-700">{dept.avgReadiness}% avg readiness</span>
                     </div>
                     <div className="flex h-3 rounded-full overflow-hidden gap-px bg-gray-100">
+                      {dept.ready > 0 && (
+                        <div className="bg-teal-400 transition-all" style={{ width: `${(dept.ready / dept.total) * 100}%` }} title={`${dept.ready} ready`} />
+                      )}
                       {dept.nearReady > 0 && (
                         <div className="bg-emerald-300 transition-all" style={{ width: `${(dept.nearReady / dept.total) * 100}%` }} title={`${dept.nearReady} near ready`} />
                       )}
@@ -367,14 +372,14 @@ export function PromotionPipeline({ initialDepartment, initialTab, initialPerson
                       {dept.developing > 0 && (
                         <div className="bg-amber-200 transition-all" style={{ width: `${(dept.developing / dept.total) * 100}%` }} title={`${dept.developing} developing`} />
                       )}
-                      {dept.early > 0 && (
-                        <div className="bg-gray-200 transition-all" style={{ width: `${(dept.early / dept.total) * 100}%` }} title={`${dept.early} early stage`} />
+                      {dept.building > 0 && (
+                        <div className="bg-gray-200 transition-all" style={{ width: `${(dept.building / dept.total) * 100}%` }} title={`${dept.building} building`} />
                       )}
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-4 gap-2 mb-4">
-                    {([['near-ready', dept.nearReady], ['progressing', dept.progressing], ['developing', dept.developing], ['early', dept.early]] as const).map(([tier, count]) => {
+                  <div className="grid grid-cols-5 gap-2 mb-4">
+                    {([['ready', dept.ready], ['near-ready', dept.nearReady], ['progressing', dept.progressing], ['developing', dept.developing], ['building', dept.building]] as const).map(([tier, count]) => {
                       const cfg = TIER_CONFIG[tier];
                       return (
                         <div key={tier} className={`rounded-lg p-2 text-center ${cfg.bg}`}>

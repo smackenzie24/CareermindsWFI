@@ -626,7 +626,7 @@ function handleEveryone(query: string): { text: string; results: QueryResult[] }
 function handleNeedsWork(query: string): { text: string; results: QueryResult[] } {
   const dept = detectDept(query);
   const all = getAllReadiness()
-    .filter(r => getReadinessTier(r.readinessPct) === 'early' || getReadinessTier(r.readinessPct) === 'developing')
+    .filter(r => getReadinessTier(r.readinessPct) === 'building' || getReadinessTier(r.readinessPct) === 'developing')
     .filter(r => !dept || r.person.department === dept)
     .sort((a, b) => a.readinessPct - b.readinessPct);
 

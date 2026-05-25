@@ -782,7 +782,7 @@ export function HowItWorks({ onNavigate }: Props) {
             {[
               {
                 title: 'Promotion readiness score',
-                body: 'Each employee is evaluated against the specific criteria in the level framework for their target role. The percentage of criteria met determines their readiness tier: Near Ready (90%+), Progressing (70–89%), Developing (50–69%), Early Stage (<50%). The criteria and weightings are drawn directly from your configured level framework — they are not AI-generated.',
+                body: 'Each employee is evaluated against the specific criteria in the level framework for their target role. The percentage of criteria met determines their readiness tier: Ready (100%), Near Ready (90–99%), Progressing (70–89%), Developing (50–69%), Building (<50%). The criteria and weightings are drawn directly from your configured level framework — they are not AI-generated.',
               },
               {
                 title: 'Manager effectiveness score',

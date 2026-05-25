@@ -327,33 +327,36 @@ export interface ReadinessResult {
   flightRiskDrivers: string[];
 }
 
-export type ReadinessTier = 'near-ready' | 'progressing' | 'developing' | 'early';
+export type ReadinessTier = 'ready' | 'near-ready' | 'progressing' | 'developing' | 'building';
 
 export function getReadinessTier(pct: number): ReadinessTier {
+  if (pct >= 100) return 'ready';
   if (pct >= 90) return 'near-ready';
   if (pct >= 70) return 'progressing';
   if (pct >= 50) return 'developing';
-  return 'early';
+  return 'building';
 }
 
 export const TIER_RANGES: Record<ReadinessTier, string> = {
-  'near-ready': '90%+',
+  'ready': '100%',
+  'near-ready': '90–99%',
   'progressing': '70–89%',
   'developing': '50–69%',
-  'early': '<50%',
+  'building': '<50%',
 };
 
 export function groupByTier(results: ReadinessResult[]): Record<ReadinessTier, number> {
-  const counts: Record<ReadinessTier, number> = { 'near-ready': 0, 'progressing': 0, 'developing': 0, 'early': 0 };
+  const counts: Record<ReadinessTier, number> = { 'ready': 0, 'near-ready': 0, 'progressing': 0, 'developing': 0, 'building': 0 };
   for (const r of results) counts[getReadinessTier(r.readinessPct)]++;
   return counts;
 }
 
 export const TIER_CONFIG: Record<ReadinessTier, { label: string; color: string; bg: string; border: string; badge: string; barColor: string }> = {
+  'ready': { label: 'Ready', color: 'text-teal-700', bg: 'bg-teal-50', border: 'border-teal-300', badge: 'bg-teal-50 text-teal-700', barColor: 'bg-teal-400' },
   'near-ready': { label: 'Near Ready', color: 'text-emerald-700', bg: 'bg-emerald-50', border: 'border-emerald-200', badge: 'bg-emerald-50 text-emerald-700', barColor: 'bg-emerald-300' },
   'progressing': { label: 'Progressing', color: 'text-sky-700', bg: 'bg-sky-50', border: 'border-sky-200', badge: 'bg-sky-50 text-sky-700', barColor: 'bg-sky-300' },
   'developing': { label: 'Developing', color: 'text-amber-700', bg: 'bg-amber-50', border: 'border-amber-200', badge: 'bg-amber-50 text-amber-700', barColor: 'bg-amber-200' },
-  'early': { label: 'Early Stage', color: 'text-gray-500', bg: 'bg-gray-50', border: 'border-gray-200', badge: 'bg-gray-50 text-gray-500', barColor: 'bg-gray-200' },
+  'building': { label: 'Building', color: 'text-gray-500', bg: 'bg-gray-50', border: 'border-gray-200', badge: 'bg-gray-50 text-gray-500', barColor: 'bg-gray-200' },
 };
 
 export function computeReadiness(person: Person, framework: LevelFramework, levelLabel: string): ReadinessResult {

@@ -32,7 +32,8 @@ const TIER_COLORS: Record<string, string> = {
   'Near Ready': 'bg-emerald-100 text-emerald-800',
   'Progressing': 'bg-sky-100 text-sky-800',
   'Developing': 'bg-amber-100 text-amber-800',
-  'Early Stage': 'bg-gray-100 text-gray-600',
+  'Building': 'bg-gray-100 text-gray-600',
+  'Ready': 'bg-teal-100 text-teal-800',
 };
 
 function ReadinessBadge({ tier, pct }: { tier: string; pct: number }) {

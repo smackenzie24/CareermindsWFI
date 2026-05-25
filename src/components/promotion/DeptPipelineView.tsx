@@ -470,7 +470,7 @@ export function DeptPipelineView({ department, onBack, onNavigateToGapReport, on
 
   const buckets = useMemo(() => sortedDeptResults.reduce<Record<string, ReadinessResult[]>>(
     (acc, r) => { acc[getReadinessTier(r.readinessPct)].push(r); return acc; },
-    { 'near-ready': [], 'progressing': [], 'developing': [], 'early': [] }
+    { 'ready': [], 'near-ready': [], 'progressing': [], 'developing': [], 'building': [] }
   ), [sortedDeptResults]);
 
   const deptColor = DEPT_COLORS[department];
@@ -523,8 +523,8 @@ export function DeptPipelineView({ department, onBack, onNavigateToGapReport, on
 
       {/* Kanban */}
       <main className="flex-1 overflow-auto p-8">
-        <div className="grid grid-cols-4 gap-4" data-tour="pipeline-dept-columns">
-          {(['near-ready', 'progressing', 'developing', 'early'] as const).map(tier => {
+        <div className="grid grid-cols-5 gap-4" data-tour="pipeline-dept-columns">
+          {(['ready', 'near-ready', 'progressing', 'developing', 'building'] as const).map(tier => {
             const cfg = TIER_CONFIG[tier];
             const items = buckets[tier];
             return (
