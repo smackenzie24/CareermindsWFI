@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { ChevronRight, Users, TrendingUp, Star, Clock, Sparkles } from 'lucide-react';
+import { ChevronRight, Users, TrendingUp, Star, Clock, Sparkles, AlertTriangle, Database } from 'lucide-react';
 import { ExportButtons } from '../ExportButtons';
 import {
   getAllReadiness,
@@ -15,6 +15,9 @@ import { DEPARTMENTS } from '../../data/mockData';
 import { DeptPipelineView } from './DeptPipelineView';
 import { UpsellBanner } from '../UpsellBanner';
 import { FeedbackBanner } from '../feedback/FeedbackBanner';
+
+// Demo: treat this department as having no data to show the zero state to devs
+const ZERO_STATE_DEPT: Department = 'Design';
 
 const DEPT_SALARIES: Record<Department, number> = {
   Engineering: 128000,
@@ -183,6 +186,7 @@ export function PromotionPipeline({ initialDepartment, initialPersonId, selected
         onViewCheckIn={onViewCheckIn}
         onAskAI={onAskAI}
         initialPersonId={initialPersonId}
+        forceZeroState={selectedDept === ZERO_STATE_DEPT}
       />
     );
   }
@@ -260,86 +264,128 @@ export function PromotionPipeline({ initialDepartment, initialPersonId, selected
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5" data-tour="pipeline-dept-grid">
-          {deptSummaries.map((dept) => (
-            <button
-              key={dept.department}
-              disabled={dept.total === 0}
-              onClick={() => setSelectedDept(dept.department)}
-              className="text-left rounded-2xl border border-gray-200 bg-white p-6 group transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-400 enabled:hover:shadow-lg enabled:hover:-translate-y-0.5 disabled:opacity-60 disabled:cursor-default"
-            >
-              <div className="flex items-start justify-between mb-5">
-                <div className="flex items-center gap-3">
-                  <div>
-                    <h3 className="text-base font-bold text-gray-900">{dept.department}</h3>
-                    <p className="text-xs text-gray-400">
-                      {dept.total > 0
-                        ? `${dept.total} people · ${dept.transitions} transition${dept.transitions !== 1 ? 's' : ''}`
-                        : 'No pipeline data yet'}
-                    </p>
+          {deptSummaries.map((dept) => {
+            const isZero = dept.department === ZERO_STATE_DEPT;
+            const color = dept.color;
+            return (
+              <button
+                key={dept.department}
+                onClick={() => setSelectedDept(dept.department)}
+                className={`text-left rounded-2xl border bg-white p-6 group transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-400 hover:shadow-lg hover:-translate-y-0.5 ${
+                  isZero ? 'border-dashed border-gray-200' : 'border-gray-200'
+                }`}
+              >
+                <div className="flex items-start justify-between mb-5">
+                  <div className="flex items-center gap-3">
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <h3 className="text-base font-bold text-gray-900">{dept.department}</h3>
+                        {isZero && (
+                          <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-gray-100 text-gray-400 uppercase tracking-wide">
+                            No data
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-xs text-gray-400 mt-0.5">
+                        {isZero
+                          ? 'Pipeline not yet set up'
+                          : `${dept.total} people · ${dept.transitions} transition${dept.transitions !== 1 ? 's' : ''}`}
+                      </p>
+                    </div>
                   </div>
+                  <ChevronRight size={16} className="text-gray-400 group-hover:text-gray-700 group-hover:translate-x-0.5 transition-all flex-shrink-0" />
                 </div>
-                {dept.total > 0 && (
-                  <ChevronRight size={16} className="text-gray-400 group-hover:text-gray-700 group-hover:translate-x-0.5 transition-all" />
+
+                {isZero ? (
+                  <div className="space-y-4">
+                    {/* Skeleton progress bar */}
+                    <div>
+                      <div className="flex items-center justify-between mb-1.5">
+                        <span className="text-xs text-gray-300">Pipeline breakdown</span>
+                        <span className="text-xs text-gray-300">—% avg readiness</span>
+                      </div>
+                      <div className="h-3 rounded-full bg-gray-100 overflow-hidden">
+                        <div className="h-full w-0 rounded-full" />
+                      </div>
+                    </div>
+
+                    {/* Skeleton tier chips */}
+                    <div className="grid grid-cols-5 gap-2">
+                      {(['ready', 'near-ready', 'progressing', 'developing', 'building'] as const).map(tier => {
+                        const cfg = TIER_CONFIG[tier];
+                        return (
+                          <div key={tier} className="rounded-lg p-2 text-center bg-gray-50 border border-dashed border-gray-100">
+                            <p className="text-lg font-black leading-none text-gray-200">—</p>
+                            <p className="text-[10px] text-gray-300 mt-0.5">{cfg.label.split(' ')[0]}</p>
+                          </div>
+                        );
+                      })}
+                    </div>
+
+                    {/* CTA row */}
+                    <div className="flex items-center gap-2.5 rounded-xl border border-dashed border-gray-200 bg-gray-50 px-3 py-2.5">
+                      <div className="w-6 h-6 rounded-lg bg-white border border-gray-100 flex items-center justify-center flex-shrink-0">
+                        <Database size={11} className="text-gray-300" />
+                      </div>
+                      <p className="text-[11px] text-gray-400 leading-snug">
+                        Connect HRIS data to see readiness scores, flight risk, and hidden talent for this team.
+                      </p>
+                    </div>
+                  </div>
+                ) : (
+                  <>
+                    <div className="mb-4">
+                      <div className="flex items-center justify-between mb-1.5">
+                        <span className="text-xs text-gray-500">Pipeline breakdown</span>
+                        <span className="text-xs font-bold text-gray-700">{dept.avgReadiness}% avg readiness</span>
+                      </div>
+                      <div className="flex h-3 rounded-full overflow-hidden gap-px bg-gray-100">
+                        {dept.ready > 0 && (
+                          <div className="bg-teal-400 transition-all" style={{ width: `${(dept.ready / dept.total) * 100}%` }} title={`${dept.ready} ready`} />
+                        )}
+                        {dept.nearReady > 0 && (
+                          <div className="bg-emerald-300 transition-all" style={{ width: `${(dept.nearReady / dept.total) * 100}%` }} title={`${dept.nearReady} near ready`} />
+                        )}
+                        {dept.progressing > 0 && (
+                          <div className="bg-sky-300 transition-all" style={{ width: `${(dept.progressing / dept.total) * 100}%` }} title={`${dept.progressing} progressing`} />
+                        )}
+                        {dept.developing > 0 && (
+                          <div className="bg-amber-200 transition-all" style={{ width: `${(dept.developing / dept.total) * 100}%` }} title={`${dept.developing} developing`} />
+                        )}
+                        {dept.building > 0 && (
+                          <div className="bg-gray-200 transition-all" style={{ width: `${(dept.building / dept.total) * 100}%` }} title={`${dept.building} building`} />
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-5 gap-2 mb-4">
+                      {([['ready', dept.ready], ['near-ready', dept.nearReady], ['progressing', dept.progressing], ['developing', dept.developing], ['building', dept.building]] as const).map(([tier, count]) => {
+                        const cfg = TIER_CONFIG[tier];
+                        return (
+                          <div key={tier} className={`rounded-lg p-2 text-center ${cfg.bg}`}>
+                            <p className={`text-lg font-black leading-none ${cfg.color}`}>{count}</p>
+                            <p className="text-[10px] text-gray-400 mt-0.5">{cfg.label.split(' ')[0]}</p>
+                          </div>
+                        );
+                      })}
+                    </div>
+
+                    {dept.nearReady > 0 ? (
+                      <div className="flex items-center gap-2 text-xs text-gray-600 bg-emerald-50 rounded-lg px-3 py-2 border border-emerald-100">
+                        <Star size={11} className="text-emerald-400 flex-shrink-0" />
+                        <span>Top candidate: <strong>{dept.topCandidate}</strong> ({dept.topCandidatePct}% ready)</span>
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-2 text-xs text-gray-500 bg-gray-50 rounded-lg px-3 py-2 border border-gray-100">
+                        <TrendingUp size={11} className="text-sky-400 flex-shrink-0" />
+                        <span>Highest: <strong>{dept.topCandidate}</strong> ({dept.topCandidatePct}% ready)</span>
+                      </div>
+                    )}
+                  </>
                 )}
-              </div>
-
-              {dept.total === 0 ? (
-                <div className="h-24 flex items-center justify-center rounded-xl border-2 border-dashed border-gray-200">
-                  <p className="text-xs text-gray-300">No candidates tracked yet</p>
-                </div>
-              ) : (
-                <>
-                  <div className="mb-4">
-                    <div className="flex items-center justify-between mb-1.5">
-                      <span className="text-xs text-gray-500">Pipeline breakdown</span>
-                      <span className="text-xs font-bold text-gray-700">{dept.avgReadiness}% avg readiness</span>
-                    </div>
-                    <div className="flex h-3 rounded-full overflow-hidden gap-px bg-gray-100">
-                      {dept.ready > 0 && (
-                        <div className="bg-teal-400 transition-all" style={{ width: `${(dept.ready / dept.total) * 100}%` }} title={`${dept.ready} ready`} />
-                      )}
-                      {dept.nearReady > 0 && (
-                        <div className="bg-emerald-300 transition-all" style={{ width: `${(dept.nearReady / dept.total) * 100}%` }} title={`${dept.nearReady} near ready`} />
-                      )}
-                      {dept.progressing > 0 && (
-                        <div className="bg-sky-300 transition-all" style={{ width: `${(dept.progressing / dept.total) * 100}%` }} title={`${dept.progressing} progressing`} />
-                      )}
-                      {dept.developing > 0 && (
-                        <div className="bg-amber-200 transition-all" style={{ width: `${(dept.developing / dept.total) * 100}%` }} title={`${dept.developing} developing`} />
-                      )}
-                      {dept.building > 0 && (
-                        <div className="bg-gray-200 transition-all" style={{ width: `${(dept.building / dept.total) * 100}%` }} title={`${dept.building} building`} />
-                      )}
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-5 gap-2 mb-4">
-                    {([['ready', dept.ready], ['near-ready', dept.nearReady], ['progressing', dept.progressing], ['developing', dept.developing], ['building', dept.building]] as const).map(([tier, count]) => {
-                      const cfg = TIER_CONFIG[tier];
-                      return (
-                        <div key={tier} className={`rounded-lg p-2 text-center ${cfg.bg}`}>
-                          <p className={`text-lg font-black leading-none ${cfg.color}`}>{count}</p>
-                          <p className="text-[10px] text-gray-400 mt-0.5">{cfg.label.split(' ')[0]}</p>
-                        </div>
-                      );
-                    })}
-                  </div>
-
-                  {dept.nearReady > 0 ? (
-                    <div className="flex items-center gap-2 text-xs text-gray-600 bg-emerald-50 rounded-lg px-3 py-2 border border-emerald-100">
-                      <Star size={11} className="text-emerald-400 flex-shrink-0" />
-                      <span>Top candidate: <strong>{dept.topCandidate}</strong> ({dept.topCandidatePct}% ready)</span>
-                    </div>
-                  ) : (
-                    <div className="flex items-center gap-2 text-xs text-gray-500 bg-gray-50 rounded-lg px-3 py-2 border border-gray-100">
-                      <TrendingUp size={11} className="text-sky-400 flex-shrink-0" />
-                      <span>Highest: <strong>{dept.topCandidate}</strong> ({dept.topCandidatePct}% ready)</span>
-                    </div>
-                  )}
-                </>
-              )}
-            </button>
-          ))}
+              </button>
+            );
+          })}
         </div>
 
         {/* Keystone upsell — leadership development */}

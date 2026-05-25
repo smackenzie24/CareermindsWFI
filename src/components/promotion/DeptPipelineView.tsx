@@ -25,6 +25,7 @@ interface Props {
   onViewCheckIn?: () => void;
   onAskAI?: (question: string) => void;
   initialPersonId?: string;
+  forceZeroState?: boolean;
 }
 
 function RatingDots({ actual, required }: { actual: number; required: number }) {
@@ -432,7 +433,7 @@ function hasNoCheckIn(r: ReadinessResult): boolean {
 
 type DeptTab = 'pipeline' | 'flight-risk' | 'hidden-talent';
 
-export function DeptPipelineView({ department, onBack, onNavigateToGapReport, onNavigateToManagers, onViewCheckIn, onAskAI, initialPersonId }: Props) {
+export function DeptPipelineView({ department, onBack, onNavigateToGapReport, onNavigateToManagers, onViewCheckIn, onAskAI, initialPersonId, forceZeroState }: Props) {
   const [activeTab, setActiveTab] = useState<DeptTab>('pipeline');
 
   const allResults = useMemo(() => getAllReadiness(), []);
@@ -492,6 +493,117 @@ export function DeptPipelineView({ department, onBack, onNavigateToGapReport, on
   ), [sortedDeptResults]);
 
   const deptColor = DEPT_COLORS[department];
+  const isZero = forceZeroState || deptResults.length === 0;
+
+  if (isZero) {
+    return (
+      <div className="flex flex-col min-h-screen bg-gray-50 font-sans">
+        {/* Header */}
+        <header className="bg-white border-b border-gray-100 px-8 py-5 flex-shrink-0">
+          <div className="flex items-center gap-3 mb-5">
+            <button
+              onClick={onBack}
+              className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-900 transition-colors group"
+            >
+              <ArrowLeft size={15} className="group-hover:-translate-x-0.5 transition-transform" />
+              All departments
+            </button>
+            <span className="text-gray-300">/</span>
+            <span className="text-sm font-semibold text-gray-900">{department}</span>
+          </div>
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-0.5">Talent Signals</p>
+              <h1 className="text-xl font-bold text-gray-900">{department}</h1>
+              <p className="text-xs text-gray-400 mt-0.5">No data yet</p>
+            </div>
+          </div>
+        </header>
+
+        {/* Zero state body */}
+        <main className="flex-1 flex items-center justify-center p-8">
+          <div className="max-w-lg w-full text-center">
+            {/* Illustration */}
+            <div className="relative mx-auto w-24 h-24 mb-8">
+              <div
+                className="absolute inset-0 rounded-3xl opacity-10"
+                style={{ background: deptColor }}
+              />
+              <div
+                className="absolute inset-0 rounded-3xl opacity-20 scale-90"
+                style={{ background: deptColor }}
+              />
+              <div
+                className="relative w-full h-full rounded-3xl flex items-center justify-center"
+                style={{ background: `${deptColor}18` }}
+              >
+                <Users size={36} style={{ color: deptColor }} />
+              </div>
+            </div>
+
+            <h2 className="text-2xl font-bold text-gray-900 mb-2">No pipeline data for {department}</h2>
+            <p className="text-sm text-gray-500 leading-relaxed mb-8">
+              Promotion readiness, flight risk signals, and hidden talent insights will appear here once employees in this department have been assessed.
+            </p>
+
+            {/* What you'll see cards */}
+            <div className="grid grid-cols-3 gap-3 mb-8 text-left">
+              <div className="bg-white border border-gray-100 rounded-2xl p-4 shadow-sm">
+                <div className="w-8 h-8 rounded-xl bg-emerald-50 flex items-center justify-center mb-3">
+                  <Users size={14} className="text-emerald-500" />
+                </div>
+                <p className="text-xs font-bold text-gray-800 mb-1">Promotion pipeline</p>
+                <p className="text-[11px] text-gray-400 leading-relaxed">See who's near-ready, progressing, or early-stage across all levels.</p>
+              </div>
+              <div className="bg-white border border-gray-100 rounded-2xl p-4 shadow-sm">
+                <div className="w-8 h-8 rounded-xl bg-red-50 flex items-center justify-center mb-3">
+                  <AlertTriangle size={14} className="text-red-400" />
+                </div>
+                <p className="text-xs font-bold text-gray-800 mb-1">Flight risk signals</p>
+                <p className="text-[11px] text-gray-400 leading-relaxed">Identify employees at risk of leaving before it's too late to act.</p>
+              </div>
+              <div className="bg-white border border-gray-100 rounded-2xl p-4 shadow-sm">
+                <div className="w-8 h-8 rounded-xl bg-sky-50 flex items-center justify-center mb-3">
+                  <Sparkles size={14} className="text-sky-400" />
+                </div>
+                <p className="text-xs font-bold text-gray-800 mb-1">Hidden talent</p>
+                <p className="text-[11px] text-gray-400 leading-relaxed">Surface employees with cross-department fit who could be retained via internal moves.</p>
+              </div>
+            </div>
+
+            {/* Steps */}
+            <div className="bg-white border border-gray-100 rounded-2xl p-5 shadow-sm text-left mb-6">
+              <p className="text-xs font-bold text-gray-900 uppercase tracking-wider mb-4">How to get started</p>
+              <ol className="space-y-3">
+                {[
+                  { step: '1', text: 'Connect your HRIS to sync employee profiles for this department' },
+                  { step: '2', text: 'Map employees to the level framework — or use our auto-suggest' },
+                  { step: '3', text: 'Run your first readiness assessment to populate the pipeline' },
+                ].map(({ step, text }) => (
+                  <li key={step} className="flex items-start gap-3">
+                    <span
+                      className="w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold text-white flex-shrink-0 mt-0.5"
+                      style={{ background: deptColor }}
+                    >
+                      {step}
+                    </span>
+                    <span className="text-xs text-gray-600 leading-relaxed">{text}</span>
+                  </li>
+                ))}
+              </ol>
+            </div>
+
+            <button
+              onClick={onBack}
+              className="text-sm text-gray-500 hover:text-gray-800 transition-colors underline underline-offset-2"
+            >
+              Back to all departments
+            </button>
+          </div>
+        </main>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col min-h-screen bg-gray-50 font-sans">
