@@ -332,12 +332,6 @@ export function PromotionPipeline({ initialDepartment, initialTab, initialPerson
             >
               <div className="flex items-start justify-between mb-5">
                 <div className="flex items-center gap-3">
-                  <div
-                    className="w-10 h-10 rounded-xl flex items-center justify-center text-white text-sm font-bold flex-shrink-0"
-                    style={{ background: dept.color }}
-                  >
-                    {dept.department[0]}
-                  </div>
                   <div>
                     <h3 className="text-base font-bold text-gray-900">{dept.department}</h3>
                     <p className="text-xs text-gray-400">
