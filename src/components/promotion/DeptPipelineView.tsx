@@ -193,17 +193,6 @@ export function DeptPipelineView({ department, onBack, onNavigateToGapReport, on
                 <ExternalLink size={11} />Manager view
               </button>
             )}
-            {/* Tier summary pills */}
-            {(Object.entries(TIER_CONFIG) as [keyof typeof TIER_CONFIG, typeof TIER_CONFIG[keyof typeof TIER_CONFIG]][]).map(([tier, cfg]) => {
-              const count = deptResults.filter(r => getReadinessTier(r.readinessPct) === tier).length;
-              if (count === 0) return null;
-              return (
-                <div key={tier} className={`flex items-center gap-1 px-2 py-1 rounded-full ${cfg.badge} text-[11px] font-semibold`}>
-                  <span className="font-black">{count}</span>
-                  {cfg.label}
-                </div>
-              );
-            })}
           </div>
         </div>
       </header>
