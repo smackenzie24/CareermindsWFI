@@ -529,9 +529,6 @@ function DeptHeatmap({ department, onBack, onNavigateToPipeline, onNavigateToPer
 
           <div className="flex items-start justify-between mb-3">
             <div className="flex items-center gap-3">
-              <div className="w-8 h-8 rounded-lg flex items-center justify-center text-white text-sm font-bold" style={{ background: deptColor }}>
-                {department[0]}
-              </div>
               <div>
                 <h1 className="text-lg font-bold text-gray-900 leading-none">{department} · Skills Gap</h1>
                 <p className="text-xs text-gray-400 mt-0.5">Skills Gap Heatmap &bull; Progression</p>
