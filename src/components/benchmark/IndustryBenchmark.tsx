@@ -749,11 +749,11 @@ export function IndustryBenchmark({ onNavigateToGapReport }: Props) {
 
 
   // ── Tab definitions ──────────────────────────────────────────────────
-  const PAGE_TABS: { id: PageTab; label: string; icon: React.ReactNode; count?: number; countColor?: string }[] = [
+  const PAGE_TABS: { id: PageTab; label: string; icon: React.ReactNode }[] = [
     { id: 'overview',     label: 'Overview',     icon: <Globe size={13} /> },
-    { id: 'skills',       label: 'Skills',       icon: <BarChart3 size={13} />,  count: summary.gapCategories.length,   countColor: 'bg-red-100 text-red-700' },
-    { id: 'compensation', label: 'Compensation', icon: <DollarSign size={13} />, count: compBenchmarks.filter(b => b.position === 'bottom' || b.position === 'below-median').length, countColor: 'bg-amber-100 text-amber-700' },
-    { id: 'talent',       label: 'Talent Flow',  icon: <LogOut size={13} />,     count: ATTRITION_RECORDS.filter(r => r.tenureMonths <= 12).length, countColor: 'bg-orange-100 text-orange-700' },
+    { id: 'skills',       label: 'Skills',       icon: <BarChart3 size={13} /> },
+    { id: 'compensation', label: 'Compensation', icon: <DollarSign size={13} /> },
+    { id: 'talent',       label: 'Talent Flow',  icon: <LogOut size={13} /> },
   ];
 
   return (
@@ -809,11 +809,6 @@ export function IndustryBenchmark({ onNavigateToGapReport }: Props) {
             >
               <span className={pageTab === tab.id ? 'text-gray-700' : 'text-gray-300'}>{tab.icon}</span>
               {tab.label}
-              {tab.count !== undefined && tab.count > 0 && (
-                <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${tab.countColor}`}>
-                  {tab.count}
-                </span>
-              )}
             </button>
           ))}
 
