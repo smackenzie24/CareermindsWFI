@@ -512,6 +512,7 @@ export function DeptPipelineView({ department, onBack, onNavigateToGapReport, on
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div>
+              <p className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-0.5">Promotion Pipeline</p>
               <h1 className="text-xl font-bold text-gray-900">{department}</h1>
               <p className="text-xs text-gray-400 mt-0.5">{deptResults.length} people tracked</p>
             </div>
