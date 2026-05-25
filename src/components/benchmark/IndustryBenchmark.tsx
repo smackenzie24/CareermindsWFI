@@ -694,31 +694,6 @@ export function IndustryBenchmark({ onNavigateToGapReport }: Props) {
   // Category skill gap benchmarks
   const categoryBenchmarks = useMemo(() => getCategoryBenchmarks(peers), [peers]);
 
-  // Per-dept, per-category Acme competency (for the heatmap)
-  const deptCategoryMatrix = useMemo(() => {
-    const matrix: Record<string, Record<string, number>> = {};
-    for (const entry of SKILLS_DATA) {
-      const dept = entry.department as string;
-      const cat  = entry.category;
-      if (!matrix[dept]) matrix[dept] = {};
-      if (!matrix[dept][cat]) matrix[dept][cat] = 0;
-      // weighted mean
-      if (!matrix[dept][`${cat}__w`]) matrix[dept][`${cat}__w`] = 0;
-      matrix[dept][cat]         += entry.averageActual * entry.headcount;
-      matrix[dept][`${cat}__w`] += entry.headcount;
-    }
-    const result: Record<string, Record<string, number>> = {};
-    for (const [dept, cats] of Object.entries(matrix)) {
-      result[dept] = {};
-      for (const key of Object.keys(cats)) {
-        if (key.endsWith('__w')) continue;
-        const w = cats[`${key}__w`] ?? 1;
-        result[dept][key] = parseFloat((cats[key] / w).toFixed(2));
-      }
-    }
-    return result;
-  }, []);
-
   // Recommendations
   const overviewRecs     = useMemo(() => getOverviewRecommendations(peers),     [peers]);
   const skillsRecs       = useMemo(() => getSkillsRecommendations(peers),       [peers]);
@@ -1087,9 +1062,16 @@ export function IndustryBenchmark({ onNavigateToGapReport }: Props) {
                     }[severity];
 
                     // Find which depts are weakest in this category
-                    const deptScores = Object.entries(deptCategoryMatrix)
-                      .filter(([, cats]) => cats[b.category] !== undefined)
-                      .map(([dept, cats]) => ({ dept: dept as Department, score: cats[b.category] }))
+                    const deptScoreMap: Record<string, { sum: number; w: number }> = {};
+                    for (const row of SKILLS_DATA) {
+                      if (row.category !== b.category) continue;
+                      const d = row.department as string;
+                      if (!deptScoreMap[d]) deptScoreMap[d] = { sum: 0, w: 0 };
+                      deptScoreMap[d].sum += row.averageActual * row.headcount;
+                      deptScoreMap[d].w   += row.headcount;
+                    }
+                    const deptScores = Object.entries(deptScoreMap)
+                      .map(([dept, { sum, w }]) => ({ dept: dept as Department, score: parseFloat((sum / w).toFixed(2)) }))
                       .sort((a, c) => a.score - c.score)
                       .slice(0, 3);
 
@@ -1166,9 +1148,9 @@ export function IndustryBenchmark({ onNavigateToGapReport }: Props) {
                   const absGap  = Math.abs(b.delta);
                   const maxGap  = Math.max(...categoryBenchmarks.map(c => Math.abs(c.delta)), 0.01);
                   // Depts present in this category
-                  const deptsWithCat = Object.entries(deptCategoryMatrix)
-                    .filter(([, cats]) => cats[b.category] !== undefined)
-                    .map(([dept]) => dept as Department);
+                  const deptsWithCat = Array.from(
+                    new Set(SKILLS_DATA.filter(r => r.category === b.category).map(r => r.department as Department))
+                  );
 
                   return (
                     <div key={b.category} className="flex items-center gap-4 px-6 py-3">
@@ -1237,71 +1219,6 @@ export function IndustryBenchmark({ onNavigateToGapReport }: Props) {
               </div>
             </div>
 
-            {/* Dept × Category mini-heatmap */}
-            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-              <div className="px-6 py-4 border-b border-gray-100">
-                <h3 className="text-sm font-bold text-gray-900">Department × skill category heatmap</h3>
-                <p className="text-xs text-gray-400 mt-0.5">Each cell shows Acme's average competency for that dept/category combination. Red cells are below the peer median for that category.</p>
-              </div>
-              <div className="overflow-x-auto">
-                {(() => {
-                  const depts = Object.keys(deptCategoryMatrix) as Department[];
-                  // Only show categories that appear in at least one dept
-                  const cats = categoryBenchmarks.filter(b =>
-                    depts.some(d => deptCategoryMatrix[d]?.[b.category] !== undefined)
-                  );
-
-                  return (
-                    <table className="w-full text-[10px]">
-                      <thead>
-                        <tr className="border-b border-gray-100">
-                          <th className="text-left px-4 py-2 text-gray-400 font-semibold w-28 sticky left-0 bg-white z-10">Category</th>
-                          {depts.map(d => (
-                            <th key={d} className="px-2 py-2 text-center font-bold min-w-[68px]">
-                              <div className="flex flex-col items-center gap-1">
-                                <div className="w-5 h-5 rounded-md flex items-center justify-center text-white text-[9px] font-black" style={{ background: DEPT_COLORS[d] }}>{d[0]}</div>
-                                <span className="text-gray-500 leading-tight text-[9px]">{d.split(' ')[0]}</span>
-                              </div>
-                            </th>
-                          ))}
-                          <th className="px-3 py-2 text-center text-gray-400 font-semibold min-w-[60px]">Peer<br/>median</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {cats.map((b, ri) => (
-                          <tr key={b.category} className={ri % 2 === 0 ? 'bg-white' : 'bg-gray-50/40'}>
-                            <td className="px-4 py-2 font-semibold text-gray-700 sticky left-0 bg-inherit z-10 whitespace-nowrap">{b.category}</td>
-                            {depts.map(d => {
-                              const val = deptCategoryMatrix[d]?.[b.category];
-                              if (val === undefined) return (
-                                <td key={d} className="px-2 py-2 text-center text-gray-200">—</td>
-                              );
-                              const belowMedian = val < b.peerMedian;
-                              const gap = val - b.peerMedian;
-                              const intensity = Math.min(Math.abs(gap) / 1.2, 1);
-                              const bgStyle = belowMedian
-                                ? `rgba(239,68,68,${0.08 + intensity * 0.22})`
-                                : `rgba(16,185,129,${0.08 + intensity * 0.18})`;
-                              return (
-                                <td key={d} className="px-2 py-2 text-center" style={{ background: bgStyle }}>
-                                  <span className={`font-bold ${belowMedian ? 'text-red-700' : 'text-emerald-700'}`}>{val.toFixed(1)}</span>
-                                </td>
-                              );
-                            })}
-                            <td className="px-3 py-2 text-center font-semibold text-gray-500">{b.peerMedian.toFixed(1)}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  );
-                })()}
-              </div>
-              <div className="px-6 py-3 bg-gray-50 border-t border-gray-100 flex items-center gap-4 text-[10px] text-gray-400">
-                <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded" style={{ background: 'rgba(239,68,68,0.25)' }} />Below peer median</span>
-                <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded" style={{ background: 'rgba(16,185,129,0.2)' }} />At or above peer median</span>
-                <span className="ml-auto">— = category not assessed for this department</span>
-              </div>
-            </div>
             <RecommendationsPanel recs={skillsRecs} />
           </section>
           )}
