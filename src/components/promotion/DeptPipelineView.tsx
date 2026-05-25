@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { ArrowLeft, Clock, MapPin, ExternalLink, ChevronDown, CheckCircle, AlertCircle, CalendarDays, Sparkles } from 'lucide-react';
+import { ArrowLeft, Clock, MapPin, ExternalLink, ChevronDown, CheckCircle, AlertCircle, CalendarDays, Sparkles, TrendingDown } from 'lucide-react';
 import { ExportButtons } from '../ExportButtons';
 import {
   getAllReadiness,
@@ -76,7 +76,18 @@ function CandidateCard({
           </div>
           <div className="flex-1 min-w-0">
             <div className="flex items-center justify-between gap-2">
-              <p className="text-sm font-bold text-gray-900 truncate">{result.person.name}</p>
+              <div className="flex items-center gap-1.5 min-w-0">
+                <p className="text-sm font-bold text-gray-900 truncate">{result.person.name}</p>
+                {(result.flightRisk === 'high' || result.flightRisk === 'medium') && (
+                  <span
+                    title={result.flightRiskDrivers[0] ?? 'Flight risk'}
+                    className={`flex-shrink-0 flex items-center gap-0.5 text-[10px] font-bold px-1.5 py-0.5 rounded-full ${result.flightRisk === 'high' ? 'bg-red-100 text-red-600' : 'bg-amber-100 text-amber-600'}`}
+                  >
+                    <TrendingDown size={9} />
+                    {result.flightRisk === 'high' ? 'High risk' : 'At risk'}
+                  </span>
+                )}
+              </div>
               <ChevronDown
                 size={14}
                 className={`text-gray-400 group-hover:text-gray-600 flex-shrink-0 transition-transform duration-200 ${expanded ? 'rotate-180' : ''}`}
