@@ -323,6 +323,8 @@ export interface ReadinessResult {
   readinessPct: number; // 0–100
   metSkills: SkillCriterion[];
   gapSkills: Array<SkillCriterion & { actualRating: number; gap: number }>;
+  flightRisk: FlightRisk;
+  flightRiskDrivers: string[];
 }
 
 export type ReadinessTier = 'near-ready' | 'progressing' | 'developing' | 'early';
@@ -378,6 +380,8 @@ export function computeReadiness(person: Person, framework: LevelFramework, leve
     readinessPct,
     metSkills,
     gapSkills,
+    flightRisk: person.flightRisk ?? 'low',
+    flightRiskDrivers: person.flightRiskDrivers ?? [],
   };
 }
 
