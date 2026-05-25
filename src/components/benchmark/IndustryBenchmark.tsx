@@ -1,10 +1,10 @@
 import { useMemo, useState } from 'react';
 import {
   TrendingUp, TrendingDown, Minus, Users, DollarSign,
-  BarChart3, Globe, Star, AlertTriangle, ChevronDown, ChevronUp, Info,
+  BarChart3, Globe, Star, AlertTriangle, ChevronDown, ChevronUp,
   LogOut, Calendar, Building2, Lightbulb, Clock, ChevronRight,
   UserX, MessageSquareOff, TrendingUp as LevelStall, Banknote, RefreshCw,
-  ArrowRight, Briefcase, Zap, UserCheck, ShieldAlert, GitBranch,
+  ArrowRight, Briefcase, UserCheck, ShieldAlert, GitBranch,
   Megaphone, Search,
 } from 'lucide-react';
 
@@ -16,7 +16,6 @@ import {
   getOverviewRecommendations,
   getSkillsRecommendations,
   getCompRecommendations,
-  getCompositionRecommendations,
   getTalentFlowRecommendations,
   CATEGORY_LABEL,
   type Recommendation,
@@ -37,8 +36,6 @@ import {
   PEER_COMPANIES,
   SIMILAR_PEERS,
   getCategoryBenchmarks,
-  ACME_SKILL_COMPETENCY,
-  type CategoryBenchmark,
   type DeptBenchmark,
   type QuartilePosition,
   type PeerCompany,
@@ -216,7 +213,7 @@ function RecommendationCard({ rec }: { rec: Recommendation }) {
   );
 }
 
-function RecommendationsPanel({ recs, defaultOpen = false }: { recs: Recommendation[]; defaultOpen?: boolean }) {
+function RecommendationsPanel({ recs, defaultOpen = true }: { recs: Recommendation[]; defaultOpen?: boolean }) {
   const [open, setOpen] = useState(defaultOpen);
   if (recs.length === 0) return null;
   const criticalCount = recs.filter(r => r.priority === 'critical').length;
@@ -653,7 +650,7 @@ function CommonalitiesPanel({ records }: { records: AttritionRecord[] }) {
 // ── Main component ──────────────────────────────────────────────────────
 
 type PeerFilter = 'all' | 'similar' | 'saas' | 'scaleup';
-type DeptMetric = 'skills' | 'compensation' | 'team-size';
+type PageTab = 'overview' | 'skills' | 'compensation' | 'talent';
 
 const PEER_FILTER_LABELS: Record<PeerFilter, string> = {
   all:     'All peers',
@@ -662,19 +659,14 @@ const PEER_FILTER_LABELS: Record<PeerFilter, string> = {
   scaleup: 'Scaleups',
 };
 
-const DEPT_METRIC_OPTIONS: { id: DeptMetric; label: string; icon: React.ReactNode }[] = [
-  { id: 'skills',       label: 'Skill Competency', icon: <BarChart3 size={12} /> },
-  { id: 'compensation', label: 'Compensation',      icon: <DollarSign size={12} /> },
-  { id: 'team-size',    label: 'Team Composition',  icon: <Users size={12} /> },
-];
 
 interface Props {
   onNavigateToGapReport?: (dept: import('../../data/mockData').Department) => void;
 }
 
 export function IndustryBenchmark({ onNavigateToGapReport }: Props) {
+  const [pageTab, setPageTab] = useState<PageTab>('overview');
   const [peerFilter, setPeerFilter] = useState<PeerFilter>('similar');
-  const [deptMetric, setDeptMetric] = useState<DeptMetric>('skills');
   const [deptFilter, setDeptFilter] = useState<string>('All');
   const [showAllRecords, setShowAllRecords] = useState(false);
 
@@ -696,14 +688,6 @@ export function IndustryBenchmark({ onNavigateToGapReport }: Props) {
   const skillBenchmarks    = useMemo(() => getDeptSkillBenchmarks(peers), [peers]);
   const compBenchmarks     = useMemo(() => getDeptCompBenchmarks(peers), [peers]);
   const sizeBenchmarks     = useMemo(() => getDeptSizeBenchmarks(peers), [peers]);
-
-  const deptBenchmarks = deptMetric === 'skills' ? skillBenchmarks
-    : deptMetric === 'compensation' ? compBenchmarks
-    : sizeBenchmarks;
-
-  const deptFormatValue = deptMetric === 'skills' ? (v: number) => v.toFixed(1)
-    : deptMetric === 'compensation' ? (v: number) => fmtK(v)
-    : (v: number) => `${v.toFixed(1)}%`;
 
   // Category skill gap benchmarks
   const categoryBenchmarks = useMemo(() => getCategoryBenchmarks(peers), [peers]);
@@ -737,13 +721,8 @@ export function IndustryBenchmark({ onNavigateToGapReport }: Props) {
   const overviewRecs     = useMemo(() => getOverviewRecommendations(peers),     [peers]);
   const skillsRecs       = useMemo(() => getSkillsRecommendations(peers),       [peers]);
   const compRecs         = useMemo(() => getCompRecommendations(peers),         [peers]);
-  const compositionRecs  = useMemo(() => getCompositionRecommendations(peers),  [peers]);
   const talentFlowRecs   = useMemo(() => getTalentFlowRecommendations(),        []);
   const attritionScore   = useMemo(() => computeAttritionScore(ATTRITION_RECORDS, ACME_TOTAL_HEADCOUNT), []);
-
-  const deptMetricRecs = deptMetric === 'skills' ? skillsRecs
-    : deptMetric === 'compensation' ? compRecs
-    : compositionRecs;
 
   // Talent flow data
   const attritionDepts = useMemo(
@@ -766,16 +745,36 @@ export function IndustryBenchmark({ onNavigateToGapReport }: Props) {
   const competitorCount = filteredAttrition.filter(r => r.destinationType === 'Competitor').length;
   const bigTechCount = filteredAttrition.filter(r => r.destinationType === 'Big Tech').length;
 
+  // ── Priority actions: top critical/high across all recs ────────────────
+  const priorityActions = useMemo(() => {
+    const all = [...overviewRecs, ...skillsRecs, ...compRecs, ...talentFlowRecs];
+    return all
+      .filter(r => r.priority === 'critical' || r.priority === 'high')
+      .sort((a, b) => {
+        const order = { critical: 0, high: 1, medium: 2 };
+        return order[a.priority] - order[b.priority];
+      })
+      .slice(0, 3);
+  }, [overviewRecs, skillsRecs, compRecs, talentFlowRecs]);
+
+  // ── Tab definitions ──────────────────────────────────────────────────
+  const PAGE_TABS: { id: PageTab; label: string; icon: React.ReactNode; count?: number; countColor?: string }[] = [
+    { id: 'overview',     label: 'Overview',     icon: <Globe size={13} /> },
+    { id: 'skills',       label: 'Skills',       icon: <BarChart3 size={13} />,  count: summary.gapCategories.length,   countColor: 'bg-red-100 text-red-700' },
+    { id: 'compensation', label: 'Compensation', icon: <DollarSign size={13} />, count: compBenchmarks.filter(b => b.position === 'bottom' || b.position === 'below-median').length, countColor: 'bg-amber-100 text-amber-700' },
+    { id: 'talent',       label: 'Talent Flow',  icon: <LogOut size={13} />,     count: ATTRITION_RECORDS.filter(r => r.tenureMonths <= 12).length, countColor: 'bg-orange-100 text-orange-700' },
+  ];
+
   return (
     <div className="flex flex-col min-h-screen bg-gray-50 font-sans">
       {/* Header */}
-      <header className="bg-white border-b border-gray-100 px-8 py-5 flex-shrink-0">
+      <header className="bg-white border-b border-gray-100 px-8 pt-5 pb-0 flex-shrink-0">
         <div className="flex items-start justify-between mb-4">
           <div>
             <p className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-1">Workforce Intelligence</p>
             <h1 className="text-2xl font-bold text-gray-900">Industry Benchmarks</h1>
-            <p className="text-sm text-gray-500 mt-1 max-w-2xl">
-              Compare Acme Corp's skill maturity, compensation, and team composition against {PEER_COMPANIES.length} similar SaaS and tech companies. Data aggregated anonymously with customer consent.
+            <p className="text-sm text-gray-500 mt-1">
+              Acme Corp vs {peers.length} peers · {overallCfg.label} overall
             </p>
           </div>
           <div className="flex items-center gap-3 mt-1">
@@ -805,28 +804,80 @@ export function IndustryBenchmark({ onNavigateToGapReport }: Props) {
           </div>
         </div>
 
-        {/* Peer filter */}
-        <div className="flex items-center gap-2" data-tour="benchmark-peer-filter">
-          <span className="text-xs font-medium text-gray-500">Compare against:</span>
-          <div className="flex items-center gap-1">
+        {/* Tab navigation */}
+        <div className="flex items-end gap-0" data-tour="benchmark-peer-filter">
+          {PAGE_TABS.map(tab => (
+            <button
+              key={tab.id}
+              onClick={() => setPageTab(tab.id)}
+              className={`flex items-center gap-2 px-5 py-3 border-b-2 text-sm font-medium transition-all whitespace-nowrap ${
+                pageTab === tab.id
+                  ? 'border-gray-900 text-gray-900'
+                  : 'border-transparent text-gray-400 hover:text-gray-700 hover:border-gray-200'
+              }`}
+            >
+              <span className={pageTab === tab.id ? 'text-gray-700' : 'text-gray-300'}>{tab.icon}</span>
+              {tab.label}
+              {tab.count !== undefined && tab.count > 0 && (
+                <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${tab.countColor}`}>
+                  {tab.count}
+                </span>
+              )}
+            </button>
+          ))}
+
+          {/* Peer filter — right side of tab bar */}
+          <div className="ml-auto flex items-center gap-2 pb-2">
+            <span className="text-xs text-gray-400">vs:</span>
             {(Object.entries(PEER_FILTER_LABELS) as [PeerFilter, string][]).map(([key, label]) => (
               <button
                 key={key}
                 onClick={() => setPeerFilter(key)}
-                className={`text-xs px-3 py-1.5 rounded-lg font-medium transition-colors ${peerFilter === key ? 'bg-gray-900 text-white' : 'text-gray-500 hover:bg-gray-100'}`}
+                className={`text-xs px-2.5 py-1 rounded-lg font-medium transition-colors ${peerFilter === key ? 'bg-gray-900 text-white' : 'text-gray-400 hover:bg-gray-100'}`}
               >
                 {label}
               </button>
             ))}
           </div>
-          <span className="text-xs text-gray-400 ml-2">{peers.length} companies selected</span>
         </div>
       </header>
 
-      <main className="flex-1 overflow-auto p-8">
-        <div className="max-w-5xl mx-auto space-y-12">
+      {/* Priority actions strip — always visible */}
+      {priorityActions.length > 0 && (
+        <div className="bg-amber-50 border-b border-amber-100 px-8 py-3 flex items-center gap-3 flex-wrap">
+          <div className="flex items-center gap-1.5 flex-shrink-0">
+            <AlertTriangle size={13} className="text-amber-600" />
+            <span className="text-xs font-bold text-amber-800">Priority actions:</span>
+          </div>
+          {priorityActions.map(rec => (
+            <button
+              key={rec.id}
+              onClick={() => {
+                const tabMap: Record<string, PageTab> = {
+                  upskilling: 'skills', compensation: 'compensation', hiring: 'talent',
+                  retention: 'talent', 'org-design': 'overview', process: 'overview',
+                };
+                setPageTab(tabMap[rec.category] ?? 'overview');
+              }}
+              className={`flex items-center gap-1.5 text-xs font-medium px-3 py-1 rounded-full border transition-colors hover:opacity-80 ${
+                rec.priority === 'critical'
+                  ? 'bg-red-50 border-red-200 text-red-700'
+                  : 'bg-amber-100 border-amber-200 text-amber-800'
+              }`}
+            >
+              <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${rec.priority === 'critical' ? 'bg-red-500' : 'bg-amber-500'}`} />
+              {rec.title}
+              <ArrowRight size={10} className="opacity-60" />
+            </button>
+          ))}
+        </div>
+      )}
 
-          {/* ── Section 1: Overview ──────────────────────────────── */}
+      <main className="flex-1 overflow-auto p-8">
+        <div className="max-w-5xl mx-auto space-y-8">
+
+          {/* ── Tab: Overview ────────────────────────────────────── */}
+          {pageTab === 'overview' && (
           <section className="space-y-6" data-tour="benchmark-overview-card">
             <div className="flex items-center gap-3">
               <Globe size={15} className="text-gray-400" />
@@ -968,105 +1019,28 @@ export function IndustryBenchmark({ onNavigateToGapReport }: Props) {
 
             <RecommendationsPanel recs={overviewRecs} />
           </section>
+          )}
 
-          {/* Divider */}
-          <div className="border-t border-gray-200" />
-
-          {/* ── Section 2: By Department ─────────────────────────── */}
+          {/* ── Tab: Skills ──────────────────────────────────────── */}
+          {pageTab === 'skills' && (
           <section className="space-y-6">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <BarChart3 size={15} className="text-gray-400" />
-                <h2 className="text-base font-bold text-gray-900">By Department</h2>
-              </div>
-              {/* Metric toggle */}
-              <div className="flex items-center gap-1 bg-gray-100 rounded-xl p-1" data-tour="benchmark-tabs">
-                {DEPT_METRIC_OPTIONS.map(opt => (
-                  <button
-                    key={opt.id}
-                    onClick={() => setDeptMetric(opt.id)}
-                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
-                      deptMetric === opt.id
-                        ? 'bg-white text-gray-900 shadow-sm'
-                        : 'text-gray-500 hover:text-gray-700'
-                    }`}
-                  >
-                    <span className={deptMetric === opt.id ? 'text-sky-500' : 'text-gray-400'}>{opt.icon}</span>
-                    {opt.label}
-                  </button>
+            <div className="flex items-center gap-3">
+              <BarChart3 size={15} className="text-gray-400" />
+              <h2 className="text-base font-bold text-gray-900">Skill Competency vs Peers</h2>
+              <span className="text-xs text-gray-400 ml-1">Average rating 1–5 · department and category breakdown</span>
+            </div>
+
+            {/* Dept rows (skills only) */}
+            <div>
+              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">By Department</p>
+              <div className="grid grid-cols-2 gap-4">
+                {skillBenchmarks.map(b => (
+                  <DeptBenchmarkRow key={b.department} bench={b} formatValue={v => v.toFixed(1)} onNavigateToGapReport={onNavigateToGapReport} />
                 ))}
               </div>
             </div>
 
-            {/* Context blurb */}
-            <div className="flex items-start gap-2 bg-sky-50 border border-sky-100 rounded-xl p-4">
-              <Info size={14} className="text-sky-500 mt-0.5 flex-shrink-0" />
-              <p className="text-xs text-sky-700">
-                {deptMetric === 'skills' && 'Average skill competency rating (1–5 scale) per department, compared to peer companies. Departments below median link directly to the skill gap report.'}
-                {deptMetric === 'compensation' && 'Average annual compensation (USD) per department. Peer data is anonymized and aggregated. Departments below market link to skill gap context.'}
-                {deptMetric === 'team-size' && <>Department headcount as a <strong>percentage of total company size</strong>. Acme total: <strong>{ACME_TOTAL_HEADCOUNT}</strong>. Reveals structural differences — e.g. whether you are engineering-heavy or sales-light relative to peers.</>}
-              </p>
-            </div>
-
-            {/* Composition bar (team-size only) */}
-            {deptMetric === 'team-size' && (
-              <div className="bg-white rounded-2xl border border-gray-100 p-6 shadow-sm">
-                <p className="text-xs font-semibold text-gray-500 mb-3">Acme Corp team composition</p>
-                <div className="flex h-8 rounded-xl overflow-hidden gap-px mb-3">
-                  {sizeBenchmarks.map(b => (
-                    <div
-                      key={b.department}
-                      className="flex items-center justify-center text-white text-[9px] font-bold overflow-hidden"
-                      style={{ width: `${b.acmeValue}%`, background: DEPT_COLORS[b.department] }}
-                      title={`${b.department}: ${b.acmeValue}%`}
-                    >
-                      {b.acmeValue > 6 ? `${b.acmeValue}%` : ''}
-                    </div>
-                  ))}
-                </div>
-                <div className="flex flex-wrap gap-3">
-                  {sizeBenchmarks.map(b => (
-                    <div key={b.department} className="flex items-center gap-1.5">
-                      <div className="w-2.5 h-2.5 rounded-sm" style={{ background: DEPT_COLORS[b.department] }} />
-                      <span className="text-[10px] text-gray-500">{b.department} <strong>{b.acmeValue}%</strong></span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            <div className="grid grid-cols-2 gap-4">
-              {deptBenchmarks.map(b => (
-                <DeptBenchmarkRow
-                  key={b.department}
-                  bench={b}
-                  formatValue={deptFormatValue}
-                  onNavigateToGapReport={onNavigateToGapReport}
-                />
-              ))}
-            </div>
-
-            <RecommendationsPanel recs={deptMetricRecs} />
-          </section>
-
-          {/* Divider */}
-          <div className="border-t border-gray-200" />
-
-          {/* ── Section 3: Skill Gaps vs Peers ──────────────────── */}
-          <section className="space-y-6">
-            <div className="flex items-center gap-3">
-              <Zap size={15} className="text-gray-400" />
-              <div>
-                <h2 className="text-base font-bold text-gray-900">Skill Gaps vs Peers</h2>
-              </div>
-            </div>
-
-            <div className="flex items-start gap-2 bg-sky-50 border border-sky-100 rounded-xl p-4">
-              <Info size={14} className="text-sky-500 mt-0.5 flex-shrink-0" />
-              <p className="text-xs text-sky-700">
-                Acme's average skill competency per category compared to the peer median. Categories below median are ranked by gap size — these represent the areas where competitors have a tangible talent advantage and where targeted hiring or upskilling will have the most impact.
-              </p>
-            </div>
+            {/* Skill gap callout cards — worst 4 categories */}
 
             {/* Gap callout cards — worst 4 categories */}
             {(() => {
@@ -1304,24 +1278,69 @@ export function IndustryBenchmark({ onNavigateToGapReport }: Props) {
                 <span className="ml-auto">— = category not assessed for this department</span>
               </div>
             </div>
+            <RecommendationsPanel recs={skillsRecs} />
           </section>
+          )}
 
-          {/* Divider */}
-          <div className="border-t border-gray-200" />
+          {/* ── Tab: Compensation ────────────────────────────────── */}
+          {pageTab === 'compensation' && (
+          <section className="space-y-6">
+            <div className="flex items-center gap-3">
+              <DollarSign size={15} className="text-gray-400" />
+              <h2 className="text-base font-bold text-gray-900">Compensation vs Peers</h2>
+              <span className="text-xs text-gray-400 ml-1">Avg annual salary (USD) · departments below market median are highlighted</span>
+            </div>
 
-          {/* ── Section 4: Talent Flow ───────────────────────────── */}
+            <div className="grid grid-cols-2 gap-4">
+              {compBenchmarks.map(b => (
+                <DeptBenchmarkRow key={b.department} bench={b} formatValue={fmtK} onNavigateToGapReport={onNavigateToGapReport} />
+              ))}
+            </div>
+
+            {/* Team composition bar — useful context for comp decisions */}
+            <div className="bg-white rounded-2xl border border-gray-100 p-6 shadow-sm">
+              <div className="flex items-center justify-between mb-3">
+                <p className="text-xs font-semibold text-gray-700">Team composition vs peers</p>
+                <span className="text-[10px] text-gray-400">Headcount as % of total · Acme total: {ACME_TOTAL_HEADCOUNT}</span>
+              </div>
+              <div className="flex h-8 rounded-xl overflow-hidden gap-px mb-3">
+                {sizeBenchmarks.map(b => (
+                  <div
+                    key={b.department}
+                    className="flex items-center justify-center text-white text-[9px] font-bold overflow-hidden"
+                    style={{ width: `${b.acmeValue}%`, background: DEPT_COLORS[b.department] }}
+                    title={`${b.department}: ${b.acmeValue}%`}
+                  >
+                    {b.acmeValue > 6 ? `${b.acmeValue}%` : ''}
+                  </div>
+                ))}
+              </div>
+              <div className="flex flex-wrap gap-4">
+                {sizeBenchmarks.map(b => {
+                  const cb = compBenchmarks.find(c => c.department === b.department);
+                  const below = cb && (cb.position === 'bottom' || cb.position === 'below-median');
+                  return (
+                    <div key={b.department} className="flex items-center gap-1.5">
+                      <div className="w-2.5 h-2.5 rounded-sm" style={{ background: DEPT_COLORS[b.department] }} />
+                      <span className="text-[10px] text-gray-500">{b.department} <strong>{b.acmeValue}%</strong></span>
+                      {below && <span className="text-[9px] text-red-600 font-bold">↓ comp</span>}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            <RecommendationsPanel recs={compRecs} />
+          </section>
+          )}
+
+          {/* ── Tab: Talent Flow ─────────────────────────────────── */}
+          {pageTab === 'talent' && (
           <section className="space-y-6">
             <div className="flex items-center gap-3">
               <LogOut size={15} className="text-gray-400" />
               <h2 className="text-base font-bold text-gray-900">Talent Flow</h2>
-            </div>
-
-            <div className="flex items-start gap-2 bg-sky-50 border border-sky-100 rounded-xl p-4">
-              <Info size={14} className="text-sky-500 mt-0.5 flex-shrink-0" />
-              <p className="text-xs text-sky-700">
-                Shows employees who left Acme Corp in the last 12 months and the companies they joined.
-                Data sourced from exit interviews and publicly available LinkedIn signals.
-              </p>
+              <span className="text-xs text-gray-400 ml-1">Departures, destinations, attrition patterns, and first-year exits</span>
             </div>
 
             {/* Attrition score card */}
@@ -1955,11 +1974,13 @@ export function IndustryBenchmark({ onNavigateToGapReport }: Props) {
             })()}
 
             <RecommendationsPanel recs={talentFlowRecs} />
+            <MostExpensiveToLose limit={5} showMethodology />
           </section>
+          )}
 
-          <MostExpensiveToLose limit={5} showMethodology className="mt-8" />
-          <UpsellBanner variant="talent-development" className="mt-4" />
-          <FeedbackBanner context="Industry Benchmarks" className="mt-4" />
+          {/* Footer items visible on all tabs */}
+          <UpsellBanner variant="talent-development" />
+          <FeedbackBanner context="Industry Benchmarks" />
         </div>
       </main>
     </div>
