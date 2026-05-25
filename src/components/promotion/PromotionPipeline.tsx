@@ -15,7 +15,6 @@ import { DEPARTMENTS } from '../../data/mockData';
 import { DeptPipelineView } from './DeptPipelineView';
 import { UpsellBanner } from '../UpsellBanner';
 import { FeedbackBanner } from '../feedback/FeedbackBanner';
-import { MostExpensiveToLose } from '../MostExpensiveToLose';
 
 const DEPT_SALARIES: Record<Department, number> = {
   Engineering: 128000,
@@ -344,7 +343,6 @@ export function PromotionPipeline({ initialDepartment, initialPersonId, selected
         </div>
 
         {/* Keystone upsell — leadership development */}
-        <MostExpensiveToLose limit={5} showMethodology className="mt-6" />
         <UpsellBanner variant="leadership-dev" className="mt-6" />
         <FeedbackBanner context="Talent Signals" className="mt-4" />
       </main>

@@ -8,6 +8,7 @@ import {
   type FlightRiskPerson,
   type Department,
 } from '../../data/promotionData';
+import { MostExpensiveToLose } from '../MostExpensiveToLose';
 
 type RiskFilter = 'all' | 'high' | 'medium';
 
@@ -251,6 +252,8 @@ export function FlightRiskTab({ onSwitchToHiddenTalent, department }: Props) {
           </span>
         </div>
       )}
+
+      <MostExpensiveToLose limit={5} showMethodology department={department} />
     </div>
   );
 }
