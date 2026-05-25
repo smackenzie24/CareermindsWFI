@@ -17,7 +17,6 @@ import { DrilldownPanel } from './DrilldownPanel';
 import { DepartmentOverview } from './DepartmentOverview';
 import { UpsellBanner } from './UpsellBanner';
 import { FeedbackBanner } from './feedback/FeedbackBanner';
-import { MostExpensiveToLose } from './MostExpensiveToLose';
 
 const TODAY_CHECKIN = new Date('2026-04-29');
 function daysSince(dateStr: string) {
@@ -731,8 +730,6 @@ function DeptHeatmap({ department, onBack, onNavigateToPipeline, onNavigateToPer
             <LegendItem label="Critical (85%+)" colorClass="bg-red-200 border-red-300" />
           </div>
 
-          {/* Careerminds upsell — talent development */}
-          <MostExpensiveToLose limit={5} showMethodology className="mt-6" />
           <UpsellBanner variant="talent-development" className="mt-6" />
           <FeedbackBanner context="Skills Heatmap" className="mt-4" />
         </div>
