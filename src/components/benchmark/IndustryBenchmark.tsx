@@ -868,7 +868,7 @@ export function IndustryBenchmark({ onNavigateToGapReport }: Props) {
               const aboveMedian = gapToMedian >= 0;
 
               return (
-                <div className={`rounded-2xl border ${overallCfg.border} ${overallCfg.bg} p-6`}>
+                <div className="rounded-2xl border border-gray-200 bg-white p-6">
                   {/* Header row */}
                   <div className="flex items-start justify-between gap-6 mb-5">
                     <div>
