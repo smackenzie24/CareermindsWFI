@@ -96,14 +96,14 @@ export function DeptPipelineView({ department, onBack, onNavigateToGapReport, on
       `Generated: ${new Date().toLocaleDateString()}`,
       '='.repeat(50),
       '',
-      `People tracked: ${deptResults.length} across ${transitions.length} level transitions`,
+      `People tracked: ${deptResults.length}`,
       '',
     ];
-    for (const t of transitions) {
-      lines.push(`${t.currentLabel} → ${t.nextLabel.split('·')[1]?.trim() ?? t.nextLabel} (${t.results.length} people)`);
-      for (const r of t.results) {
-        const tier = r.readinessPct >= 90 ? 'Near Ready' : r.readinessPct >= 70 ? 'Progressing' : r.readinessPct >= 50 ? 'Developing' : 'Early';
-        lines.push(`  ${r.person.name} — ${r.readinessPct}% (${tier}) | ${r.criteriaMet}/${r.criteriaTotal} criteria`);
+    for (const [tier, items] of Object.entries(buckets) as [keyof typeof TIER_CONFIG, ReadinessResult[]][]) {
+      if (items.length === 0) continue;
+      lines.push(TIER_CONFIG[tier].label.toUpperCase());
+      for (const r of items) {
+        lines.push(`  ${r.person.name} — ${r.readinessPct}% | ${r.criteriaMet}/${r.criteriaTotal} criteria`);
       }
       lines.push('');
     }
@@ -120,23 +120,15 @@ export function DeptPipelineView({ department, onBack, onNavigateToGapReport, on
     if (result) setSelection({ ...selection, result, index });
   }
 
-  // Group by transition (current level → next level)
-  const transitions = useMemo(() => {
-    const map = new Map<string, { label: string; currentLabel: string; nextLabel: string; results: ReadinessResult[] }>();
-    for (const r of deptResults) {
-      const key = `${r.person.currentLevelId}→${r.targetLevelId}`;
-      if (!map.has(key)) {
-        const currentLabel = r.person.currentLevelId.split('-').slice(1).join('-').toUpperCase();
-        map.set(key, { label: key, currentLabel, nextLabel: r.targetLevelLabel, results: [] });
-      }
-      map.get(key)!.results.push(r);
-    }
-    // Sort results within each transition by readiness desc
-    for (const t of map.values()) {
-      t.results.sort((a, b) => b.readinessPct - a.readinessPct);
-    }
-    return Array.from(map.values());
-  }, [deptResults]);
+  const sortedDeptResults = useMemo(
+    () => [...deptResults].sort((a, b) => b.readinessPct - a.readinessPct),
+    [deptResults]
+  );
+
+  const buckets = useMemo(() => sortedDeptResults.reduce<Record<string, ReadinessResult[]>>(
+    (acc, r) => { acc[getReadinessTier(r.readinessPct)].push(r); return acc; },
+    { 'near-ready': [], 'progressing': [], 'developing': [], 'early': [] }
+  ), [sortedDeptResults]);
 
   const deptColor = DEPT_COLORS[department];
 
@@ -169,7 +161,7 @@ export function DeptPipelineView({ department, onBack, onNavigateToGapReport, on
             </div>
             <div>
               <h1 className="text-xl font-bold text-gray-900">{department} · Promotion Pipeline</h1>
-              <p className="text-xs text-gray-400 mt-0.5">{deptResults.length} people tracked across {transitions.length} level transitions</p>
+              <p className="text-xs text-gray-400 mt-0.5">{deptResults.length} people tracked</p>
             </div>
           </div>
 
@@ -207,68 +199,32 @@ export function DeptPipelineView({ department, onBack, onNavigateToGapReport, on
         </div>
       </header>
 
-      {/* Swimlanes */}
+      {/* Kanban */}
       <main className="flex-1 overflow-auto p-8">
-        <div className="space-y-10" data-tour="pipeline-dept-swimlanes">
-          {transitions.map(({ currentLabel, nextLabel, results }) => {
-            const buckets = results.reduce<Record<string, ReadinessResult[]>>(
-              (acc, r) => { acc[getReadinessTier(r.readinessPct)].push(r); return acc; },
-              { 'near-ready': [], 'progressing': [], 'developing': [], 'early': [] }
-            );
-            const nearReady = buckets['near-ready'];
-            const progressing = buckets['progressing'];
-            const developing = buckets['developing'];
-            const early = buckets['early'];
-
+        <div className="grid grid-cols-4 gap-4" data-tour="pipeline-dept-columns">
+          {((['near-ready', 'progressing', 'developing', 'early'] as const)).map(tier => {
+            const cfg = TIER_CONFIG[tier];
+            const items = buckets[tier];
             return (
-              <div key={`${currentLabel}-${nextLabel}`}>
-                {/* Transition header */}
-                <div className="flex items-center gap-3 mb-5">
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm font-bold text-gray-700 bg-gray-200 px-3 py-1 rounded-full">{currentLabel}</span>
-                    <ChevronRight size={16} className="text-gray-400" />
-                    <span className="text-sm font-bold text-gray-900 bg-gray-900 text-white px-3 py-1 rounded-full">
-                      {nextLabel.split('·')[1]?.trim() ?? nextLabel}
-                    </span>
-                  </div>
-                  <span className="text-xs text-gray-400">{results.length} people</span>
+              <div key={tier}>
+                <div className="flex items-center gap-2 mb-3">
+                  <span className={`text-xs font-bold uppercase tracking-wide ${cfg.color}`}>{cfg.label}</span>
+                  <span className={`text-xs font-bold w-5 h-5 rounded-full flex items-center justify-center ${cfg.badge}`}>{items.length}</span>
+                  <span className="text-[11px] text-gray-400">{TIER_RANGES[tier]}</span>
                 </div>
-
-                {/* Four tier columns */}
-                <div className="grid grid-cols-4 gap-4" data-tour="pipeline-dept-columns">
-                  {[
-                    { tier: 'near-ready' as const, items: nearReady },
-                    { tier: 'progressing' as const, items: progressing },
-                    { tier: 'developing' as const, items: developing },
-                    { tier: 'early' as const, items: early },
-                  ].map(({ tier, items }) => {
-                    const cfg = TIER_CONFIG[tier];
-                    return (
-                      <div key={tier}>
-                        <div className="flex items-center gap-2 mb-3">
-                          <span className={`text-xs font-bold uppercase tracking-wide ${cfg.color}`}>{cfg.label}</span>
-                          <span className={`text-xs font-bold w-5 h-5 rounded-full flex items-center justify-center ${cfg.badge}`}>{items.length}</span>
-                          <span className="text-[11px] text-gray-400">
-                            {TIER_RANGES[tier]}
-                          </span>
-                        </div>
-                        <div className="space-y-2.5">
-                          {items.map(result => (
-                            <CandidateCard
-                              key={result.person.id}
-                              result={result}
-                              onClick={() => openPerson(result, items)}
-                            />
-                          ))}
-                          {items.length === 0 && (
-                            <div className="h-16 rounded-xl border-2 border-dashed border-gray-200 flex items-center justify-center">
-                              <span className="text-xs text-gray-300">None</span>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    );
-                  })}
+                <div className="space-y-2.5">
+                  {items.map(result => (
+                    <CandidateCard
+                      key={result.person.id}
+                      result={result}
+                      onClick={() => openPerson(result, items)}
+                    />
+                  ))}
+                  {items.length === 0 && (
+                    <div className="h-16 rounded-xl border-2 border-dashed border-gray-200 flex items-center justify-center">
+                      <span className="text-xs text-gray-300">None</span>
+                    </div>
+                  )}
                 </div>
               </div>
             );
