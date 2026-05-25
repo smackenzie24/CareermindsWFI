@@ -8,7 +8,6 @@ import {
   Megaphone, Search, ArrowRight,
 } from 'lucide-react';
 
-import { ExportButtons } from '../ExportButtons';
 import { UpsellBanner } from '../UpsellBanner';
 import { FeedbackBanner } from '../feedback/FeedbackBanner';
 import { MostExpensiveToLose } from '../MostExpensiveToLose';
@@ -744,24 +743,6 @@ export function IndustryBenchmark({ onNavigateToGapReport }: Props) {
             </p>
           </div>
           <div className="flex items-center gap-3 mt-1">
-            <ExportButtons title="Industry Benchmarks" buildContent={() => {
-              const cfg = QUARTILE_CONFIG[summary.overallPosition];
-              const lines: string[] = [
-                'INDUSTRY BENCHMARKS — ACME CORP',
-                `Generated: ${new Date().toLocaleDateString()}`,
-                '='.repeat(50),
-                '',
-                `Overall position: ${cfg.label}`,
-                `Compared against: ${peers.length} peers`,
-                '',
-                'STRENGTHS',
-                ...summary.topDepts.map(b => `  ${b.department}: ${QUARTILE_CONFIG[b.position].label}`),
-                '',
-                'AREAS TO IMPROVE',
-                ...summary.gapDepts.map(b => `  ${b.department}: ${QUARTILE_CONFIG[b.position].label}`),
-              ];
-              return lines.join('\n');
-            }} />
             <div className="flex items-center gap-2 bg-gray-50 border border-gray-200 rounded-xl px-3 py-2">
               <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
               <span className="text-xs font-medium text-gray-600">Acme Corp</span>
