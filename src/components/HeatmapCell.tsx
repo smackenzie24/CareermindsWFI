@@ -16,7 +16,7 @@ interface HeatmapCellProps {
   data: CellData | null;
   onClick?: () => void;
   selected?: boolean;
-  groupBy?: 'location' | 'manager' | 'department';
+  groupBy?: 'manager' | 'department';
 }
 
 function getGapScore(actual: number, expected: number): number {

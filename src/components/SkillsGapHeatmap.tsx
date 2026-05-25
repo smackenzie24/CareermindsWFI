@@ -1,10 +1,9 @@
 import { useState, useMemo, useEffect } from 'react';
-import { Filter, ChevronDown, LayoutGrid, Info, ArrowLeft, PanelRightClose, PanelRightOpen, CalendarX, Users, AlertTriangle, Target, Map } from 'lucide-react';
+import { Filter, ChevronDown, LayoutGrid, Info, ArrowLeft, PanelRightClose, PanelRightOpen, CalendarX, Users, AlertTriangle, Target } from 'lucide-react';
 import { ExportButtons } from './ExportButtons';
 import {
   SKILLS_DATA,
   LEVELS,
-  LOCATIONS,
   DEPT_COLORS,
   type Department,
   type Location,
@@ -162,7 +161,7 @@ function CheckInPanel({ department }: { department: Department }) {
   );
 }
 
-type GroupBy = 'location' | 'manager' | 'department';
+type GroupBy = 'manager' | 'department';
 
 function FilterPill({
   label,
@@ -204,7 +203,7 @@ function LegendItem({ label, colorClass }: { label: string; colorClass: string }
 interface DrilldownPanelWrapperProps {
   skill: string;
   entries: SkillGapEntry[];
-  groupBy: GroupBy;
+  groupBy: 'manager' | 'department';
   department?: Department;
   onClose: () => void;
   collapsed: boolean;
@@ -332,9 +331,8 @@ interface DeptHeatmapProps {
 }
 
 function DeptHeatmap({ department, onBack, onNavigateToPipeline, onNavigateToPerson, onAskAI, tourActive }: DeptHeatmapProps) {
-  const [groupBy, setGroupBy] = useState<GroupBy>('location');
+  const [groupBy, setGroupBy] = useState<GroupBy>('manager');
   const [filterLevel, setFilterLevel] = useState<string>('');
-  const [filterLocation, setFilterLocation] = useState<string>('');
   const [selectedSkill, setSelectedSkill] = useState<string | null>(null); // '__checkins__' for check-in panel
   const [panelCollapsed, setPanelCollapsed] = useState(false);
 
@@ -342,16 +340,9 @@ function DeptHeatmap({ department, onBack, onNavigateToPipeline, onNavigateToPer
     return SKILLS_DATA.filter((d) => {
       if (d.department !== department) return false;
       if (filterLevel && d.level !== filterLevel) return false;
-      if (filterLocation && d.location !== filterLocation) return false;
       return true;
     });
-  }, [department, filterLevel, filterLocation]);
-
-  // Dynamic location options for this department
-  const deptLocations = useMemo(() => {
-    const locs = Array.from(new Set(SKILLS_DATA.filter(d => d.department === department).map(d => d.location)));
-    return LOCATIONS.filter(l => locs.includes(l));
-  }, [department]);
+  }, [department, filterLevel]);
 
   const skills = useMemo(() => {
     return Array.from(new Set(filtered.map((d) => d.skill)));
@@ -373,14 +364,8 @@ function DeptHeatmap({ department, onBack, onNavigateToPipeline, onNavigateToPer
     if (groupBy === 'manager') {
       return deptManagers.map((m) => m.name);
     }
-    if (groupBy === 'location') {
-      // When a location filter is active, collapse to single column
-      if (filterLocation) return [filterLocation];
-      const locs = Array.from(new Set(filtered.map(d => d.location)));
-      return LOCATIONS.filter(l => locs.includes(l));
-    }
     return [department];
-  }, [groupBy, department, deptManagers, filtered, filterLocation]);
+  }, [groupBy, department, deptManagers]);
 
   const cellData = useMemo(() => {
     const map: Record<string, Record<string, SkillGapEntry[]>> = {};
@@ -392,9 +377,6 @@ function DeptHeatmap({ department, onBack, onNavigateToPipeline, onNavigateToPer
           if (groupBy === 'manager') {
             const mgr = deptManagers.find((m) => m.name === key);
             return mgr ? mgr.teams.includes(d.team) : false;
-          }
-          if (groupBy === 'location') {
-            return d.location === key;
           }
           return d.department === key;
         });
@@ -584,22 +566,12 @@ function DeptHeatmap({ department, onBack, onNavigateToPipeline, onNavigateToPer
               <Filter size={14} />
               <span>Filter</span>
             </div>
-            <FilterPill label="Location" options={deptLocations} value={filterLocation} onChange={setFilterLocation} />
             <FilterPill label="Level" options={LEVELS} value={filterLevel} onChange={setFilterLevel} />
 
             <div className="flex-1" />
 
             {/* Group by toggle */}
             <div className="flex items-center bg-gray-100 rounded-lg p-1 gap-1">
-              <button
-                onClick={() => setGroupBy('location')}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-all ${
-                  groupBy === 'location' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'
-                }`}
-              >
-                <Map size={13} />
-                By Location
-              </button>
               <button
                 onClick={() => setGroupBy('manager')}
                 className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-all ${
@@ -651,13 +623,13 @@ function DeptHeatmap({ department, onBack, onNavigateToPipeline, onNavigateToPer
           {skills.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-64 gap-3">
               <p className="text-sm font-semibold text-gray-600">
-                No data for{filterLevel ? ` ${filterLevel}` : ''}{filterLocation ? ` in ${filterLocation}` : ''}
+                No data{filterLevel ? ` for ${filterLevel}` : ''} in {department}
               </p>
               <p className="text-xs text-gray-400 max-w-xs text-center">
-                No employees match this filter combination for {department}. Try adjusting your filters.
+                No employees match this filter combination. Try adjusting your filters.
               </p>
               <button
-                onClick={() => { setFilterLevel(''); setFilterLocation(''); }}
+                onClick={() => setFilterLevel('')}
                 className="text-xs font-semibold text-gray-700 bg-white border border-gray-200 rounded-lg px-3 py-1.5 hover:bg-gray-50 transition-colors"
               >
                 Clear filters

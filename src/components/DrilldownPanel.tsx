@@ -12,7 +12,7 @@ import {
 interface DrilldownPanelProps {
   skill: string;
   entries: SkillGapEntry[];
-  groupBy: 'department' | 'location' | 'manager';
+  groupBy: 'department' | 'manager';
   department?: string; // present when viewing a specific dept heatmap
   onClose: () => void;
   onNavigateToPipeline?: () => void;
@@ -92,7 +92,7 @@ export function DrilldownPanel({ skill, entries, groupBy, department, onClose, o
         <div>
           <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">Skill drill-down</p>
           <h2 className="text-xl font-bold text-gray-900">{skill}</h2>
-          <p className="text-sm text-gray-500 mt-0.5">Across {entries.length} {groupBy === 'department' ? 'departments' : groupBy === 'manager' ? 'teams' : 'locations'}</p>
+          <p className="text-sm text-gray-500 mt-0.5">Across {entries.length} {groupBy === 'manager' ? 'teams' : 'departments'}</p>
         </div>
         <button
           onClick={onClose}
@@ -142,7 +142,7 @@ export function DrilldownPanel({ skill, entries, groupBy, department, onClose, o
             <span className="text-[10px] text-amber-600 font-medium">Worst area</span>
           </div>
           <p className="text-xs font-bold text-amber-700 leading-tight">
-            {worstEntry ? (groupBy === 'department' ? worstEntry.department : groupBy === 'manager' ? worstEntry.team : worstEntry.location) : '—'}
+            {worstEntry ? (groupBy === 'manager' ? worstEntry.team : worstEntry.department) : '—'}
           </p>
         </div>
       </div>
@@ -213,13 +213,13 @@ export function DrilldownPanel({ skill, entries, groupBy, department, onClose, o
         {/* Breakdown bars — §5.7 */}
         <div className="border-b border-gray-100 px-6 py-5">
           <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-4">
-            Breakdown by {groupBy === 'manager' ? 'team' : groupBy === 'location' ? 'location' : 'department'}
+            Breakdown by {groupBy === 'manager' ? 'team' : 'department'}
           </p>
           <div className="space-y-4">
             {sorted.map((entry, i) => {
               const pct = entry.headcount > 0 ? Math.round((entry.belowTarget / entry.headcount) * 100) : 0;
               const isEntryExceeding = entry.averageActual > entry.expectedLevel;
-              const label = groupBy === 'manager' ? entry.team : groupBy === 'location' ? entry.location : entry.department;
+              const label = groupBy === 'manager' ? entry.team : entry.department;
               const surplus = isEntryExceeding ? parseFloat((entry.averageActual - entry.expectedLevel).toFixed(1)) : 0;
               return (
                 <div key={i}>
