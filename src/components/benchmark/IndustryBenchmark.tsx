@@ -1373,7 +1373,7 @@ export function IndustryBenchmark({ onNavigateToGapReport }: Props) {
             </div>
 
             {/* Attrition score card */}
-            <div className={`rounded-2xl border p-6 ${attritionScore.riskBg} ${attritionScore.riskBorder}`}>
+            <div className="rounded-2xl border border-gray-200 bg-white p-6">
               <div className="flex items-start justify-between gap-6">
                 <div className="flex-1">
                   <p className="text-xs font-semibold text-gray-500 uppercase tracking-widest mb-1">Attrition Risk Score</p>
