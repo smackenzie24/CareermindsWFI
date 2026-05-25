@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { ArrowLeft, Clock, MapPin, ExternalLink, ChevronDown, CheckCircle, AlertCircle, CalendarDays, Sparkles, TrendingDown } from 'lucide-react';
+import { ArrowLeft, Clock, MapPin, ExternalLink, ChevronDown, CheckCircle, AlertCircle, CalendarDays, Sparkles } from 'lucide-react';
 import { ExportButtons } from '../ExportButtons';
 import {
   getAllReadiness,
@@ -71,22 +71,21 @@ function CandidateCard({
         className="text-left w-full p-4 group focus:outline-none"
       >
         <div className="flex items-start gap-3">
-          <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-slate-600 to-slate-800 flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
-            {initials}
+          <div className="relative flex-shrink-0">
+            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-slate-600 to-slate-800 flex items-center justify-center text-white text-xs font-bold">
+              {initials}
+            </div>
+            {(result.flightRisk === 'high' || result.flightRisk === 'medium') && (
+              <span
+                title={`${result.flightRisk === 'high' ? 'High' : 'Medium'} flight risk${result.flightRiskDrivers[0] ? ': ' + result.flightRiskDrivers[0] : ''}`}
+                className={`absolute -top-1 -right-1 w-3 h-3 rounded-full border-2 border-white ${result.flightRisk === 'high' ? 'bg-red-500' : 'bg-amber-400'}`}
+              />
+            )}
           </div>
           <div className="flex-1 min-w-0">
             <div className="flex items-center justify-between gap-2">
               <div className="flex items-center gap-1.5 min-w-0">
                 <p className="text-sm font-bold text-gray-900 truncate">{result.person.name}</p>
-                {(result.flightRisk === 'high' || result.flightRisk === 'medium') && (
-                  <span
-                    title={result.flightRiskDrivers[0] ?? 'Flight risk'}
-                    className={`flex-shrink-0 flex items-center gap-0.5 text-[10px] font-bold px-1.5 py-0.5 rounded-full ${result.flightRisk === 'high' ? 'bg-red-100 text-red-600' : 'bg-amber-100 text-amber-600'}`}
-                  >
-                    <TrendingDown size={9} />
-                    {result.flightRisk === 'high' ? 'High risk' : 'At risk'}
-                  </span>
-                )}
               </div>
               <ChevronDown
                 size={14}
