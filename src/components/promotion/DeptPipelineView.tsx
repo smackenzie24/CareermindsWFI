@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { ArrowLeft, ChevronRight, Clock, MapPin, ExternalLink } from 'lucide-react';
+import { ArrowLeft, Clock, MapPin, ExternalLink, ChevronDown, CheckCircle, AlertCircle, CalendarDays, Sparkles } from 'lucide-react';
 import { ExportButtons } from '../ExportButtons';
 import {
   getAllReadiness,
@@ -11,7 +11,6 @@ import {
   type Department,
   DEPT_COLORS,
 } from '../../data/promotionData';
-import { PersonPanel } from './PersonPanel';
 
 interface Props {
   department: Department;
@@ -23,66 +22,183 @@ interface Props {
   initialPersonId?: string;
 }
 
-function CandidateCard({ result, onClick }: { result: ReadinessResult; onClick: () => void }) {
+function RatingDots({ actual, required }: { actual: number; required: number }) {
+  return (
+    <div className="flex gap-0.5">
+      {Array.from({ length: 5 }).map((_, i) => (
+        <div
+          key={i}
+          className={`w-2.5 h-2.5 rounded-full border transition-all ${
+            i < actual
+              ? i < required
+                ? 'bg-sky-500 border-sky-600'
+                : 'bg-emerald-500 border-emerald-600'
+              : i < required
+              ? 'border-red-300 bg-red-50'
+              : 'border-gray-200 bg-gray-100'
+          }`}
+        />
+      ))}
+    </div>
+  );
+}
+
+function CandidateCard({
+  result,
+  expanded,
+  onToggle,
+  onViewCheckIn,
+  onAskAI,
+}: {
+  result: ReadinessResult;
+  expanded: boolean;
+  onToggle: () => void;
+  onViewCheckIn?: () => void;
+  onAskAI?: (question: string) => void;
+}) {
   const tier = getReadinessTier(result.readinessPct);
   const cfg = TIER_CONFIG[tier];
   const initials = result.person.name.split(' ').map(n => n[0]).join('');
   const levelLabel = LEVEL_DEFINITIONS.find(l => l.id === result.person.currentLevelId)?.label ?? '';
   const jobTitle = levelLabel.split('·')[1]?.trim() ?? levelLabel;
+  const shortLabel = LEVEL_DEFINITIONS.find(l => l.id === result.person.currentLevelId)?.shortLabel;
 
   return (
-    <button
-      onClick={onClick}
-      className={`text-left w-full rounded-xl border ${cfg.border} ${cfg.bg} p-4 group hover:shadow-md transition-all duration-150 hover:-translate-y-0.5 focus:outline-none focus:ring-2 focus:ring-offset-1 focus:ring-gray-400`}
-    >
-      <div className="flex items-start gap-3">
-        {/* Avatar */}
-        <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-slate-600 to-slate-800 flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
-          {initials}
-        </div>
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center justify-between gap-2">
-            <p className="text-sm font-bold text-gray-900 truncate">{result.person.name}</p>
-            <ChevronRight size={14} className="text-gray-400 group-hover:text-gray-600 flex-shrink-0 transition-colors" />
+    <div className={`rounded-xl border ${cfg.border} ${cfg.bg} overflow-hidden transition-shadow duration-150 ${expanded ? 'shadow-md' : 'hover:shadow-sm'}`}>
+      {/* Collapsed header — always visible */}
+      <button
+        onClick={onToggle}
+        className="text-left w-full p-4 group focus:outline-none"
+      >
+        <div className="flex items-start gap-3">
+          <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-slate-600 to-slate-800 flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
+            {initials}
           </div>
-          <div className="flex items-center gap-1.5 mt-0.5">
-            <span className="text-[10px] font-bold text-gray-500 bg-gray-100 px-1.5 py-0.5 rounded flex-shrink-0">
-              {LEVEL_DEFINITIONS.find(l => l.id === result.person.currentLevelId)?.shortLabel}
-            </span>
-            <p className="text-[11px] font-medium text-gray-600 truncate">{jobTitle}</p>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center justify-between gap-2">
+              <p className="text-sm font-bold text-gray-900 truncate">{result.person.name}</p>
+              <ChevronDown
+                size={14}
+                className={`text-gray-400 group-hover:text-gray-600 flex-shrink-0 transition-transform duration-200 ${expanded ? 'rotate-180' : ''}`}
+              />
+            </div>
+            <div className="flex items-center gap-1.5 mt-0.5">
+              <span className="text-[10px] font-bold text-gray-500 bg-gray-100 px-1.5 py-0.5 rounded flex-shrink-0">
+                {shortLabel}
+              </span>
+              <p className="text-[11px] font-medium text-gray-600 truncate">{jobTitle}</p>
+            </div>
+            <p className="text-[11px] text-gray-400 truncate">{result.person.team}</p>
           </div>
-          <p className="text-[11px] text-gray-400 truncate">{result.person.team}</p>
         </div>
-      </div>
 
-      {/* Readiness bar */}
-      <div className="mt-3">
-        <div className="flex items-center justify-between mb-1">
-          <span className={`text-[11px] font-bold ${cfg.color}`}>{cfg.label}</span>
-          <span className="text-[11px] font-bold text-gray-700">{result.readinessPct}%</span>
+        {/* Readiness bar */}
+        <div className="mt-3">
+          <div className="flex items-center justify-between mb-1">
+            <span className={`text-[11px] font-bold ${cfg.color}`}>{cfg.label}</span>
+            <span className="text-[11px] font-bold text-gray-700">{result.readinessPct}%</span>
+          </div>
+          <div className="w-full bg-white/70 rounded-full h-1.5 overflow-hidden border border-black/5">
+            <div
+              className={`h-full rounded-full ${cfg.barColor}`}
+              style={{ width: `${result.readinessPct}%` }}
+            />
+          </div>
         </div>
-        <div className="w-full bg-white/70 rounded-full h-1.5 overflow-hidden border border-black/5">
-          <div
-            className={`h-full rounded-full ${cfg.barColor}`}
-            style={{ width: `${result.readinessPct}%` }}
-          />
-        </div>
-      </div>
 
-      {/* Meta */}
-      <div className="mt-2.5 flex items-center gap-3 text-[11px] text-gray-400">
-        <span className="flex items-center gap-1"><MapPin size={10} />{result.person.location}</span>
-        <span className="flex items-center gap-1"><Clock size={10} />{result.person.tenure}m</span>
-        <span className="ml-auto">{result.criteriaMet}/{result.criteriaTotal} criteria</span>
-      </div>
-    </button>
+        {/* Meta */}
+        <div className="mt-2.5 flex items-center gap-3 text-[11px] text-gray-400">
+          <span className="flex items-center gap-1"><MapPin size={10} />{result.person.location}</span>
+          <span className="flex items-center gap-1"><Clock size={10} />{result.person.tenure}m</span>
+          <span className="ml-auto">{result.criteriaMet}/{result.criteriaTotal} criteria</span>
+        </div>
+      </button>
+
+      {/* Expanded detail */}
+      {expanded && (
+        <div className="border-t border-black/5 bg-white/60">
+          {/* Target level */}
+          <div className="px-4 pt-3 pb-2">
+            <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest mb-0.5">Targeting</p>
+            <p className="text-xs font-semibold text-gray-700">{result.targetLevelLabel}</p>
+          </div>
+
+          {/* Criteria met */}
+          {result.metSkills.length > 0 && (
+            <div className="px-4 pb-3">
+              <div className="flex items-center gap-1.5 mb-2">
+                <CheckCircle size={12} className="text-emerald-500" />
+                <p className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">
+                  Meeting ({result.metSkills.length})
+                </p>
+              </div>
+              <div className="space-y-1.5">
+                {result.metSkills.map(skill => {
+                  const actual = result.person.skills[skill.skillId] ?? 0;
+                  return (
+                    <div key={skill.skillId} className="flex items-center justify-between py-1.5 px-2.5 bg-emerald-50 rounded-lg border border-emerald-100">
+                      <div className="min-w-0 mr-2">
+                        <p className="text-xs font-medium text-gray-800 truncate">{skill.skillName}</p>
+                        <p className="text-[10px] text-gray-400">{skill.category}</p>
+                      </div>
+                      <div className="flex items-center gap-2 flex-shrink-0">
+                        <RatingDots actual={actual} required={skill.requiredRating} />
+                        <span className="text-[10px] text-emerald-700 font-semibold w-8 text-right">{actual}/{skill.requiredRating}</span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* Gaps */}
+          {result.gapSkills.length > 0 && (
+            <div className="px-4 pb-3">
+              <div className="flex items-center gap-1.5 mb-2">
+                <AlertCircle size={12} className="text-red-400" />
+                <p className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">
+                  Gaps ({result.gapSkills.length})
+                </p>
+              </div>
+              <div className="space-y-1.5">
+                {[...result.gapSkills].sort((a, b) => b.gap - a.gap).map(skill => (
+                  <div key={skill.skillId} className="flex items-center justify-between py-1.5 px-2.5 bg-red-50 rounded-lg border border-red-100">
+                    <div className="min-w-0 mr-2">
+                      <p className="text-xs font-medium text-gray-800 truncate">{skill.skillName}</p>
+                      <p className="text-[10px] text-gray-400">{skill.category}</p>
+                    </div>
+                    <div className="flex items-center gap-2 flex-shrink-0">
+                      <RatingDots actual={skill.actualRating} required={skill.requiredRating} />
+                      <span className="text-[10px] text-red-600 font-semibold w-8 text-right">{skill.actualRating}/{skill.requiredRating}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Actions */}
+          <div className="px-4 pb-4 pt-1 flex gap-2">
+            <button
+              onClick={e => { e.stopPropagation(); onViewCheckIn?.(); }}
+              className="flex-1 flex items-center justify-center gap-1.5 text-[11px] font-medium text-gray-600 bg-white border border-gray-200 rounded-lg px-3 py-2 hover:border-gray-300 hover:bg-gray-50 transition-colors"
+            >
+              <CalendarDays size={11} className="text-gray-400" />
+              Check-in
+            </button>
+            <button
+              onClick={e => { e.stopPropagation(); onAskAI?.(`Tell me about ${result.person.name}'s promotion readiness and what they need to work on`); }}
+              className="flex-1 flex items-center justify-center gap-1.5 text-[11px] font-medium text-sky-700 bg-sky-50 border border-sky-100 rounded-lg px-3 py-2 hover:border-sky-200 hover:bg-sky-100 transition-colors"
+            >
+              <Sparkles size={11} className="text-sky-400" />
+              Ask AI
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
   );
-}
-
-interface Selection {
-  result: ReadinessResult;
-  peers: ReadinessResult[];
-  index: number;
 }
 
 export function DeptPipelineView({ department, onBack, onNavigateToGapReport, onNavigateToManagers, onViewCheckIn, onAskAI, initialPersonId }: Props) {
@@ -91,13 +207,12 @@ export function DeptPipelineView({ department, onBack, onNavigateToGapReport, on
     () => allResults.filter(r => r.person.department === department),
     [allResults, department]
   );
-  const [selection, setSelection] = useState<Selection | null>(() => {
-    if (!initialPersonId) return null;
-    const result = allResults.find(r => r.person.id === initialPersonId);
-    if (!result) return null;
-    const peers = allResults.filter(r => r.person.department === result.person.department);
-    return { result, peers, index: peers.indexOf(result) };
-  });
+
+  const [expandedId, setExpandedId] = useState<string | null>(() => initialPersonId ?? null);
+
+  function togglePerson(id: string) {
+    setExpandedId(prev => (prev === id ? null : id));
+  }
 
   function buildExportContent(): string {
     const lines: string[] = [
@@ -119,16 +234,6 @@ export function DeptPipelineView({ department, onBack, onNavigateToGapReport, on
     return lines.join('\n');
   }
 
-  function openPerson(result: ReadinessResult, peers: ReadinessResult[]) {
-    setSelection({ result, peers, index: peers.indexOf(result) });
-  }
-
-  function navigateTo(index: number) {
-    if (!selection) return;
-    const result = selection.peers[index];
-    if (result) setSelection({ ...selection, result, index });
-  }
-
   const sortedDeptResults = useMemo(
     () => [...deptResults].sort((a, b) => b.readinessPct - a.readinessPct),
     [deptResults]
@@ -145,7 +250,6 @@ export function DeptPipelineView({ department, onBack, onNavigateToGapReport, on
     <div className="flex flex-col min-h-screen bg-gray-50 font-sans">
       {/* Header */}
       <header className="bg-white border-b border-gray-100 px-8 py-5 flex-shrink-0" data-tour="pipeline-dept-header">
-        {/* Breadcrumb */}
         <div className="flex items-center gap-3 mb-5">
           <button
             onClick={onBack}
@@ -176,7 +280,6 @@ export function DeptPipelineView({ department, onBack, onNavigateToGapReport, on
 
           <div className="flex items-center gap-3">
             <ExportButtons title={`${department} — Promotion Pipeline`} buildContent={buildExportContent} />
-            {/* Cross-links */}
             {onNavigateToGapReport && (
               <button
                 onClick={() => onNavigateToGapReport(department)}
@@ -200,7 +303,7 @@ export function DeptPipelineView({ department, onBack, onNavigateToGapReport, on
       {/* Kanban */}
       <main className="flex-1 overflow-auto p-8">
         <div className="grid grid-cols-4 gap-4" data-tour="pipeline-dept-columns">
-          {((['near-ready', 'progressing', 'developing', 'early'] as const)).map(tier => {
+          {(['near-ready', 'progressing', 'developing', 'early'] as const).map(tier => {
             const cfg = TIER_CONFIG[tier];
             const items = buckets[tier];
             return (
@@ -215,7 +318,10 @@ export function DeptPipelineView({ department, onBack, onNavigateToGapReport, on
                     <CandidateCard
                       key={result.person.id}
                       result={result}
-                      onClick={() => openPerson(result, items)}
+                      expanded={expandedId === result.person.id}
+                      onToggle={() => togglePerson(result.person.id)}
+                      onViewCheckIn={onViewCheckIn}
+                      onAskAI={onAskAI}
                     />
                   ))}
                   {items.length === 0 && (
@@ -229,19 +335,6 @@ export function DeptPipelineView({ department, onBack, onNavigateToGapReport, on
           })}
         </div>
       </main>
-
-      {selection && (
-        <PersonPanel
-          result={selection.result}
-          onClose={() => setSelection(null)}
-          peers={selection.peers}
-          currentIndex={selection.index}
-          onPrev={() => navigateTo(selection.index - 1)}
-          onNext={() => navigateTo(selection.index + 1)}
-          onViewCheckIn={onViewCheckIn}
-          onAskAI={onAskAI}
-        />
-      )}
     </div>
   );
 }
