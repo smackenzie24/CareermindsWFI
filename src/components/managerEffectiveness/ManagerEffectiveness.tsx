@@ -7,6 +7,7 @@ import { DEPARTMENTS } from '../../data/mockData';
 import { ManagerDetail } from './ManagerDetail';
 import { UpsellBanner } from '../UpsellBanner';
 import { FeedbackBanner } from '../feedback/FeedbackBanner';
+import { MostExpensiveToLose } from '../MostExpensiveToLose';
 
 type SortKey = 'readiness' | 'stalled' | 'teamSize' | 'completionRate';
 
@@ -339,6 +340,7 @@ export function ManagerEffectiveness({ initialManagerId, selectedManager: select
               ))}
             </div>
             {/* Keystone upsell — manager coaching */}
+            <MostExpensiveToLose limit={5} showMethodology className="mt-8" />
             <UpsellBanner variant="manager-coaching" className="mt-8" />
             <FeedbackBanner context="Manager Effectiveness" className="mt-4" />
           </>

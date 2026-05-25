@@ -10,6 +10,7 @@ import {
 import { ExportButtons } from '../ExportButtons';
 import { UpsellBanner } from '../UpsellBanner';
 import { FeedbackBanner } from '../feedback/FeedbackBanner';
+import { MostExpensiveToLose } from '../MostExpensiveToLose';
 import {
   getOverviewRecommendations,
   getSkillsRecommendations,
@@ -1580,6 +1581,7 @@ export function IndustryBenchmark({ onNavigateToGapReport }: Props) {
             <RecommendationsPanel recs={talentFlowRecs} />
           </section>
 
+          <MostExpensiveToLose limit={5} showMethodology className="mt-8" />
           <UpsellBanner variant="talent-development" className="mt-4" />
           <FeedbackBanner context="Industry Benchmarks" className="mt-4" />
         </div>
