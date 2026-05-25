@@ -45,7 +45,12 @@ function CandidateCard({ result, onClick }: { result: ReadinessResult; onClick: 
             <p className="text-sm font-bold text-gray-900 truncate">{result.person.name}</p>
             <ChevronRight size={14} className="text-gray-400 group-hover:text-gray-600 flex-shrink-0 transition-colors" />
           </div>
-          <p className="text-[11px] font-medium text-gray-600 mt-0.5 truncate">{jobTitle}</p>
+          <div className="flex items-center gap-1.5 mt-0.5">
+            <span className="text-[10px] font-bold text-gray-500 bg-gray-100 px-1.5 py-0.5 rounded flex-shrink-0">
+              {LEVEL_DEFINITIONS.find(l => l.id === result.person.currentLevelId)?.shortLabel}
+            </span>
+            <p className="text-[11px] font-medium text-gray-600 truncate">{jobTitle}</p>
+          </div>
           <p className="text-[11px] text-gray-400 truncate">{result.person.team}</p>
         </div>
       </div>
