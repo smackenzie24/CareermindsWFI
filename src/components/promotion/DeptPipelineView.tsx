@@ -181,7 +181,7 @@ function CandidateCard({
           {/* Actions */}
           <div className="px-4 pb-4 pt-1 flex gap-2">
             <button
-              onClick={e => { e.stopPropagation(); onViewCheckIn?.(); }}
+              onClick={e => { e.stopPropagation(); }}
               className="flex-1 flex items-center justify-center gap-1.5 text-[11px] font-medium text-gray-600 bg-white border border-gray-200 rounded-lg px-3 py-2 hover:border-gray-300 hover:bg-gray-50 transition-colors"
             >
               <CalendarDays size={11} className="text-gray-400" />
