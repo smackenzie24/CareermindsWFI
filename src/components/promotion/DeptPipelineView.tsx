@@ -198,8 +198,8 @@ export function DeptPipelineView({ department, onBack, onNavigateToGapReport, on
               const count = deptResults.filter(r => getReadinessTier(r.readinessPct) === tier).length;
               if (count === 0) return null;
               return (
-                <div key={tier} className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full ${cfg.badge} text-xs font-semibold`}>
-                  <span className="text-base font-black leading-none">{count}</span>
+                <div key={tier} className={`flex items-center gap-1 px-2 py-1 rounded-full ${cfg.badge} text-[11px] font-semibold`}>
+                  <span className="font-black">{count}</span>
                   {cfg.label}
                 </div>
               );
