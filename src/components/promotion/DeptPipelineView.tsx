@@ -1,6 +1,8 @@
 import { useMemo, useState } from 'react';
 import { ArrowLeft, Clock, MapPin, ExternalLink, ChevronDown, CheckCircle, AlertCircle, CalendarDays, Sparkles, Lightbulb, ChevronRight, UserX } from 'lucide-react';
 import { ExportButtons } from '../ExportButtons';
+import { UpsellBanner } from '../UpsellBanner';
+import { FeedbackBanner } from '../feedback/FeedbackBanner';
 import {
   getAllReadiness,
   TIER_CONFIG,
@@ -574,8 +576,24 @@ export function DeptPipelineView({ department, onBack, onNavigateToGapReport, on
         {recommendations.length > 0 && (
           <div className="mt-6">
             <RecommendationsPanel recs={recommendations} />
+            {onAskAI && (
+              <div className="mt-4 flex justify-center">
+                <button
+                  onClick={() => onAskAI(`What are the biggest risks and opportunities in the ${department} promotion pipeline?`)}
+                  className="inline-flex items-center gap-2 text-sm font-semibold text-sky-700 bg-sky-50 hover:bg-sky-100 border border-sky-200 hover:border-sky-300 px-5 py-2.5 rounded-xl transition-all shadow-sm hover:shadow"
+                >
+                  <Sparkles size={14} className="text-sky-400" />
+                  Ask AI about this pipeline
+                </button>
+              </div>
+            )}
           </div>
         )}
+
+        <div className="mt-8 space-y-4">
+          <UpsellBanner variant="leadership-dev" />
+          <FeedbackBanner context="Promotion Pipeline" />
+        </div>
       </main>
     </div>
   );
