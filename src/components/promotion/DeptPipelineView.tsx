@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { ArrowLeft, Clock, MapPin, ExternalLink, ChevronDown, CheckCircle, AlertCircle, CalendarDays, Sparkles, Lightbulb, ChevronRight } from 'lucide-react';
+import { ArrowLeft, Clock, MapPin, ExternalLink, ChevronDown, CheckCircle, AlertCircle, CalendarDays, Sparkles, Lightbulb, ChevronRight, UserX } from 'lucide-react';
 import { ExportButtons } from '../ExportButtons';
 import {
   getAllReadiness,
@@ -381,6 +381,45 @@ function RecommendationsPanel({ recs }: { recs: PipelineRec[] }) {
   );
 }
 
+function NoCheckInCollapsible({ items, expandedId, onToggle, onViewCheckIn, onAskAI }: {
+  items: ReadinessResult[];
+  expandedId: string | null;
+  onToggle: (id: string) => void;
+  onViewCheckIn?: () => void;
+  onAskAI?: (q: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  if (items.length === 0) return null;
+  return (
+    <div className="mt-2">
+      <button
+        onClick={() => setOpen(o => !o)}
+        className="w-full flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-gray-100 transition-colors group"
+      >
+        <UserX size={12} className="text-gray-400 flex-shrink-0" />
+        <span className="text-[11px] text-gray-400 group-hover:text-gray-600 flex-1 text-left">
+          {items.length} with no check-in data
+        </span>
+        <ChevronDown size={12} className={`text-gray-300 transition-transform flex-shrink-0 ${open ? 'rotate-180' : ''}`} />
+      </button>
+      {open && (
+        <div className="mt-1.5 space-y-2.5 border-l-2 border-dashed border-gray-200 pl-3 ml-2">
+          {items.map(result => (
+            <CandidateCard
+              key={result.person.id}
+              result={result}
+              expanded={expandedId === result.person.id}
+              onToggle={() => onToggle(result.person.id)}
+              onViewCheckIn={onViewCheckIn}
+              onAskAI={onAskAI}
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function DeptPipelineView({ department, onBack, onNavigateToGapReport, onNavigateToManagers, onViewCheckIn, onAskAI, initialPersonId }: Props) {
   const allResults = useMemo(() => getAllReadiness(), []);
   const deptResults = useMemo(
@@ -499,21 +538,36 @@ export function DeptPipelineView({ department, onBack, onNavigateToGapReport, on
                   <span className="text-[11px] text-gray-400">{TIER_RANGES[tier]}</span>
                 </div>
                 <div className="space-y-2.5">
-                  {items.map(result => (
-                    <CandidateCard
-                      key={result.person.id}
-                      result={result}
-                      expanded={expandedId === result.person.id}
-                      onToggle={() => togglePerson(result.person.id)}
-                      onViewCheckIn={onViewCheckIn}
-                      onAskAI={onAskAI}
-                    />
-                  ))}
-                  {items.length === 0 && (
-                    <div className="h-16 rounded-xl border-2 border-dashed border-gray-200 flex items-center justify-center">
-                      <span className="text-xs text-gray-300">None</span>
-                    </div>
-                  )}
+                  {(() => {
+                    const withCheckIn = items.filter(r => r.person.lastCheckIn);
+                    const noCheckIn   = items.filter(r => !r.person.lastCheckIn);
+                    return (
+                      <>
+                        {withCheckIn.map(result => (
+                          <CandidateCard
+                            key={result.person.id}
+                            result={result}
+                            expanded={expandedId === result.person.id}
+                            onToggle={() => togglePerson(result.person.id)}
+                            onViewCheckIn={onViewCheckIn}
+                            onAskAI={onAskAI}
+                          />
+                        ))}
+                        {withCheckIn.length === 0 && noCheckIn.length === 0 && (
+                          <div className="h-16 rounded-xl border-2 border-dashed border-gray-200 flex items-center justify-center">
+                            <span className="text-xs text-gray-300">None</span>
+                          </div>
+                        )}
+                        <NoCheckInCollapsible
+                          items={noCheckIn}
+                          expandedId={expandedId}
+                          onToggle={togglePerson}
+                          onViewCheckIn={onViewCheckIn}
+                          onAskAI={onAskAI}
+                        />
+                      </>
+                    );
+                  })()}
                 </div>
               </div>
             );
