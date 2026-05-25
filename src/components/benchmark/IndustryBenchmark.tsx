@@ -30,6 +30,8 @@ import {
   getTopDestinations,
   getAttritionTrend,
   computeAttritionScore,
+  computeQuartiles,
+  getQuartilePosition,
   ATTRITION_RECORDS,
   ACME_TOTAL_HEADCOUNT,
   QUARTILE_CONFIG,
@@ -843,69 +845,118 @@ export function IndustryBenchmark({ onNavigateToGapReport }: Props) {
             </div>
 
             {/* Overall position */}
-            <div className={`rounded-2xl border ${overallCfg.border} ${overallCfg.bg} p-6`}>
-              <div className="flex items-start justify-between gap-8">
-                {/* Left: label + description */}
-                <div className="flex-1 min-w-0">
-                  <p className="text-xs font-semibold text-gray-500 uppercase tracking-widest mb-2">Overall benchmark position</p>
-                  <h2 className={`text-3xl font-black ${overallCfg.color}`}>{overallCfg.label}</h2>
-                  <p className="text-sm text-gray-600 mt-2 max-w-md">
-                    Across skills, compensation, and org structure vs {peers.length} similar-sized SaaS companies.
-                  </p>
-                </div>
+            {(() => {
+              // Build per-peer composite scores for the peer range bar
+              const posScore = (pos: QuartilePosition) => ({ top: 4, 'above-median': 3, 'below-median': 2, bottom: 1 }[pos]);
+              const peerCompositeScores = peers.map(p => {
+                const depts = (['Engineering', 'Product', 'Design', 'Data', 'Marketing', 'Sales', 'People Ops'] as const);
+                const peerVals = depts.map(d => peers.map(pp => pp.deptSkillCompetency[d]));
+                const positions = depts.map((d, i) => {
+                  const q = computeQuartiles(peerVals[i]);
+                  return getQuartilePosition(p.deptSkillCompetency[d], q);
+                });
+                return positions.reduce((s, pos) => s + posScore(pos), 0) / positions.length;
+              });
+              const allScores = peerCompositeScores;
+              const minScore = Math.min(...allScores);
+              const maxScore = Math.max(...allScores);
+              const range = maxScore - minScore || 1;
+              const acmePct = Math.min(Math.max(((summary.avgScore - minScore) / range) * 100, 2), 98);
+              const medianScore = [...allScores].sort((a,b)=>a-b)[Math.floor(allScores.length / 2)];
+              const medianPct = Math.min(Math.max(((medianScore - minScore) / range) * 100, 2), 98);
+              const gapToMedian = parseFloat((summary.avgScore - medianScore).toFixed(2));
+              const aboveMedian = gapToMedian >= 0;
 
-                {/* Right: quartile ladder */}
-                <div className="flex-shrink-0 flex flex-col gap-1 pt-0.5">
-                  {(['top', 'above-median', 'below-median', 'bottom'] as const).map(pos => {
-                    const cfg = QUARTILE_CONFIG[pos];
-                    const active = pos === summary.overallPosition;
-                    return (
-                      <div key={pos} className={`flex items-center gap-2 px-3 py-1.5 rounded-lg ${
-                        active ? 'bg-white/70 shadow-sm border border-white/80' : ''
-                      }`}>
-                        <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${active ? cfg.dot : 'bg-gray-300'}`} />
-                        <span className={`text-xs font-medium ${active ? cfg.color + ' font-bold' : 'text-gray-400'}`}>{cfg.label}</span>
-                        {active && <span className="text-[10px] text-gray-400 font-medium ml-0.5">← you</span>}
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
+              return (
+                <div className={`rounded-2xl border ${overallCfg.border} ${overallCfg.bg} p-6`}>
+                  {/* Header row */}
+                  <div className="flex items-start justify-between gap-6 mb-5">
+                    <div>
+                      <p className="text-xs font-semibold text-gray-500 uppercase tracking-widest mb-1.5">Overall benchmark position</p>
+                      <h2 className={`text-3xl font-black leading-none ${overallCfg.color}`}>{overallCfg.label}</h2>
+                      <p className="text-sm text-gray-500 mt-2">
+                        Across skills, compensation &amp; org structure vs {peers.length} peers
+                      </p>
+                    </div>
+                    {/* Gap-to-median chip */}
+                    <div className="flex-shrink-0 bg-white/70 border border-white/80 rounded-xl px-4 py-3 text-center shadow-sm">
+                      <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest mb-0.5">vs median</p>
+                      <p className={`text-2xl font-black leading-none ${aboveMedian ? 'text-emerald-600' : 'text-rose-600'}`}>
+                        {aboveMedian ? '+' : ''}{Math.round(Math.abs(gapToMedian * 25))}pts
+                      </p>
+                      <p className="text-[10px] text-gray-400 mt-0.5">{aboveMedian ? 'ahead' : 'behind'}</p>
+                    </div>
+                  </div>
 
-              {/* Strengths / gaps row */}
-              <div className="grid grid-cols-2 gap-4 mt-6 pt-5 border-t border-black/5">
-                <div>
-                  <p className="text-xs font-semibold text-gray-500 mb-3 flex items-center gap-1.5">
-                    <Star size={11} className="text-emerald-500" />Strengths
-                  </p>
-                  {summary.topDepts.length > 0 ? (
-                    <div className="space-y-2">
-                      {summary.topDepts.slice(0, 3).map(b => (
-                        <div key={b.department} className="flex items-center justify-between">
-                          <span className="text-xs text-gray-700">{b.department}</span>
-                          <QuartileBadge pos={b.position} />
-                        </div>
-                      ))}
+                  {/* Peer range bar */}
+                  <div className="mb-1">
+                    <div className="flex justify-between text-[10px] text-gray-400 mb-1.5">
+                      <span>Lowest peer</span>
+                      <span>Highest peer</span>
                     </div>
-                  ) : <p className="text-xs text-gray-400">No top-quartile departments yet</p>}
-                </div>
-                <div>
-                  <p className="text-xs font-semibold text-gray-500 mb-3 flex items-center gap-1.5">
-                    <TrendingDown size={11} className="text-gray-400" />Areas to close
-                  </p>
-                  {summary.gapDepts.length > 0 ? (
-                    <div className="space-y-2">
-                      {summary.gapDepts.slice(0, 3).map(b => (
-                        <div key={b.department} className="flex items-center justify-between">
-                          <span className="text-xs text-gray-700">{b.department}</span>
-                          <QuartileBadge pos={b.position} />
-                        </div>
-                      ))}
+                    <div className="relative h-6 flex items-center">
+                      {/* Track */}
+                      <div className="absolute inset-x-0 h-2 bg-black/5 rounded-full" />
+                      {/* Quartile bands */}
+                      <div className="absolute h-2 bg-rose-100 rounded-l-full" style={{ left: '0%', width: '25%' }} />
+                      <div className="absolute h-2 bg-amber-100" style={{ left: '25%', width: '25%' }} />
+                      <div className="absolute h-2 bg-sky-100" style={{ left: '50%', width: '25%' }} />
+                      <div className="absolute h-2 bg-emerald-100 rounded-r-full" style={{ left: '75%', width: '25%' }} />
+                      {/* Median marker */}
+                      <div className="absolute h-4 w-px bg-gray-400/50" style={{ left: `${medianPct}%` }} title="Peer median" />
+                      {/* Acme dot */}
+                      <div
+                        className={`absolute w-4 h-4 rounded-full border-2 border-white shadow-md z-10 -translate-x-1/2 ${overallCfg.dot}`}
+                        style={{ left: `${acmePct}%` }}
+                        title={`Acme composite score: ${summary.avgScore}`}
+                      />
                     </div>
-                  ) : <p className="text-xs text-gray-400">All departments at or above median</p>}
+                    <div className="flex justify-between text-[10px] text-gray-400 mt-1">
+                      <span className="text-rose-500 font-medium">Bottom quartile</span>
+                      <span className="text-emerald-500 font-medium">Top quartile</span>
+                    </div>
+                  </div>
+
+                  {/* Strengths / gaps */}
+                  <div className="grid grid-cols-2 gap-4 mt-5 pt-5 border-t border-black/5">
+                    <div>
+                      <p className="text-xs font-semibold text-gray-500 mb-3 flex items-center gap-1.5">
+                        <Star size={11} className="text-emerald-500" />Strengths
+                      </p>
+                      {summary.topDepts.length > 0 ? (
+                        <div className="space-y-2.5">
+                          {summary.topDepts.slice(0, 3).map(b => (
+                            <div key={b.department} className="flex items-center justify-between gap-2">
+                              <span className="text-xs text-gray-700 font-medium">{b.department}</span>
+                              <span className={`text-xs font-semibold ${QUARTILE_CONFIG[b.position].color}`}>
+                                {b.delta > 0 ? '+' : ''}{b.delta.toFixed(1)} vs median
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      ) : <p className="text-xs text-gray-400">No top-quartile departments yet</p>}
+                    </div>
+                    <div>
+                      <p className="text-xs font-semibold text-gray-500 mb-3 flex items-center gap-1.5">
+                        <TrendingDown size={11} className="text-gray-400" />Areas to close
+                      </p>
+                      {summary.gapDepts.length > 0 ? (
+                        <div className="space-y-2.5">
+                          {summary.gapDepts.slice(0, 3).map(b => (
+                            <div key={b.department} className="flex items-center justify-between gap-2">
+                              <span className="text-xs text-gray-700 font-medium">{b.department}</span>
+                              <span className="text-xs font-semibold text-rose-600">
+                                {b.delta.toFixed(1)} skill pts vs median
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      ) : <p className="text-xs text-gray-400">All departments at or above median</p>}
+                    </div>
+                  </div>
                 </div>
-              </div>
-            </div>
+              );
+            })()}
 
             {/* Org-level benchmark cards */}
             <div className="grid grid-cols-2 gap-5" data-tour="benchmark-dist-grid">
