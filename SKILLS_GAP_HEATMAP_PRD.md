@@ -185,23 +185,23 @@ All three numbers update live when filters are applied.
 Positioned in the top-right area of the header. Generates a plain-text report listing the department's summary stats followed by a per-skill breakdown (skill name, % below target, N of N people). See §3.8 for the format.
 
 #### Filters
-A filter bar sits below the title block. On the left: a Filter icon + "Filter" label, then two `FilterPill` dropdowns.
+A filter bar sits below the title block. On the left: a Filter icon + "Filter" label, then one `FilterPill` dropdown.
 
 **FilterPill component:** A native `<select>` element styled to look like a pill, with a ChevronDown icon overlaid via absolute positioning (pointer-events disabled). The select shows "[Label]: All" when no value is selected, or "[option value]" when one is chosen. Changing the value updates the filter immediately. Selecting the first option ("All") resets to the unfiltered state (empty string).
 
-- **Location dropdown** — label "Location". Options: "All" + every location that has at least one data row for this department (dynamically derived from the filtered dataset, not a hardcoded list). Selecting a location restricts all data to that location only. When a location filter is active, the heatmap collapses to a single column.
 - **Level dropdown** — label "Level". Options: "All" + all levels from the `LEVELS` constant (IC1, IC2, IC3, IC4, M1, M2 — fixed list, not dynamically derived). Selecting a level restricts all data to that level only.
 
-Both filters default to "All". They are independent and composable — both can be active simultaneously with AND logic (a row must match both). There is no "clear all filters" button at the filter bar level (a clear button only appears in the empty-state — see §8A.4).
+The filter defaults to "All". There is no "clear filter" button at the filter bar level (a clear button only appears in the empty-state — see §8A.4).
+
+> **Note: Location filter removed.** A Location filter and By Location group-by were specified in earlier drafts but have been intentionally removed from the product. Location is available as a field in the underlying data but is not exposed as a filter or group-by in the UI.
 
 On the right side of the filter bar (separated by a flex spacer):
 
-**Group-by toggle** — a three-button toggle rendered on a grey pill background:
-- **By Location** (default) — Map icon. Columns = all locations with data rows, or a single column if a location filter is active.
-- **By Manager** — Users icon. Columns = all managers in this department, each showing their team names in smaller grey text beneath. Managers without any data rows in the current filtered set still appear as columns but their cells are empty.
+**Group-by toggle** — a two-button toggle rendered on a grey pill background:
+- **By Manager** (default) — Users icon. Columns = all managers in this department, each showing their team names in smaller grey text beneath. Managers without any data rows in the current filtered set still appear as columns but their cells are empty.
 - **Department** — LayoutGrid icon. Single column showing the entire department aggregated.
 
-The active option has a white background with a subtle drop shadow; inactive options are transparent with grey text. Changing the group-by does not reset either filter.
+The active option has a white background with a subtle drop shadow; inactive options are transparent with grey text. Changing the group-by does not reset the filter.
 
 ---
 
@@ -244,7 +244,6 @@ The entire row is clickable. Clicking opens the check-in drilldown panel (§5.4)
 
 One header cell per group key. The first column header is labelled "Skill" in small-caps grey text.
 
-For **By Location**: each column shows the location name.  
 For **By Manager**: each column shows the manager's name with their team names in smaller grey text beneath. Teams shown are those in the manager's `teams` array (the manager data object contains a list of team names they are responsible for — this is the authoritative source of which employees belong to that manager's column).  
 For **Department**: a single column header showing the department name.
 
@@ -293,19 +292,16 @@ Below the legend, a talent development upsell banner is shown. Below that, a fee
 
 ### 3.6 Group-by behaviour details
 
-**By Location (default):**
-- Column keys are the set of locations that appear in the filtered data for this department
-- If a location filter is active, only one column is shown (the selected location)
-- Column order follows the canonical location order: London, New York, Berlin, Singapore, Remote
-
-**By Manager:**
+**By Manager (default):**
 - Column keys are the names of all managers in this department, taken from the manager data for the department
 - A cell is populated with entries whose `team` field matches any team in that manager's `teams` array
 - If a manager's teams have no data in the filtered set, their column will show empty cells
 
 **Department (consolidated):**
 - A single column showing the entire department's data aggregated
-- Useful when a location or level filter is active to see the combined result
+- Useful when a level filter is active to see the combined result
+
+> **Note: By Location removed.** Location-based grouping was specified in an earlier draft but has been intentionally removed. The Location group-by option is not present in the UI.
 
 Changing group-by updates all column headers and recalculates all cell values immediately. It does not reset the active skill selection or close the drilldown panel.
 
@@ -313,7 +309,7 @@ Changing group-by updates all column headers and recalculates all cell values im
 
 ### 3.7 Filter behaviour details
 
-Both Location and Level filters apply to the raw data rows before any aggregation, via a single `useMemo` that returns the filtered subset of `SKILLS_DATA`. The filtered subset is the source of truth for everything downstream. The effects propagate to:
+The Level filter applies to the raw data rows before any aggregation, via a single `useMemo` that returns the filtered subset of `SKILLS_DATA`. The filtered subset is the source of truth for everything downstream. The effects propagate to:
 
 - The three summary stats in the header (people below target, avg skill gap, skills tracked)
 - The set of skill rows displayed in the grid (skills with no rows in the filtered set disappear entirely)
@@ -322,7 +318,9 @@ Both Location and Level filters apply to the raw data rows before any aggregatio
 - The critical gaps alert bar (re-ranks on the filtered subset)
 - All content inside the drilldown panel (bar chart, candidate lists, stat counts)
 
-Neither filter resets when the group-by toggle changes. Neither resets when the drilldown panel is opened or closed. Neither resets on navigation away and back (they are component state and reset on unmount only).
+The filter does not reset when the group-by toggle changes, when the drilldown panel is opened or closed, or on navigation away and back (it is component state and resets on unmount only).
+
+> **Note: Location filter removed.** Earlier drafts described a Location filter with the same propagation behaviour. This has been intentionally removed.
 
 ---
 
@@ -394,7 +392,7 @@ Hovering a cell shows a tooltip containing:
 - If exceeding: "+X.X above target"
 - If not exceeding: "X of Y people below target (Z%)"
 - Gap score (numerical, labelled)
-- Team name (only shown when group-by is "By Manager")
+- Team name (only shown when group-by is "By Manager"; not shown in Department view)
 
 ### 4.5 Cell interaction states
 
@@ -428,7 +426,7 @@ An × (close) button in the panel header closes the panel entirely and deselects
 
 - Eyebrow label: "Skill drill-down" in small-caps grey
 - Skill name as the panel heading (large bold)
-- Sub-label: "Across N [locations / teams / departments]" — the noun changes to match the current group-by setting ("locations" for By Location, "teams" for By Manager, "departments" for Department). N is the count of raw data rows for this skill in the current filtered dataset (not the number of group columns).
+- Sub-label: "Across N [teams / departments]" — the noun changes to match the current group-by setting ("teams" for By Manager, "departments" for Department). N is the count of raw data rows for this skill in the current filtered dataset (not the number of group columns).
 
 ### 5.4 Summary cards (three cards)
 
@@ -446,7 +444,7 @@ A 3-column grid directly below the header, above the scrollable body.
 **Card 3 — Worst area:**
 - Amber background
 - Label: "Worst area"
-- Value: for By Location: the location name with the highest % below target; for By Manager: the **team name** (not the manager name) with the highest % below target; for Department: the department name
+- Value: for By Manager: the **team name** (not the manager name) with the highest % below target; for Department: the department name
 - The entry shown is the first in the list after the breakdown bars are sorted by % below target descending
 
 ### 5.5 Scrollable body
@@ -481,12 +479,12 @@ If neither sub-section has candidates, the entire promotion pipeline section is 
 
 ### 5.7 Breakdown bars
 
-A section labelled "Breakdown by [grouping]" where the grouping label is "team" (for By Manager), "location" (for By Location), or "department" (for Department view).
+A section labelled "Breakdown by [grouping]" where the grouping label is "team" (for By Manager) or "department" (for Department view).
 
-**One bar per raw data row** in the filtered dataset for this skill, sorted by percentage below target descending (highest gap first). Note: these are individual raw data rows (e.g. "London / Platform team / IC3"), not one bar per group column. This means a location-grouped column may have multiple bars contributing to it — the bars show the underlying granularity.
+**One bar per raw data row** in the filtered dataset for this skill, sorted by percentage below target descending (highest gap first). Note: these are individual raw data rows, not one bar per group column — the bars show the underlying granularity below the column level.
 
 Each bar entry shows:
-- **Left side:** the group label (location name / team name / department name depending on group-by), with the team name shown in smaller grey text alongside it
+- **Left side:** the group label (team name / department name depending on group-by)
 - **Right side:** if exceeding, a teal badge showing "+X.X"; if not exceeding, a "X/Y" count in grey and a coloured percentage badge
 - **The bar itself:**
   - If exceeding: a full-width sky-blue bar (sky-200 background, sky-400 fill) — always rendered at 100% width
@@ -730,16 +728,16 @@ Wherever data is absent — whether an entire department has no skills data, a s
 
 ---
 
-### 8A.4 Department view — filter combination returns no rows
+### 8A.4 Department view — filter returns no rows
 
-**When:** The user applies a Location + Level filter combination that has no matching data (e.g. "Berlin" + "M2" for a department with no M2s in Berlin).
+**When:** The user applies a Level filter that has no matching data (e.g. "M2" for a department with no M2-level skill data).
 
 **What to show:** The grid content area shows:
 
-> **No data for [Level] in [Location]**  
-> There are no employees at this level in this location for [Department]. Try adjusting your filters, or this combination may not yet have skill data on record.
+> **No data for [Level] in [Department]**  
+> There are no employees at this level for [Department]. Try adjusting your filters, or this level may not yet have skill data on record.
 
-**Call to action:** A button labelled **"Clear filters"** that resets both filters to "All". No data-collection action is needed here since the gap is likely a filter issue, not a missing-data issue.
+**Call to action:** A button labelled **"Clear filters"** that resets the filter to "All". No data-collection action is needed here since the gap is likely a filter issue, not a missing-data issue.
 
 ---
 
@@ -750,7 +748,7 @@ Wherever data is absent — whether an entire department has no skills data, a s
 **What to show:** The cell renders a dashed placeholder tile. On hover, a tooltip explains:
 
 > **No data**  
-> No skill ratings on record for [Skill] in [Group]. This may mean no employees at this location/level have been assessed for this skill yet.
+> No skill ratings on record for [Skill] in [Group]. This may mean no employees in this team/level have been assessed for this skill yet.
 
 **Call to action:** No inline button (the cell is too small). Instead, the tooltip includes a small text link: **"Flag for assessment"** that marks this skill/group combination as needing data collection. This creates a record that can be reviewed in a separate data-completeness workflow.
 
