@@ -4,7 +4,7 @@ import {
   BarChart3, Globe, Star, AlertTriangle, ChevronDown, ChevronUp,
   LogOut, Calendar, Building2, Lightbulb, Clock, ChevronRight,
   UserX, MessageSquareOff, TrendingUp as LevelStall, Banknote, RefreshCw,
-  ArrowRight, Briefcase, UserCheck, ShieldAlert, GitBranch,
+  Briefcase, UserCheck, ShieldAlert, GitBranch,
   Megaphone, Search,
 } from 'lucide-react';
 
@@ -745,17 +745,6 @@ export function IndustryBenchmark({ onNavigateToGapReport }: Props) {
   const competitorCount = filteredAttrition.filter(r => r.destinationType === 'Competitor').length;
   const bigTechCount = filteredAttrition.filter(r => r.destinationType === 'Big Tech').length;
 
-  // ── Priority actions: top critical/high across all recs ────────────────
-  const priorityActions = useMemo(() => {
-    const all = [...overviewRecs, ...skillsRecs, ...compRecs, ...talentFlowRecs];
-    return all
-      .filter(r => r.priority === 'critical' || r.priority === 'high')
-      .sort((a, b) => {
-        const order = { critical: 0, high: 1, medium: 2 };
-        return order[a.priority] - order[b.priority];
-      })
-      .slice(0, 3);
-  }, [overviewRecs, skillsRecs, compRecs, talentFlowRecs]);
 
   // ── Tab definitions ──────────────────────────────────────────────────
   const PAGE_TABS: { id: PageTab; label: string; icon: React.ReactNode; count?: number; countColor?: string }[] = [
@@ -804,38 +793,7 @@ export function IndustryBenchmark({ onNavigateToGapReport }: Props) {
           </div>
         </div>
 
-        {/* Priority actions strip — sits above tabs so tabs remain flush with the page */}
-        {priorityActions.length > 0 && (
-          <div className="flex items-center gap-3 flex-wrap bg-amber-50 rounded-xl px-4 py-2.5 mb-3 border border-amber-100">
-            <div className="flex items-center gap-1.5 flex-shrink-0">
-              <AlertTriangle size={12} className="text-amber-600" />
-              <span className="text-xs font-bold text-amber-800">Priority actions:</span>
-            </div>
-            {priorityActions.map(rec => (
-              <button
-                key={rec.id}
-                onClick={() => {
-                  const tabMap: Record<string, PageTab> = {
-                    upskilling: 'skills', compensation: 'compensation', hiring: 'talent',
-                    retention: 'talent', 'org-design': 'overview', process: 'overview',
-                  };
-                  setPageTab(tabMap[rec.category] ?? 'overview');
-                }}
-                className={`flex items-center gap-1.5 text-xs font-medium px-3 py-1 rounded-full border transition-colors hover:opacity-80 ${
-                  rec.priority === 'critical'
-                    ? 'bg-red-50 border-red-200 text-red-700'
-                    : 'bg-amber-100 border-amber-200 text-amber-800'
-                }`}
-              >
-                <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${rec.priority === 'critical' ? 'bg-red-500' : 'bg-amber-500'}`} />
-                {rec.title}
-                <ArrowRight size={10} className="opacity-60" />
-              </button>
-            ))}
-          </div>
-        )}
-
-        {/* Tab navigation — last element so active underline connects directly to page */}
+        {/* Tab navigation */}
         <div className="flex items-end gap-0 -mx-8 px-8" data-tour="benchmark-peer-filter">
           {PAGE_TABS.map(tab => (
             <button
