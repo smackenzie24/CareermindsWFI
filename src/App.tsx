@@ -212,7 +212,6 @@ export default function App() {
         {nav.view === 'pipeline' && (
           <PromotionPipeline
             initialDepartment={nav.department}
-            initialTab={nav.pipelineTab}
             initialPersonId={nav.personId}
             onSelectDept={setPipelineDept}
             onNavigateToManagers={(managerId) => setNav({ view: 'managers', managerId })}

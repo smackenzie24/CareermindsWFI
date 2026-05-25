@@ -1,8 +1,11 @@
 import { useMemo, useState } from 'react';
-import { ArrowLeft, Clock, MapPin, ExternalLink, ChevronDown, CheckCircle, AlertCircle, CalendarDays, Sparkles, Lightbulb, ChevronRight, UserX } from 'lucide-react';
+import { ArrowLeft, Clock, MapPin, ExternalLink, ChevronDown, CheckCircle, AlertCircle, CalendarDays, Sparkles, Lightbulb, ChevronRight, UserX, Users, AlertTriangle } from 'lucide-react';
 import { ExportButtons } from '../ExportButtons';
 import { UpsellBanner } from '../UpsellBanner';
 import { FeedbackBanner } from '../feedback/FeedbackBanner';
+import { FlightRiskTab } from './FlightRiskTab';
+import { HiddenTalent } from './HiddenTalent';
+import { getFlightRiskPeople, getCrossDeptFitCandidates } from '../../data/promotionData';
 import {
   getAllReadiness,
   TIER_CONFIG,
@@ -427,11 +430,24 @@ function hasNoCheckIn(r: ReadinessResult): boolean {
   return !r.person.lastCheckIn || r.criteriaMet === 0;
 }
 
+type DeptTab = 'pipeline' | 'flight-risk' | 'hidden-talent';
+
 export function DeptPipelineView({ department, onBack, onNavigateToGapReport, onNavigateToManagers, onViewCheckIn, onAskAI, initialPersonId }: Props) {
+  const [activeTab, setActiveTab] = useState<DeptTab>('pipeline');
+
   const allResults = useMemo(() => getAllReadiness(), []);
   const deptResults = useMemo(
     () => allResults.filter(r => r.person.department === department),
     [allResults, department]
+  );
+
+  const deptFlightRiskCount = useMemo(
+    () => getFlightRiskPeople('medium').filter(e => e.person.department === department).length,
+    [department]
+  );
+  const deptHiddenTalentCount = useMemo(
+    () => getCrossDeptFitCandidates().filter(r => r.currentDept === department || r.suggestedDept === department).length,
+    [department]
   );
 
   const [expandedId, setExpandedId] = useState<string | null>(() => initialPersonId ?? null);
@@ -496,7 +512,7 @@ export function DeptPipelineView({ department, onBack, onNavigateToGapReport, on
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div>
-              <h1 className="text-xl font-bold text-gray-900">{department} · Promotion Pipeline</h1>
+              <h1 className="text-xl font-bold text-gray-900">{department}</h1>
               <p className="text-xs text-gray-400 mt-0.5">{deptResults.length} people tracked</p>
             </div>
           </div>
@@ -523,8 +539,69 @@ export function DeptPipelineView({ department, onBack, onNavigateToGapReport, on
         </div>
       </header>
 
-      {/* Kanban */}
+      {/* Dept-level tab bar */}
+      <div className="bg-white border-b border-gray-100 px-8 flex items-center gap-0">
+        <button
+          onClick={() => setActiveTab('pipeline')}
+          className={`flex items-center gap-2 px-4 py-3 text-sm font-semibold border-b-2 transition-all ${
+            activeTab === 'pipeline'
+              ? 'border-gray-900 text-gray-900'
+              : 'border-transparent text-gray-400 hover:text-gray-700'
+          }`}
+        >
+          <Users size={13} />
+          Pipeline
+          <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${activeTab === 'pipeline' ? 'bg-gray-100 text-gray-700' : 'bg-gray-100 text-gray-400'}`}>
+            {deptResults.length}
+          </span>
+        </button>
+        <button
+          onClick={() => setActiveTab('flight-risk')}
+          className={`flex items-center gap-2 px-4 py-3 text-sm font-semibold border-b-2 transition-all ${
+            activeTab === 'flight-risk'
+              ? 'border-red-400 text-red-700'
+              : 'border-transparent text-gray-400 hover:text-gray-700'
+          }`}
+        >
+          <AlertTriangle size={13} />
+          Flight Risk
+          {deptFlightRiskCount > 0 && (
+            <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${activeTab === 'flight-risk' ? 'bg-red-50 text-red-600' : 'bg-gray-100 text-gray-400'}`}>
+              {deptFlightRiskCount}
+            </span>
+          )}
+        </button>
+        <button
+          onClick={() => setActiveTab('hidden-talent')}
+          className={`flex items-center gap-2 px-4 py-3 text-sm font-semibold border-b-2 transition-all ${
+            activeTab === 'hidden-talent'
+              ? 'border-sky-400 text-sky-700'
+              : 'border-transparent text-gray-400 hover:text-gray-700'
+          }`}
+        >
+          <Sparkles size={13} />
+          Hidden Talent
+          {deptHiddenTalentCount > 0 && (
+            <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${activeTab === 'hidden-talent' ? 'bg-sky-50 text-sky-600' : 'bg-gray-100 text-gray-400'}`}>
+              {deptHiddenTalentCount}
+            </span>
+          )}
+        </button>
+      </div>
+
+      {/* Tab content */}
       <main className="flex-1 overflow-auto p-8">
+        {activeTab === 'flight-risk' && (
+          <FlightRiskTab
+            department={department}
+            onSwitchToHiddenTalent={() => setActiveTab('hidden-talent')}
+          />
+        )}
+        {activeTab === 'hidden-talent' && (
+          <HiddenTalent filterDept={department} />
+        )}
+        {activeTab === 'pipeline' && (
+        <>
         <div className="grid grid-cols-5 gap-4" data-tour="pipeline-dept-columns">
           {(['ready', 'near-ready', 'progressing', 'developing', 'building'] as const).map(tier => {
             const cfg = TIER_CONFIG[tier];
@@ -594,6 +671,8 @@ export function DeptPipelineView({ department, onBack, onNavigateToGapReport, on
           <UpsellBanner variant="leadership-dev" />
           <FeedbackBanner context="Promotion Pipeline" />
         </div>
+        </>
+        )}
       </main>
     </div>
   );

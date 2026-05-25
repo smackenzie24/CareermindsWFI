@@ -1,9 +1,6 @@
 import { useMemo, useState } from 'react';
-import { ChevronDown, ChevronRight, ChevronUp, Users, TrendingUp, Star, Clock, DollarSign, Building2, CalendarCheck, Sparkles, AlertTriangle } from 'lucide-react';
+import { ChevronRight, Users, TrendingUp, Star, Clock, Sparkles } from 'lucide-react';
 import { ExportButtons } from '../ExportButtons';
-import { HiddenTalent } from './HiddenTalent';
-import { FlightRiskTab } from './FlightRiskTab';
-import { getCrossDeptFitCandidates, getFlightRiskPeople } from '../../data/promotionData';
 import {
   getAllReadiness,
   TIER_CONFIG,
@@ -89,7 +86,6 @@ function StatCard({ label, value, sub, color, icon }: { label: string; value: st
 
 interface Props {
   initialDepartment?: Department;
-  initialTab?: 'pipeline' | 'hidden-talent' | 'flight-risk';
   initialPersonId?: string;
   selectedDept?: Department | null;
   onSelectDept?: (dept: Department | null) => void;
@@ -99,16 +95,13 @@ interface Props {
   onAskAI?: (question: string) => void;
 }
 
-export function PromotionPipeline({ initialDepartment, initialTab, initialPersonId, selectedDept: selectedDeptProp, onSelectDept, onNavigateToGapReport, onNavigateToManagers, onViewCheckIn, onAskAI }: Props) {
+export function PromotionPipeline({ initialDepartment, initialPersonId, selectedDept: selectedDeptProp, onSelectDept, onNavigateToGapReport, onNavigateToManagers, onViewCheckIn, onAskAI }: Props) {
   const [internalDept, setInternalDept] = useState<Department | null>(initialDepartment ?? null);
   const selectedDept = selectedDeptProp !== undefined ? selectedDeptProp : internalDept;
   const setSelectedDept = (dept: Department | null) => {
     setInternalDept(dept);
     onSelectDept?.(dept);
   };
-  const [activeTab, setActiveTab] = useState<'pipeline' | 'hidden-talent' | 'flight-risk'>(initialTab ?? 'pipeline');
-  const hiddenTalentCount = useMemo(() => getCrossDeptFitCandidates().length, []);
-  const flightRiskHighCount = useMemo(() => getFlightRiskPeople('high').length, []);
 
   const allResults = useMemo(() => getAllReadiness(), []);
 
@@ -249,63 +242,6 @@ export function PromotionPipeline({ initialDepartment, initialTab, initialPerson
 
       </header>
 
-      {/* Tabs */}
-      <div className="bg-white border-b border-gray-100 px-8 flex items-center gap-0">
-        <button
-          onClick={() => setActiveTab('pipeline')}
-          className={`flex items-center gap-2 px-4 py-3.5 text-sm font-semibold border-b-2 transition-all ${
-            activeTab === 'pipeline'
-              ? 'border-gray-900 text-gray-900'
-              : 'border-transparent text-gray-400 hover:text-gray-700'
-          }`}
-        >
-          <Users size={14} />
-          Pipeline
-        </button>
-        <button
-          onClick={() => setActiveTab('hidden-talent')}
-          className={`flex items-center gap-2 px-4 py-3.5 text-sm font-semibold border-b-2 transition-all ${
-            activeTab === 'hidden-talent'
-              ? 'border-sky-400 text-sky-700'
-              : 'border-transparent text-gray-400 hover:text-gray-700'
-          }`}
-        >
-          <Sparkles size={14} />
-          Hidden Talent
-          {hiddenTalentCount > 0 && (
-            <span className="text-[10px] font-bold bg-sky-50 text-sky-600 px-1.5 py-0.5 rounded-full">
-              {hiddenTalentCount}
-            </span>
-          )}
-        </button>
-        <button
-          onClick={() => setActiveTab('flight-risk')}
-          className={`flex items-center gap-2 px-4 py-3.5 text-sm font-semibold border-b-2 transition-all ${
-            activeTab === 'flight-risk'
-              ? 'border-red-400 text-red-700'
-              : 'border-transparent text-gray-400 hover:text-gray-700'
-          }`}
-        >
-          <AlertTriangle size={14} />
-          Flight Risk
-          {flightRiskHighCount > 0 && (
-            <span className="text-[10px] font-bold bg-red-50 text-red-600 px-1.5 py-0.5 rounded-full">
-              {flightRiskHighCount}
-            </span>
-          )}
-        </button>
-      </div>
-
-      {activeTab === 'flight-risk' ? (
-        <main className="flex-1 overflow-auto p-8">
-          <FlightRiskTab onSwitchToHiddenTalent={() => setActiveTab('hidden-talent')} />
-        </main>
-      ) : activeTab === 'hidden-talent' ? (
-        <main className="flex-1 overflow-auto p-8">
-          <HiddenTalent />
-        </main>
-      ) : (
-      <>
       {/* Tier legend */}
       <div className="bg-white border-b border-gray-100 px-8 py-3 flex items-center gap-6" data-tour="pipeline-tier-legend">
         <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Readiness tiers:</span>
@@ -321,7 +257,7 @@ export function PromotionPipeline({ initialDepartment, initialTab, initialPerson
       {/* Department cards */}
       <main className="flex-1 overflow-auto p-8">
         <div className="mb-5">
-          <p className="text-sm text-gray-500">Click a department to explore individual candidates and skill gaps</p>
+          <p className="text-sm text-gray-500">Click a department to explore the promotion pipeline, flight risks, and hidden talent within that team.</p>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5" data-tour="pipeline-dept-grid">
@@ -412,8 +348,6 @@ export function PromotionPipeline({ initialDepartment, initialTab, initialPerson
         <UpsellBanner variant="leadership-dev" className="mt-6" />
         <FeedbackBanner context="Promotion Pipeline" className="mt-4" />
       </main>
-      </>
-      )}
     </div>
   );
 }

@@ -6,6 +6,7 @@ import {
   LEVEL_DEFINITIONS,
   type FlightRisk,
   type FlightRiskPerson,
+  type Department,
 } from '../../data/promotionData';
 
 type RiskFilter = 'all' | 'high' | 'medium';
@@ -133,11 +134,16 @@ function PersonCard({ entry, onViewOpportunity }: { entry: FlightRiskPerson; onV
 
 interface Props {
   onSwitchToHiddenTalent?: () => void;
+  department?: Department;
 }
 
-export function FlightRiskTab({ onSwitchToHiddenTalent }: Props) {
+export function FlightRiskTab({ onSwitchToHiddenTalent, department }: Props) {
   const [filter, setFilter] = useState<RiskFilter>('all');
-  const all = useMemo(() => getFlightRiskPeople('medium'), []);
+  const allGlobal = useMemo(() => getFlightRiskPeople('medium'), []);
+  const all = useMemo(
+    () => department ? allGlobal.filter(e => e.person.department === department) : allGlobal,
+    [allGlobal, department]
+  );
 
   const filtered = useMemo(() => {
     if (filter === 'all') return all;
