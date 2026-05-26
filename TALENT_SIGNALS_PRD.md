@@ -298,3 +298,83 @@ This context is provided at query time and is not stored as a persistent AI memo
 
 ### AI output types relevant to Talent Signals
 The AI can respond with structured output types that render as formatted cards in the UI, including: person lists, skill gap lists, department summaries, flight risk lists, scenario analysis, and recommendations. Plain text responses are also supported.
+
+---
+
+## Ticket 11 — Talent Signals: Feature Tracking (Placeholder)
+
+### Purpose
+Placeholder ticket for tracking the Talent Signals feature end-to-end across build, QA, and release.
+
+### Scope
+This ticket is the parent epic. All other Talent Signals tickets (1–10, 12–13) are children of this ticket. It is used to:
+- Track overall feature readiness for release.
+- Coordinate cross-functional sign-off (product, design, engineering, QA).
+- Gate any phased rollout or feature flag decisions.
+
+### Definition of Done
+All child tickets are complete, the feature has passed QA, and sign-off has been given by product and the relevant stakeholder (e.g. HR leadership sponsor).
+
+---
+
+## Ticket 12 — Shared Feedback Component
+
+### Purpose
+A reusable in-product feedback banner that appears at the bottom of each major view. It prompts the user with a context-specific question, opens a structured feedback flow, and submits the response for product analysis. This is a shared component used across Talent Signals and other features.
+
+### Business Rules
+
+- Each view that includes the banner passes a **context label** (e.g. "Talent Signals", "Manager Effectiveness"). The banner uses this label to display a tailored prompt question and sub-text.
+- If no specific copy is configured for a given context label, a generic fallback question is shown: "Is this view useful for your work?" with sub-text "Tell us what's missing or what would make it better."
+- Clicking the primary CTA opens a **feedback flow** modal/overlay — a short structured form capturing the user's response.
+- The feedback flow is triggered from the banner only; it does not open automatically.
+- The banner persists on screen until the user submits feedback or dismisses it. Dismissal state is session-scoped (the banner reappears on next session).
+- The component accepts a `context` string and an optional layout class for spacing control.
+
+### Context-specific copy (confirmed)
+
+| Context | Question | Sub-text |
+|---|---|---|
+| Skills Heatmap | Is this heatmap surfacing the gaps that matter most to you? | Tell us what data or filters would make it more actionable. |
+| Skills Overview | Does this department view help you plan development conversations? | We'd love to know what's missing from the skills picture. |
+| Areas to Improve | Is this gap report giving you what you need to make a case? | Tell us what would make this report more useful in practice. |
+| Talent Signals | Does this view reflect how you actually think about readiness? | Share what's missing from the talent picture. |
+| Manager Effectiveness | Are these manager metrics helping you have better conversations? | Tell us what signals you wish you had. |
+| Industry Benchmarks | Are you benchmarking against the right peers? | Let us know what comparisons would be most useful. |
+| Executive Summary | Is this summary giving you what you need before a leadership meeting? | Tell us what signals belong on this page. |
+| Decisions Journal | Is the journal helping you follow through on commitments? | Tell us how we can make it a better accountability tool. |
+
+### Placement
+The feedback banner appears at the bottom of the main content area on each view. It sits below all primary content and below any upsell banner where both are present.
+
+---
+
+## Ticket 13 — Upsell Banner Component
+
+### Purpose
+A dismissible contextual banner that surfaces a relevant third-party service recommendation based on a signal detected in the current view. Intended to connect product-identified insights (e.g. a skills gap, near-ready pipeline, high flight risk) to a concrete commercial action via a partner service.
+
+### Business Rules
+
+- The banner is **variant-driven**: each instance is configured with a `variant` value that determines all copy, icon, and colour treatment.
+- The banner is **dismissible per session**: once dismissed, it does not reappear until the next session. No cross-session persistence is required.
+- The CTA link is an external link to the partner service. It opens in a new tab.
+- The banner renders a "trigger" line — a short plain-language description of the insight that caused this recommendation to surface (e.g. "Near-ready candidates identified in your pipeline"). This is part of the variant configuration, not dynamic per-user data.
+- The banner accepts an optional layout class for spacing control.
+
+### Variants
+
+| Variant | Service | Provider | Trigger context | Headline summary |
+|---|---|---|---|---|
+| `talent-development` | Talent Development | Careerminds | Critical skill gap detected | Close this skills gap with a structured upskilling programme |
+| `leadership-dev` | Leadership Development | Keystone Partners | Near-ready candidates in pipeline | Accelerate bench growth with executive coaching |
+| `manager-coaching` | Manager Coaching | Keystone Partners | Manager effectiveness below threshold | Targeted coaching to turn a struggling manager around |
+| `outplacement` | Outplacement Services | Careerminds | High flight-risk with no intervention plan | Protect employer brand when people do leave |
+| `comp-review` | Career Dev + Comp Review | Careerminds | Team compensation below industry benchmark | Act on comp gap before talent walks |
+
+### Placement within Talent Signals
+- `leadership-dev` variant appears at the bottom of the Promotion Pipeline department grid view.
+- `outplacement` variant is available for use at the bottom of the Flight Risk tab.
+
+### Placement in other features
+The component is shared across features. Other placements (Skills Heatmap, Manager Effectiveness, Benchmarks) use their respective variants and are out of scope for this ticket but use the same component.
