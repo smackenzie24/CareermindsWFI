@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import {
   TrendingUp, TrendingDown, Minus, Users, DollarSign,
-  BarChart3, Globe, Star, AlertTriangle, ChevronDown, ChevronUp,
+  BarChart3, Star, AlertTriangle, ChevronDown, ChevronUp,
   LogOut, Calendar, Building2, Lightbulb, Clock, ChevronRight,
   UserX, MessageSquareOff, TrendingUp as LevelStall, Banknote, RefreshCw,
   Briefcase, UserCheck, ShieldAlert, GitBranch,
@@ -12,7 +12,6 @@ import { UpsellBanner } from '../UpsellBanner';
 import { FeedbackBanner } from '../feedback/FeedbackBanner';
 import { MostExpensiveToLose } from '../MostExpensiveToLose';
 import {
-  getOverviewRecommendations,
   getSkillsRecommendations,
   getCompRecommendations,
   getTalentFlowRecommendations,
@@ -651,7 +650,7 @@ function CommonalitiesPanel({ records }: { records: AttritionRecord[] }) {
 // ── Main component ──────────────────────────────────────────────────────
 
 type PeerFilter = 'all' | 'similar' | 'saas' | 'scaleup' | 'large-enterprise';
-type PageTab = 'overview' | 'skills' | 'compensation' | 'talent';
+type PageTab = 'skills' | 'compensation' | 'talent';
 
 const PEER_FILTER_LABELS: Record<PeerFilter, string> = {
   all:              'All peers',
@@ -667,7 +666,7 @@ interface Props {
 }
 
 export function IndustryBenchmark({ onNavigateToGapReport }: Props) {
-  const [pageTab, setPageTab] = useState<PageTab>('overview');
+  const [pageTab, setPageTab] = useState<PageTab>('skills');
   const [peerFilter, setPeerFilter] = useState<PeerFilter>('similar');
   const [deptFilter, setDeptFilter] = useState<string>('All');
   const [showAllRecords, setShowAllRecords] = useState(false);
@@ -696,7 +695,6 @@ export function IndustryBenchmark({ onNavigateToGapReport }: Props) {
   const categoryBenchmarks = useMemo(() => getCategoryBenchmarks(peers), [peers]);
 
   // Recommendations
-  const overviewRecs     = useMemo(() => getOverviewRecommendations(peers),     [peers]);
   const skillsRecs       = useMemo(() => getSkillsRecommendations(peers),       [peers]);
   const compRecs         = useMemo(() => getCompRecommendations(peers),         [peers]);
   const talentFlowRecs   = useMemo(() => getTalentFlowRecommendations(),        []);
@@ -726,7 +724,6 @@ export function IndustryBenchmark({ onNavigateToGapReport }: Props) {
 
   // ── Tab definitions ──────────────────────────────────────────────────
   const PAGE_TABS: { id: PageTab; label: string; icon: React.ReactNode }[] = [
-    { id: 'overview',     label: 'Overview',     icon: <Globe size={13} /> },
     { id: 'skills',       label: 'Skills',       icon: <BarChart3 size={13} /> },
     { id: 'compensation', label: 'Compensation', icon: <DollarSign size={13} /> },
     { id: 'talent',       label: 'Talent Flow',  icon: <LogOut size={13} /> },
@@ -789,17 +786,17 @@ export function IndustryBenchmark({ onNavigateToGapReport }: Props) {
       <main className="flex-1 overflow-auto p-8">
         <div className="max-w-5xl mx-auto space-y-8">
 
-          {/* ── Tab: Overview ────────────────────────────────────── */}
-          {pageTab === 'overview' && (
+          {/* ── Tab: Skills ──────────────────────────────────────── */}
+          {pageTab === 'skills' && (
           <section className="space-y-6" data-tour="benchmark-overview-card">
             <div className="flex items-center gap-3">
-              <Globe size={15} className="text-gray-400" />
-              <h2 className="text-base font-bold text-gray-900">Overview</h2>
+              <BarChart3 size={15} className="text-gray-400" />
+              <h2 className="text-base font-bold text-gray-900">Skill Competency vs Peers</h2>
+              <span className="text-xs text-gray-400 ml-1">Average rating 1–5 · department and category breakdown</span>
             </div>
 
             {/* Overall position */}
             {(() => {
-              // Build per-peer composite scores for the peer range bar
               const posScore = (pos: QuartilePosition) => ({ top: 4, 'above-median': 3, 'below-median': 2, bottom: 1 }[pos]);
               const peerCompositeScores = peers.map(p => {
                 const depts = (['Engineering', 'Product', 'Design', 'Data', 'Marketing', 'Sales', 'People Ops'] as const);
@@ -817,21 +814,15 @@ export function IndustryBenchmark({ onNavigateToGapReport }: Props) {
               const acmePct = Math.min(Math.max(((summary.avgScore - minScore) / range) * 100, 2), 98);
               const medianScore = [...allScores].sort((a,b)=>a-b)[Math.floor(allScores.length / 2)];
               const medianPct = Math.min(Math.max(((medianScore - minScore) / range) * 100, 2), 98);
-              const gapToMedian = parseFloat((summary.avgScore - medianScore).toFixed(2));
-              const aboveMedian = gapToMedian >= 0;
 
               return (
                 <div className="rounded-2xl border border-gray-200 bg-white p-6">
-                  {/* Header row */}
                   <div className="flex items-start justify-between gap-6 mb-5">
                     <div>
                       <p className="text-xs font-semibold text-gray-500 uppercase tracking-widest mb-1.5">Overall benchmark position</p>
                       <h2 className={`text-3xl font-black leading-none ${overallCfg.color}`}>{overallCfg.label}</h2>
-                      <p className="text-sm text-gray-500 mt-2">
-                        Compared to peers
-                      </p>
+                      <p className="text-sm text-gray-500 mt-2">Compared to peers</p>
                     </div>
-
                   </div>
 
                   {/* Peer range bar */}
@@ -841,16 +832,12 @@ export function IndustryBenchmark({ onNavigateToGapReport }: Props) {
                       <span>Highest peer</span>
                     </div>
                     <div className="relative h-6 flex items-center">
-                      {/* Track */}
                       <div className="absolute inset-x-0 h-2 bg-black/5 rounded-full" />
-                      {/* Quartile bands */}
                       <div className="absolute h-2 bg-rose-100 rounded-l-full" style={{ left: '0%', width: '25%' }} />
                       <div className="absolute h-2 bg-amber-100" style={{ left: '25%', width: '25%' }} />
                       <div className="absolute h-2 bg-sky-100" style={{ left: '50%', width: '25%' }} />
                       <div className="absolute h-2 bg-emerald-100 rounded-r-full" style={{ left: '75%', width: '25%' }} />
-                      {/* Median marker */}
                       <div className="absolute h-4 w-px bg-gray-400/50" style={{ left: `${medianPct}%` }} title="Peer median" />
-                      {/* Acme dot */}
                       <div
                         className={`absolute w-4 h-4 rounded-full border-2 border-white shadow-md z-10 -translate-x-1/2 ${overallCfg.dot}`}
                         style={{ left: `${acmePct}%` }}
@@ -903,107 +890,6 @@ export function IndustryBenchmark({ onNavigateToGapReport }: Props) {
                 </div>
               );
             })()}
-
-            {/* Org-level benchmark cards */}
-            <div className="grid grid-cols-2 gap-5" data-tour="benchmark-dist-grid">
-              {orgBenchmarks.map(bench => {
-                const bCfg = QUARTILE_CONFIG[bench.position];
-                return (
-                  <div key={bench.label} className="bg-white rounded-2xl border border-gray-100 p-6 shadow-sm">
-                    <p className="text-xs text-gray-500 mb-1">{bench.label}</p>
-                    <div className="flex items-end gap-3 mb-1">
-                      <span className={`text-3xl font-black ${bCfg.color}`}>{bench.acmeValue}{bench.unit}</span>
-                      <div className="pb-1 space-y-0.5">
-                        <QuartileBadge pos={bench.position} />
-                        <DeltaChip delta={bench.delta} unit={bench.unit.includes('months') ? 'm' : ''} higherIsBetter={bench.higherIsBetter} />
-                      </div>
-                    </div>
-                    <div className="mt-4 mb-6">
-                      <DistributionBar benchmark={{ ...bench, peerValues: bench.peerValues, quartiles: bench.quartiles, acmeValue: bench.acmeValue, category: '', position: bench.position, peerMedian: bench.peerMedian, delta: bench.delta } as any} formatValue={v => `${v}${bench.unit}`} />
-                    </div>
-                    <p className="text-[11px] text-gray-400 mt-6">Peer range: {bench.quartiles.min}–{bench.quartiles.max}{bench.unit} · Median: {bench.quartiles.p50}{bench.unit}</p>
-                  </div>
-                );
-              })}
-            </div>
-
-            {/* Top/bottom skill categories */}
-            <div className="grid grid-cols-2 gap-5">
-              <div className="bg-white rounded-2xl border border-gray-100 p-6 shadow-sm">
-                <h3 className="text-sm font-bold text-gray-900 mb-4 flex items-center gap-2"><TrendingUp size={14} className="text-emerald-500" />Strongest skill categories</h3>
-                <div className="space-y-3">
-                  {summary.topCategories.map(b => (
-                    <div key={b.category}>
-                      <div className="flex items-center justify-between mb-1">
-                        <span className="text-xs font-medium text-gray-700">{b.category}</span>
-                        <div className="flex items-center gap-2">
-                          <span className="text-xs font-bold text-gray-800">{b.acmeValue.toFixed(1)}</span>
-                          <DeltaChip delta={b.delta} />
-                        </div>
-                      </div>
-                      <div className="w-full bg-gray-100 rounded-full h-1.5 overflow-hidden">
-                        <div className="h-full bg-emerald-400 rounded-full" style={{ width: `${(b.acmeValue / 5) * 100}%` }} />
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-              <div className="bg-white rounded-2xl border border-gray-100 p-6 shadow-sm">
-                <h3 className="text-sm font-bold text-gray-900 mb-4 flex items-center gap-2"><TrendingDown size={14} className="text-red-400" />Largest skill gaps vs peers</h3>
-                <div className="space-y-3">
-                  {summary.gapCategories.map(b => (
-                    <div key={b.category}>
-                      <div className="flex items-center justify-between mb-1">
-                        <span className="text-xs font-medium text-gray-700">{b.category}</span>
-                        <div className="flex items-center gap-2">
-                          <span className="text-xs font-bold text-gray-800">{b.acmeValue.toFixed(1)}</span>
-                          <DeltaChip delta={b.delta} />
-                        </div>
-                      </div>
-                      <div className="w-full bg-gray-100 rounded-full h-1.5 overflow-hidden">
-                        <div className="h-full bg-red-400 rounded-full" style={{ width: `${(b.acmeValue / 5) * 100}%` }} />
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-
-            {/* Peer company cards */}
-            <div>
-              <h3 className="text-sm font-bold text-gray-900 mb-4">Peer group ({peers.length} companies)</h3>
-              <div className="grid grid-cols-4 gap-3">
-                {peers.map(peer => (
-                  <div key={peer.id} className="bg-white rounded-xl border border-gray-100 p-4">
-                    <p className="text-xs font-bold text-gray-800 truncate">{peer.name}</p>
-                    <p className="text-[10px] text-gray-400 mt-0.5">{peer.size} · {peer.industry}</p>
-                    <div className="mt-2 pt-2 border-t border-gray-50 space-y-1">
-                      <div className="flex items-center justify-between">
-                        <span className="text-[10px] text-gray-400">Headcount</span>
-                        <span className="text-[10px] font-semibold text-gray-600">{peer.totalHeadcount}</span>
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <span className="text-[10px] text-gray-400">Framework</span>
-                        <span className="text-[10px] font-semibold text-gray-600">{peer.frameworkMaturity}/5</span>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            <RecommendationsPanel recs={overviewRecs} />
-          </section>
-          )}
-
-          {/* ── Tab: Skills ──────────────────────────────────────── */}
-          {pageTab === 'skills' && (
-          <section className="space-y-6">
-            <div className="flex items-center gap-3">
-              <BarChart3 size={15} className="text-gray-400" />
-              <h2 className="text-base font-bold text-gray-900">Skill Competency vs Peers</h2>
-              <span className="text-xs text-gray-400 ml-1">Average rating 1–5 · department and category breakdown</span>
-            </div>
 
             {/* Dept rows (skills only) */}
             <div>
