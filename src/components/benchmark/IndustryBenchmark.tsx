@@ -831,14 +831,7 @@ export function IndustryBenchmark({ onNavigateToGapReport }: Props) {
                         Across skills, compensation &amp; org structure vs {peers.length} peers
                       </p>
                     </div>
-                    {/* Gap-to-median chip */}
-                    <div className="flex-shrink-0 bg-white/70 border border-white/80 rounded-xl px-4 py-3 text-center shadow-sm">
-                      <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest mb-0.5">vs median</p>
-                      <p className={`text-2xl font-black leading-none ${aboveMedian ? 'text-emerald-600' : 'text-rose-600'}`}>
-                        {aboveMedian ? '+' : ''}{gapToMedian.toFixed(1)}
-                      </p>
-                      <p className="text-[10px] text-gray-400 mt-0.5">skill pts {aboveMedian ? 'ahead' : 'behind'}</p>
-                    </div>
+
                   </div>
 
                   {/* Peer range bar */}
