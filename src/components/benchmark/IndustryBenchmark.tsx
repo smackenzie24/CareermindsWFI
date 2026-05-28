@@ -1210,7 +1210,7 @@ export function IndustryBenchmark({ onNavigateToGapReport }: Props) {
 
             <div className="grid grid-cols-2 gap-4">
               {compBenchmarks.map(b => (
-                <DeptBenchmarkRow key={b.department} bench={b} formatValue={fmtK} onNavigateToGapReport={onNavigateToGapReport} />
+                <DeptBenchmarkRow key={b.department} bench={b} formatValue={fmtK} />
               ))}
             </div>
 
