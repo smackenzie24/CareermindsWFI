@@ -650,14 +650,15 @@ function CommonalitiesPanel({ records }: { records: AttritionRecord[] }) {
 
 // ── Main component ──────────────────────────────────────────────────────
 
-type PeerFilter = 'all' | 'similar' | 'saas' | 'scaleup';
+type PeerFilter = 'all' | 'similar' | 'saas' | 'scaleup' | 'large-enterprise';
 type PageTab = 'overview' | 'skills' | 'compensation' | 'talent';
 
 const PEER_FILTER_LABELS: Record<PeerFilter, string> = {
-  all:     'All peers',
-  similar: 'Similar size',
-  saas:    'B2B SaaS only',
-  scaleup: 'Scaleups',
+  all:              'All peers',
+  similar:          'Similar size',
+  saas:             'B2B SaaS only',
+  scaleup:          'Scaleups',
+  'large-enterprise': 'Large Enterprise',
 };
 
 
@@ -676,7 +677,8 @@ export function IndustryBenchmark({ onNavigateToGapReport }: Props) {
       case 'all':     return PEER_COMPANIES;
       case 'similar': return SIMILAR_PEERS;
       case 'saas':    return PEER_COMPANIES.filter(p => p.industry === 'B2B SaaS');
-      case 'scaleup': return PEER_COMPANIES.filter(p => p.size === 'Scaleup');
+      case 'scaleup':          return PEER_COMPANIES.filter(p => p.size === 'Scaleup');
+      case 'large-enterprise': return PEER_COMPANIES.filter(p => p.size === 'Large Enterprise');
     }
   }, [peerFilter]);
 

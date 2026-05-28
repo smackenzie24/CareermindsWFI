@@ -75,7 +75,7 @@ export const ACME_CATEGORY_COMPETENCY = computeAcmeCategoryCompetency();
 
 // ── Peer companies dataset ──────────────────────────────────────────────
 
-export type CompanySize = 'Startup' | 'Scaleup' | 'Enterprise';
+export type CompanySize = 'Startup' | 'Scaleup' | 'Enterprise' | 'Large Enterprise';
 export type Industry = 'B2B SaaS' | 'Fintech' | 'E-commerce' | 'Marketplace' | 'DevTools';
 
 export interface PeerCompany {
