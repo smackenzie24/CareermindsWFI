@@ -831,34 +831,29 @@ Returns 2 `OrgBenchmark` entries:
 
 ### 10.12 getOverallBenchmarkSummary
 
-**Overall position — single composite score (Option B):**
+**How the overall position is calculated:**
 
-Acme's overall benchmark position is determined by comparing one number — Acme's mean skill competency across all departments — against the same number computed for each peer.
+1. Compute Acme's average skill competency score across all 7 departments (a single number on the 1–5 scale).
+2. Compute the same number for each peer company.
+3. From the peer values, calculate the 25th, 50th, and 75th percentile thresholds using linear interpolation (see §10.4).
+4. Compare Acme's score against those thresholds to assign a quartile position:
+   - At or above the 75th percentile → **Top quartile**
+   - At or above the 50th percentile → **Above median**
+   - At or above the 25th percentile → **Below median**
+   - Below the 25th percentile → **Bottom quartile**
 
+Thresholds are inclusive (a score exactly equal to p75 is Top quartile, exactly equal to p50 is Above median).
+
+In code:
 ```typescript
-// Acme composite = mean of ACME_SKILL_COMPETENCY across all 7 departments
-acmeComposite = mean(Object.values(ACME_SKILL_COMPETENCY))
-
-// Each peer's composite = mean of their deptSkillCompetency across all 7 departments
+acmeComposite  = mean(Object.values(ACME_SKILL_COMPETENCY))        // one number, 1–5 scale
 peerComposites = peers.map(p => mean(Object.values(p.deptSkillCompetency)))
-
-// Quartile thresholds from the peer distribution
-quartiles = computeQuartiles(peerComposites)
-
-// Acme's position in that distribution
+quartiles      = computeQuartiles(peerComposites)
 overallPosition = getQuartilePosition(acmeComposite, quartiles)
-
-// avgScore is the composite value itself (not a position-score average)
-avgScore = parseFloat(acmeComposite.toFixed(2))
+avgScore        = parseFloat(acmeComposite.toFixed(2))
 ```
 
-`mean(values) = values.reduce((s, v) => s + v, 0) / values.length`
-
-**`overallPosition`** uses the standard inclusive thresholds from `getQuartilePosition`:
-- `acmeComposite >= quartiles.p75` → `'top'`
-- `acmeComposite >= quartiles.p50` → `'above-median'`
-- `acmeComposite >= quartiles.p25` → `'below-median'`
-- else → `'bottom'`
+`mean(values)` = sum of values divided by count.
 
 **`topDepts`:** `skillBenchmarks.filter(b => b.position === 'top' || b.position === 'above-median')` — no slice applied before `slice(0, 3)` in the component.
 
