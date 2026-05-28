@@ -828,7 +828,7 @@ export function IndustryBenchmark({ onNavigateToGapReport }: Props) {
                       <p className="text-xs font-semibold text-gray-500 uppercase tracking-widest mb-1.5">Overall benchmark position</p>
                       <h2 className={`text-3xl font-black leading-none ${overallCfg.color}`}>{overallCfg.label}</h2>
                       <p className="text-sm text-gray-500 mt-2">
-                        Across skills, compensation &amp; org structure vs {peers.length} peers
+                        Across skills &amp; org structure vs {peers.length} peers
                       </p>
                     </div>
 
