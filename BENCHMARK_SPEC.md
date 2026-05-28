@@ -159,7 +159,7 @@ Background, border, and text colours all driven by `QUARTILE_CONFIG[summary.over
 ```
 "Overall benchmark position"       // text-xs font-semibold text-gray-500 uppercase tracking-widest mb-1
 {overallCfg.label}                 // h2, text-3xl font-black {overallCfg.color}
-"Across skill competency, compensation, and org structure, Acme Corp ranks in the <strong>{label.toLowerCase()}</strong> compared to {peers.length} similar-sized SaaS and tech companies."
+"Based on average skill competency across all departments, Acme Corp ranks in the <strong>{label.toLowerCase()}</strong> compared to {peers.length} similar-sized SaaS and tech companies."
                                    // text-sm text-gray-600 mt-2 max-w-xl
 ```
 
@@ -831,17 +831,33 @@ Returns 2 `OrgBenchmark` entries:
 
 ### 10.12 getOverallBenchmarkSummary
 
-**`avgScore`:** position-scores all values (`top=4, above-median=3, below-median=2, bottom=1`) across:
-- 7 skill benchmark positions
-- 2 org benchmark positions
-- First 8 category benchmark positions (from the ascending-sorted array = the 8 worst-gap categories)
+**Overall position — single composite score (Option B):**
 
-Total of 17 positions averaged.
+Acme's overall benchmark position is determined by comparing one number — Acme's mean skill competency across all departments — against the same number computed for each peer.
 
-**`overallPosition`:**
-- `>= 3.5` → `'top'`
-- `>= 2.5` → `'above-median'`
-- `>= 1.5` → `'below-median'`
+```typescript
+// Acme composite = mean of ACME_SKILL_COMPETENCY across all 7 departments
+acmeComposite = mean(Object.values(ACME_SKILL_COMPETENCY))
+
+// Each peer's composite = mean of their deptSkillCompetency across all 7 departments
+peerComposites = peers.map(p => mean(Object.values(p.deptSkillCompetency)))
+
+// Quartile thresholds from the peer distribution
+quartiles = computeQuartiles(peerComposites)
+
+// Acme's position in that distribution
+overallPosition = getQuartilePosition(acmeComposite, quartiles)
+
+// avgScore is the composite value itself (not a position-score average)
+avgScore = parseFloat(acmeComposite.toFixed(2))
+```
+
+`mean(values) = values.reduce((s, v) => s + v, 0) / values.length`
+
+**`overallPosition`** uses the standard inclusive thresholds from `getQuartilePosition`:
+- `acmeComposite >= quartiles.p75` → `'top'`
+- `acmeComposite >= quartiles.p50` → `'above-median'`
+- `acmeComposite >= quartiles.p25` → `'below-median'`
 - else → `'bottom'`
 
 **`topDepts`:** `skillBenchmarks.filter(b => b.position === 'top' || b.position === 'above-median')` — no slice applied before `slice(0, 3)` in the component.
@@ -852,7 +868,7 @@ Total of 17 positions averaged.
 
 **`gapCategories`:** `getCategoryBenchmarks(peers).filter(b => b.delta < 0).slice(0, 3)` — first 3 negative-delta entries (worst gaps).
 
-**`acmeRank` and `totalCompanies`:** Computed but **never displayed** in the UI. `acmeRank` is Acme's position when scored against all peers using a skill-only scoring method.
+**`acmeRank` and `totalCompanies`:** `acmeRank` = Acme's position in the sorted list of all composites (peers + Acme), descending. `totalCompanies = peers.length + 1`. Both are computed but **never displayed** in the UI.
 
 **Return object:** `{ overallPosition, avgScore, acmeRank, totalCompanies, topDepts, gapDepts, topCategories, gapCategories, skillBenchmarks, compBenchmarks, sizeBenchmarks, orgBenchmarks, categoryBenchmarks }`
 
