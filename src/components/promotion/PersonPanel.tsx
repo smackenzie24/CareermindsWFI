@@ -140,7 +140,7 @@ export function PersonPanel({ result, onClose, peers, currentIndex, onPrev, onNe
                   const actual = result.person.skills[skill.skillId] ?? 0;
                   return (
                     <div key={skill.skillId} className="flex items-center justify-between py-2 px-3 bg-emerald-50 rounded-lg border border-emerald-100">
-                      <div>
+                      <div className="min-w-0 mr-3">
                         <p className="text-sm font-medium text-gray-800">{skill.skillName}</p>
                         <p className="text-[11px] text-gray-400">{skill.category}</p>
                       </div>
@@ -167,7 +167,7 @@ export function PersonPanel({ result, onClose, peers, currentIndex, onPrev, onNe
               <div className="space-y-2">
                 {[...result.gapSkills].sort((a, b) => b.gap - a.gap).map(skill => (
                   <div key={skill.skillId} className="flex items-center justify-between py-2 px-3 bg-red-50 rounded-lg border border-red-100">
-                    <div>
+                    <div className="min-w-0 mr-3">
                       <p className="text-sm font-medium text-gray-800">{skill.skillName}</p>
                       <p className="text-[11px] text-gray-400">{skill.category}</p>
                     </div>
