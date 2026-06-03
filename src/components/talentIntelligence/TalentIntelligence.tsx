@@ -10,7 +10,7 @@ import {
   ROLE_DEMAND, FLIGHT_RISK, COMP_POSITIONING, PRESTIGE_DATA,
   PROMOTION_RATES, SKILL_SIGNALS, CAREER_PATH_NODES, TALENT_INTEL_RECS,
   REVELIO_DEPTS,
-  type RevelioDept, type TalentIntelRec, type CareerPathNode,
+  type RevelioDept, type TalentIntelRec, type CareerPathNode, type RoleDemandRow,
 } from '../../data/revelioData';
 
 // ── Shared sub-components ─────────────────────────────────────────────────────
@@ -92,77 +92,276 @@ function PercentileBar({ value, label }: { value: number; label?: string }) {
 
 // ── Panel 1: Talent Supply & Demand ──────────────────────────────────────────
 
+// Quadrant config: X = demand growth (high = scarcer over time), Y = supply scarcity (100 - talentSupply)
+const QUADRANTS = [
+  {
+    id: 'act-now',
+    label: 'Act Now',
+    desc: 'Rising demand, scarce supply',
+    x: 'high', y: 'high',
+    bg: 'bg-red-50', border: 'border-red-200', labelColor: 'text-red-700', dotColor: 'bg-red-400',
+  },
+  {
+    id: 'monitor',
+    label: 'Monitor',
+    desc: 'Demand growing but supply adequate',
+    x: 'high', y: 'low',
+    bg: 'bg-amber-50', border: 'border-amber-200', labelColor: 'text-amber-700', dotColor: 'bg-amber-400',
+  },
+  {
+    id: 'protect',
+    label: 'Protect',
+    desc: 'Hard to find but demand stabilising',
+    x: 'low', y: 'high',
+    bg: 'bg-sky-50', border: 'border-sky-200', labelColor: 'text-sky-700', dotColor: 'bg-sky-400',
+  },
+  {
+    id: 'advantage',
+    label: 'Advantage',
+    desc: 'Plentiful talent, stable demand',
+    x: 'low', y: 'low',
+    bg: 'bg-emerald-50', border: 'border-emerald-200', labelColor: 'text-emerald-700', dotColor: 'bg-emerald-400',
+  },
+] as const;
+
+type QuadrantId = typeof QUADRANTS[number]['id'];
+
+function getQuadrant(row: RoleDemandRow): QuadrantId {
+  const scarcity = 100 - row.talentSupply; // high = scarce
+  const growthHigh = row.demandGrowthPct >= 14;
+  const scarce = scarcity >= 55;
+  if (growthHigh && scarce) return 'act-now';
+  if (growthHigh && !scarce) return 'monitor';
+  if (!growthHigh && scarce) return 'protect';
+  return 'advantage';
+}
+
 function SupplyDemandPanel() {
-  const [showAll, setShowAll] = useState(false);
-  const rows = showAll ? ROLE_DEMAND : ROLE_DEMAND.slice(0, 8);
+  const [selectedRole, setSelectedRole] = useState<string | null>(null);
+
+  // Sort by urgency: extreme first, then by days to fill desc
+  const TIER_ORDER = { extreme: 0, high: 1, moderate: 2, low: 3 };
+  const sorted = [...ROLE_DEMAND].sort((a, b) =>
+    TIER_ORDER[a.competitionTier] - TIER_ORDER[b.competitionTier] ||
+    b.medianDaysToFill - a.medianDaysToFill
+  );
+
+  const selected = sorted.find(r => r.role === selectedRole) ?? sorted[0];
+
+  // Group into quadrants
+  const byQuadrant = QUADRANTS.map(q => ({
+    ...q,
+    roles: sorted.filter(r => getQuadrant(r) === q.id),
+  }));
 
   return (
     <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
       <SectionHeader
         icon={<Zap size={16} />}
         title="Talent Supply & Demand"
-        subtitle="Market-wide job postings and candidate availability across your key roles"
+        subtitle="Where each role sits on the market pressure map — rising demand vs shrinking supply"
         badge="Revelio Labs"
       />
 
-      <div className="overflow-x-auto">
-        <table className="w-full text-sm min-w-[640px]">
-          <thead>
-            <tr className="border-b border-gray-100">
-              <th className="text-left text-[11px] font-semibold text-gray-400 pb-2 pr-4">Role</th>
-              <th className="text-left text-[11px] font-semibold text-gray-400 pb-2 pr-4">Dept</th>
-              <th className="text-right text-[11px] font-semibold text-gray-400 pb-2 pr-4">Open Postings</th>
-              <th className="text-right text-[11px] font-semibold text-gray-400 pb-2 pr-4">Demand Growth</th>
-              <th className="text-right text-[11px] font-semibold text-gray-400 pb-2 pr-4">Days to Fill</th>
-              <th className="text-left text-[11px] font-semibold text-gray-400 pb-2">Competition</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-gray-50">
-            {rows.map((r) => (
-              <tr key={r.role} className="hover:bg-gray-50/60 transition-colors">
-                <td className="py-2.5 pr-4">
-                  <span className="font-medium text-gray-900 text-xs">{r.role}</span>
-                </td>
-                <td className="py-2.5 pr-4">
-                  <span className="text-[11px] text-gray-500">{r.dept}</span>
-                </td>
-                <td className="py-2.5 pr-4 text-right">
-                  <span className="text-xs font-semibold text-gray-700">{r.openPostings}K</span>
-                </td>
-                <td className="py-2.5 pr-4 text-right">
-                  <span className={`text-xs font-semibold flex items-center justify-end gap-0.5 ${r.demandGrowthPct > 0 ? 'text-red-600' : r.demandGrowthPct < 0 ? 'text-emerald-600' : 'text-gray-500'}`}>
-                    {r.demandGrowthPct > 0 ? <ArrowUpRight size={10} /> : r.demandGrowthPct < 0 ? <ArrowDownRight size={10} /> : <Minus size={10} />}
-                    {r.demandGrowthPct > 0 ? '+' : ''}{r.demandGrowthPct}%
-                  </span>
-                </td>
-                <td className="py-2.5 pr-4 text-right">
-                  <span className="text-xs text-gray-600">{r.medianDaysToFill}d</span>
-                </td>
-                <td className="py-2.5">
-                  <CompTierBadge tier={r.competitionTier} />
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+      {/* Quadrant map */}
+      <div className="grid grid-cols-2 gap-2 mb-6">
+        {byQuadrant.map(q => (
+          <div key={q.id} className={`rounded-xl border ${q.border} ${q.bg} p-4`}>
+            <div className="flex items-center gap-2 mb-2">
+              <span className={`w-2 h-2 rounded-full flex-shrink-0 ${q.dotColor}`} />
+              <span className={`text-xs font-extrabold ${q.labelColor}`}>{q.label}</span>
+              <span className="text-[10px] text-gray-400 ml-auto">{q.roles.length} role{q.roles.length !== 1 ? 's' : ''}</span>
+            </div>
+            <p className="text-[10px] text-gray-500 mb-3 leading-relaxed">{q.desc}</p>
+            <div className="space-y-1.5">
+              {q.roles.length === 0
+                ? <span className="text-[11px] text-gray-300 italic">None</span>
+                : q.roles.map(r => (
+                    <button
+                      key={r.role}
+                      onClick={() => setSelectedRole(r.role === selectedRole ? null : r.role)}
+                      className={`w-full text-left flex items-center justify-between gap-2 px-2.5 py-1.5 rounded-lg transition-all text-xs font-semibold ${
+                        selected?.role === r.role
+                          ? 'bg-white shadow-sm border border-gray-200 text-gray-900'
+                          : 'hover:bg-white/70 text-gray-700'
+                      }`}
+                    >
+                      <span className="truncate">{r.role}</span>
+                      <span className="text-[10px] text-gray-400 flex-shrink-0">{r.dept}</span>
+                    </button>
+                  ))
+              }
+            </div>
+          </div>
+        ))}
       </div>
 
-      {ROLE_DEMAND.length > 8 && (
-        <button
-          onClick={() => setShowAll(s => !s)}
-          className="mt-3 text-xs text-sky-600 font-semibold hover:text-sky-800 flex items-center gap-1"
-        >
-          {showAll ? 'Show less' : `Show all ${ROLE_DEMAND.length} roles`}
-          <ChevronRight size={12} className={`transition-transform ${showAll ? 'rotate-90' : ''}`} />
-        </button>
+      {/* Axis legend */}
+      <div className="flex items-center justify-between text-[10px] text-gray-400 mb-5 px-1">
+        <span>← Demand growth: low</span>
+        <span className="font-semibold text-gray-500">Supply vs Demand Quadrant</span>
+        <span>Demand growth: high →</span>
+      </div>
+
+      {/* Role detail strip — shows for selected role */}
+      {selected && (
+        <div className="rounded-2xl border border-gray-100 bg-gray-50 p-5 mb-5">
+          <div className="flex items-start justify-between gap-4 mb-4">
+            <div>
+              <div className="flex items-center gap-2 mb-1">
+                <h4 className="text-base font-extrabold text-gray-900">{selected.role}</h4>
+                <CompTierBadge tier={selected.competitionTier} />
+              </div>
+              <span className="text-xs text-gray-500">{selected.dept}</span>
+            </div>
+            <div className={`rounded-xl px-4 py-2 text-center flex-shrink-0 ${
+              selected.medianDaysToFill >= 55 ? 'bg-red-100 border border-red-200' :
+              selected.medianDaysToFill >= 40 ? 'bg-amber-100 border border-amber-200' :
+              'bg-emerald-100 border border-emerald-200'
+            }`}>
+              <div className={`text-2xl font-extrabold ${
+                selected.medianDaysToFill >= 55 ? 'text-red-700' :
+                selected.medianDaysToFill >= 40 ? 'text-amber-700' : 'text-emerald-700'
+              }`}>{selected.medianDaysToFill}d</div>
+              <div className="text-[10px] text-gray-500">median to fill</div>
+            </div>
+          </div>
+
+          {/* Supply vs Demand visual */}
+          <div className="space-y-3">
+            <div>
+              <div className="flex justify-between text-[11px] text-gray-500 mb-1">
+                <span className="font-semibold text-gray-700">Market Demand</span>
+                <span>{selected.openPostings}K open postings &nbsp;·&nbsp;
+                  <span className={selected.demandGrowthPct > 0 ? 'text-red-600 font-semibold' : 'text-emerald-600 font-semibold'}>
+                    {selected.demandGrowthPct > 0 ? '+' : ''}{selected.demandGrowthPct}% YoY
+                  </span>
+                </span>
+              </div>
+              <div className="h-3 bg-gray-200 rounded-full overflow-hidden">
+                <div
+                  className="h-full rounded-full bg-red-400 transition-all duration-500"
+                  style={{ width: `${Math.min((selected.openPostings / 90) * 100, 100)}%` }}
+                />
+              </div>
+            </div>
+
+            <div>
+              <div className="flex justify-between text-[11px] text-gray-500 mb-1">
+                <span className="font-semibold text-gray-700">Talent Supply</span>
+                <span>Supply index: <strong className={selected.talentSupply < 35 ? 'text-red-600' : selected.talentSupply < 55 ? 'text-amber-600' : 'text-emerald-600'}>{selected.talentSupply}/100</strong></span>
+              </div>
+              <div className="h-3 bg-gray-200 rounded-full overflow-hidden">
+                <div
+                  className={`h-full rounded-full transition-all duration-500 ${
+                    selected.talentSupply < 35 ? 'bg-red-400' :
+                    selected.talentSupply < 55 ? 'bg-amber-400' : 'bg-emerald-400'
+                  }`}
+                  style={{ width: `${selected.talentSupply}%` }}
+                />
+              </div>
+            </div>
+
+            {/* Gap callout */}
+            <div className={`rounded-xl p-3 text-xs leading-relaxed ${
+              selected.competitionTier === 'extreme' ? 'bg-red-50 border border-red-100 text-red-700' :
+              selected.competitionTier === 'high' ? 'bg-amber-50 border border-amber-100 text-amber-700' :
+              selected.competitionTier === 'moderate' ? 'bg-sky-50 border border-sky-100 text-sky-700' :
+              'bg-emerald-50 border border-emerald-100 text-emerald-700'
+            }`}>
+              {selected.competitionTier === 'extreme' &&
+                `High demand (${selected.openPostings}K postings, +${selected.demandGrowthPct}% YoY) meets very low supply (${selected.talentSupply}/100). Every competitor is fishing in the same small pool — retention of existing ${selected.role}s is the highest-leverage action.`
+              }
+              {selected.competitionTier === 'high' &&
+                `Demand is growing and supply is tightening. You have a window to hire before conditions worsen. Average time to fill is ${selected.medianDaysToFill} days — start pipelines early.`
+              }
+              {selected.competitionTier === 'moderate' &&
+                `Market conditions are manageable for ${selected.role} right now. Monitor demand growth (${selected.demandGrowthPct > 0 ? '+' : ''}${selected.demandGrowthPct}% YoY) — if it accelerates, act sooner.`
+              }
+              {selected.competitionTier === 'low' &&
+                `Healthy talent supply (${selected.talentSupply}/100) and stable demand. This is a low-urgency hire — take time to find the right fit.`
+              }
+            </div>
+          </div>
+        </div>
       )}
 
-      <div className="mt-4 grid grid-cols-2 sm:grid-cols-4 gap-3">
+      {/* All roles sorted by urgency */}
+      <div>
+        <div className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider mb-3">All roles by urgency</div>
+        <div className="space-y-2">
+          {sorted.map(r => {
+            const scarcity = 100 - r.talentSupply;
+            const qid = getQuadrant(r);
+            const q = QUADRANTS.find(q => q.id === qid)!;
+            const isSelected = selected?.role === r.role;
+            return (
+              <button
+                key={r.role}
+                onClick={() => setSelectedRole(r.role === selectedRole ? null : r.role)}
+                className={`w-full text-left rounded-xl border p-3 transition-all hover:shadow-sm ${
+                  isSelected ? 'border-sky-300 bg-sky-50 shadow-sm' : 'border-gray-100 bg-gray-50/50 hover:bg-white'
+                }`}
+              >
+                <div className="flex items-center gap-3">
+                  {/* Quadrant dot */}
+                  <span className={`w-2 h-2 rounded-full flex-shrink-0 ${q.dotColor}`} />
+
+                  {/* Role info */}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-1.5">
+                      <span className="text-xs font-bold text-gray-900 truncate">{r.role}</span>
+                      <span className="text-[10px] text-gray-400 flex-shrink-0">{r.dept}</span>
+                      <CompTierBadge tier={r.competitionTier} />
+                    </div>
+
+                    {/* Demand bar */}
+                    <div className="grid grid-cols-2 gap-x-3 gap-y-1">
+                      <div>
+                        <div className="flex justify-between text-[9px] text-gray-400 mb-0.5">
+                          <span>Demand</span>
+                          <span>{r.openPostings}K {r.demandGrowthPct > 0 ? `+${r.demandGrowthPct}%` : `${r.demandGrowthPct}%`}</span>
+                        </div>
+                        <div className="h-1.5 bg-gray-200 rounded-full overflow-hidden">
+                          <div className="h-full bg-red-400 rounded-full" style={{ width: `${Math.min((r.openPostings / 90) * 100, 100)}%` }} />
+                        </div>
+                      </div>
+                      <div>
+                        <div className="flex justify-between text-[9px] text-gray-400 mb-0.5">
+                          <span>Supply</span>
+                          <span>{r.talentSupply}/100</span>
+                        </div>
+                        <div className="h-1.5 bg-gray-200 rounded-full overflow-hidden">
+                          <div
+                            className={`h-full rounded-full ${r.talentSupply < 35 ? 'bg-red-400' : r.talentSupply < 55 ? 'bg-amber-400' : 'bg-emerald-400'}`}
+                            style={{ width: `${r.talentSupply}%` }}
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Days to fill */}
+                  <div className="flex-shrink-0 text-right">
+                    <div className={`text-sm font-extrabold ${r.medianDaysToFill >= 55 ? 'text-red-600' : r.medianDaysToFill >= 40 ? 'text-amber-600' : 'text-gray-600'}`}>
+                      {r.medianDaysToFill}d
+                    </div>
+                    <div className="text-[9px] text-gray-400">to fill</div>
+                  </div>
+                </div>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Summary KPIs */}
+      <div className="mt-5 grid grid-cols-2 sm:grid-cols-4 gap-3">
         {[
           { label: 'Extreme competition', value: ROLE_DEMAND.filter(r => r.competitionTier === 'extreme').length, color: 'text-red-600', bg: 'bg-red-50' },
           { label: 'High competition', value: ROLE_DEMAND.filter(r => r.competitionTier === 'high').length, color: 'text-amber-600', bg: 'bg-amber-50' },
-          { label: 'Hardest to fill (days)', value: Math.max(...ROLE_DEMAND.map(r => r.medianDaysToFill)), color: 'text-gray-700', bg: 'bg-gray-50' },
-          { label: 'Fastest growing role', value: `+${Math.max(...ROLE_DEMAND.map(r => r.demandGrowthPct))}%`, color: 'text-sky-600', bg: 'bg-sky-50' },
+          { label: 'Hardest to fill', value: `${Math.max(...ROLE_DEMAND.map(r => r.medianDaysToFill))}d`, color: 'text-gray-700', bg: 'bg-gray-50' },
+          { label: 'Fastest growing demand', value: `+${Math.max(...ROLE_DEMAND.map(r => r.demandGrowthPct))}%`, color: 'text-sky-600', bg: 'bg-sky-50' },
         ].map(s => (
           <div key={s.label} className={`rounded-xl p-3 ${s.bg}`}>
             <div className={`text-lg font-extrabold ${s.color}`}>{s.value}</div>
