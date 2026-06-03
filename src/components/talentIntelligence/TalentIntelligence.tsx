@@ -88,10 +88,10 @@ function demandToSupplyRatio(row: RoleDemandRow): number {
 
 function tierConfig(tier: RoleDemandRow['competitionTier']) {
   return {
-    extreme: { bar: 'bg-red-500',    text: 'text-red-600',    badge: 'bg-red-50 text-red-700 border-red-200',    label: 'Extreme' },
-    high:    { bar: 'bg-amber-400',  text: 'text-amber-600',  badge: 'bg-amber-50 text-amber-700 border-amber-200', label: 'High' },
-    moderate:{ bar: 'bg-sky-400',    text: 'text-sky-600',    badge: 'bg-sky-50 text-sky-700 border-sky-200',    label: 'Moderate' },
-    low:     { bar: 'bg-emerald-400',text: 'text-emerald-600',badge: 'bg-emerald-50 text-emerald-700 border-emerald-200', label: 'Low' },
+    extreme: { bar: 'bg-red-300',    text: 'text-red-500',    badge: 'bg-red-50 text-red-600 border-red-100',    label: 'Extreme' },
+    high:    { bar: 'bg-amber-300',  text: 'text-amber-600',  badge: 'bg-amber-50 text-amber-600 border-amber-100', label: 'High' },
+    moderate:{ bar: 'bg-sky-200',    text: 'text-sky-600',    badge: 'bg-sky-50 text-sky-600 border-sky-100',    label: 'Moderate' },
+    low:     { bar: 'bg-emerald-200',text: 'text-emerald-600',badge: 'bg-emerald-50 text-emerald-600 border-emerald-100', label: 'Low' },
   }[tier];
 }
 
@@ -119,9 +119,9 @@ function SupplyDemandPanel() {
       {/* Summary KPIs */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
         {[
-          { label: 'Extreme competition', value: ROLE_DEMAND.filter(r => r.competitionTier === 'extreme').length, color: 'text-red-600', bg: 'bg-red-50 border-red-100' },
+          { label: 'Extreme competition', value: ROLE_DEMAND.filter(r => r.competitionTier === 'extreme').length, color: 'text-red-500', bg: 'bg-red-50 border-red-100' },
           { label: 'High competition', value: ROLE_DEMAND.filter(r => r.competitionTier === 'high').length, color: 'text-amber-600', bg: 'bg-amber-50 border-amber-100' },
-          { label: 'Hardest to fill', value: `${maxDays}d`, color: 'text-gray-800', bg: 'bg-gray-50 border-gray-100' },
+          { label: 'Hardest to fill', value: `${maxDays}d`, color: 'text-gray-700', bg: 'bg-gray-50 border-gray-100' },
           { label: 'Fastest demand growth', value: `+${Math.max(...ROLE_DEMAND.map(r => r.demandGrowthPct))}%`, color: 'text-sky-600', bg: 'bg-sky-50 border-sky-100' },
         ].map(s => (
           <div key={s.label} className={`rounded-xl border p-3 ${s.bg}`}>
@@ -171,7 +171,7 @@ function SupplyDemandPanel() {
                       </div>
                       <div className="flex items-center gap-3 mt-0.5 text-[10px] text-gray-400">
                         <span>{r.openPostings}K open roles</span>
-                        <span className={`font-semibold ${growthPositive ? 'text-red-500' : 'text-emerald-500'}`}>
+                        <span className={`font-semibold ${growthPositive ? 'text-red-400' : 'text-emerald-500'}`}>
                           {growthPositive ? <ArrowUpRight size={9} className="inline" /> : <ArrowDownRight size={9} className="inline" />}
                           {Math.abs(r.demandGrowthPct)}% YoY demand
                         </span>
@@ -188,15 +188,15 @@ function SupplyDemandPanel() {
                     </div>
                     <div className={`rounded-lg px-3 py-1.5 text-center border ${
                       r.medianDaysToFill > INDUSTRY_BENCHMARK_DAYS + 10
-                        ? 'bg-red-50 border-red-200'
+                        ? 'bg-red-50 border-red-100'
                         : r.medianDaysToFill > INDUSTRY_BENCHMARK_DAYS
-                          ? 'bg-amber-50 border-amber-200'
-                          : 'bg-emerald-50 border-emerald-200'
+                          ? 'bg-amber-50 border-amber-100'
+                          : 'bg-emerald-50 border-emerald-100'
                     }`}>
                       <div className={`text-base font-extrabold leading-none ${
-                        r.medianDaysToFill > INDUSTRY_BENCHMARK_DAYS + 10 ? 'text-red-700'
-                        : r.medianDaysToFill > INDUSTRY_BENCHMARK_DAYS ? 'text-amber-700'
-                        : 'text-emerald-700'
+                        r.medianDaysToFill > INDUSTRY_BENCHMARK_DAYS + 10 ? 'text-red-500'
+                        : r.medianDaysToFill > INDUSTRY_BENCHMARK_DAYS ? 'text-amber-600'
+                        : 'text-emerald-600'
                       }`}>{r.medianDaysToFill}d</div>
                       <div className="text-[9px] text-gray-400 mt-0.5">to fill</div>
                     </div>
@@ -222,10 +222,10 @@ function SupplyDemandPanel() {
                 {/* Expanded detail */}
                 {isSelected && (
                   <div className={`mt-4 rounded-xl p-3.5 border text-xs leading-relaxed ${
-                    r.competitionTier === 'extreme' ? 'bg-red-50 border-red-100 text-red-800'
-                    : r.competitionTier === 'high' ? 'bg-amber-50 border-amber-100 text-amber-800'
-                    : r.competitionTier === 'moderate' ? 'bg-sky-50 border-sky-100 text-sky-800'
-                    : 'bg-emerald-50 border-emerald-100 text-emerald-800'
+                    r.competitionTier === 'extreme' ? 'bg-red-50 border-red-100 text-red-700'
+                    : r.competitionTier === 'high' ? 'bg-amber-50 border-amber-100 text-amber-700'
+                    : r.competitionTier === 'moderate' ? 'bg-sky-50 border-sky-100 text-sky-700'
+                    : 'bg-emerald-50 border-emerald-100 text-emerald-700'
                   }`}>
                     {r.competitionTier === 'extreme' &&
                       `${r.openPostings}K open postings and demand up ${r.demandGrowthPct}% YoY against a supply index of only ${r.talentSupply}/100. Every competitor is fishing the same small pool — retention of current ${r.role}s is the highest-leverage action right now.`
