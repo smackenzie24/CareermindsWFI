@@ -14,6 +14,7 @@ const CONTEXT_COPY: Record<string, { question: string; sub: string }> = {
   'Talent Signals':        { question: 'Does this view reflect how you actually think about readiness?', sub: 'Share what\'s missing from the talent picture.' },
   'Manager Effectiveness': { question: 'Are these manager metrics helping you have better conversations?', sub: 'Tell us what signals you wish you had.' },
   'Industry Benchmarks':   { question: 'Are you benchmarking against the right peers?', sub: 'Let us know what comparisons would be most useful.' },
+  'Talent Intelligence':   { question: 'Is this market intelligence changing how you think about your workforce?', sub: 'Tell us which signals are most useful and what\'s missing.' },
   'Executive Summary':     { question: 'Is this summary giving you what you need before a leadership meeting?', sub: 'Tell us what signals belong on this page.' },
   'Decisions Journal':     { question: 'Is the journal helping you follow through on commitments?', sub: 'Tell us how we can make it a better accountability tool.' },
 };

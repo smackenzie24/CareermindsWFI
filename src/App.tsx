@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { LayoutGrid, TrendingUp, Sparkles, BarChart3, Globe, Home, ArrowLeft, ClipboardList, BookOpen, HelpCircle, Layers } from 'lucide-react';
+import { LayoutGrid, TrendingUp, Sparkles, BarChart3, Globe, Home, ArrowLeft, ClipboardList, BookOpen, HelpCircle, Layers, BrainCircuit } from 'lucide-react';
 import { TourOverlay } from './components/tour/TourOverlay';
 import type { ActiveView as TourActiveView } from './components/tour/tourData';
 import { SkillsGapHeatmap } from './components/SkillsGapHeatmap';
@@ -7,6 +7,7 @@ import { PromotionPipeline } from './components/promotion/PromotionPipeline';
 import { ChatPanel } from './components/ChatPanel';
 import { ManagerEffectiveness } from './components/managerEffectiveness/ManagerEffectiveness';
 import { IndustryBenchmark } from './components/benchmark/IndustryBenchmark';
+import { TalentIntelligence } from './components/talentIntelligence/TalentIntelligence';
 import { ExecutiveSummary } from './components/ExecutiveSummary';
 import { AskAIPage } from './components/ai/AskAIPage';
 import { CommitmentsJournal } from './components/CommitmentsJournal';
@@ -19,7 +20,7 @@ import type { NavTarget } from './data/execSummaryData';
 import type { ActionNavTarget } from './data/chatEngine';
 import type { ManagerMetrics } from './data/managerData';
 
-type ActiveView = 'home' | 'heatmap' | 'pipeline' | 'managers' | 'benchmark' | 'ask-ai' | 'journal' | 'how-it-works' | 'gap-report' | 'zero-states';
+type ActiveView = 'home' | 'heatmap' | 'pipeline' | 'managers' | 'benchmark' | 'talent-intel' | 'ask-ai' | 'journal' | 'how-it-works' | 'gap-report' | 'zero-states';
 
 function TourNudge({ onDismiss }: { onDismiss: () => void }) {
   const [visible, setVisible] = useState(() => {
@@ -50,6 +51,7 @@ const NAV_ITEMS: { id: ActiveView; label: string; icon: React.ReactNode; accent?
   { id: 'pipeline',     label: 'Talent Signals', icon: <TrendingUp size={13} /> },
   { id: 'managers',     label: 'Managers',     icon: <BarChart3 size={13} /> },
   { id: 'benchmark',    label: 'Benchmarks',   icon: <Globe size={13} /> },
+  { id: 'talent-intel', label: 'Talent Intelligence', icon: <BrainCircuit size={13} /> },
   // { id: 'journal',      label: 'Decisions',    icon: <ClipboardList size={13} /> },
   { id: 'how-it-works', label: 'How it works', icon: <HelpCircle size={13} /> },
   { id: 'zero-states',  label: 'Zero States',  icon: <Layers size={13} /> },
@@ -231,6 +233,7 @@ export default function App() {
         {nav.view === 'benchmark' && (
           <IndustryBenchmark onNavigateToGapReport={(dept) => setNav({ view: 'gap-report', department: dept })} />
         )}
+        {nav.view === 'talent-intel' && <TalentIntelligence />}
         {nav.view === 'gap-report' && (
           nav.department
             ? <SkillGapReport
