@@ -1,4 +1,4 @@
-﻿Dataset #,Dataset,Field #,Field name,Description,Derived,PII type,Included in sample,,,,,,,,,,,,,,,,,,
+Dataset #,Dataset,Field #,Field name,Description,Derived,PII type,Included in sample,,,,,,,,,,,,,,,,,,
 1,individual_user,1,user_id,Unique Revelio Labs individual identifier,No,N/A,Yes,,,,,,,,,,,,,,,,,,
 1,individual_user,2,fullname,Individual’s full name parsed from public profile,No,Direct,Yes,,,,,,,,,,,,,,,,,,
 1,individual_user,3,firstname,First name parsed from full name,No,Direct,Yes,,,,,,,,,,,,,,,,,,
