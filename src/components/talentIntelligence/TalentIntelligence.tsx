@@ -115,92 +115,134 @@ function buildDeptSignals(dept: RevelioDept): DeptSignals {
 }
 
 const SIGNAL_CONFIG = {
-  critical: { label: 'Critical', badge: 'bg-red-50 text-red-600 border-red-100',      border: 'border-red-100' },
-  warning:  { label: 'Warning',  badge: 'bg-amber-50 text-amber-600 border-amber-100', border: 'border-amber-100' },
-  watch:    { label: 'Watch',    badge: 'bg-sky-50 text-sky-600 border-sky-100',        border: 'border-gray-100' },
-  healthy:  { label: 'Healthy',  badge: 'bg-emerald-50 text-emerald-600 border-emerald-100', border: 'border-gray-100' },
+  critical: { label: 'Critical', badge: 'bg-red-50 text-red-600 border-red-100',      labelColor: 'text-red-500',    border: 'border-red-100' },
+  warning:  { label: 'Warning',  badge: 'bg-amber-50 text-amber-600 border-amber-100', labelColor: 'text-amber-600',  border: 'border-amber-100' },
+  watch:    { label: 'Watch',    badge: 'bg-sky-50 text-sky-600 border-sky-100',        labelColor: 'text-sky-600',    border: 'border-gray-100' },
+  healthy:  { label: 'Healthy',  badge: 'bg-emerald-50 text-emerald-600 border-emerald-100', labelColor: 'text-emerald-600', border: 'border-gray-100' },
 };
 
 // ── Entry grid ────────────────────────────────────────────────────────────────
 
+// Signal bar segments: hiring difficulty, flight risk, comp gap, promo gap
+// Each segment width = fraction of 4 total signals
+const TILE_LEVEL_CLASSES: Record<keyof typeof SIGNAL_CONFIG, { bg: string; text: string }> = {
+  critical: { bg: 'bg-red-100',     text: 'text-red-600'     },
+  warning:  { bg: 'bg-amber-100',   text: 'text-amber-600'   },
+  watch:    { bg: 'bg-sky-50',      text: 'text-sky-600'     },
+  healthy:  { bg: 'bg-emerald-50',  text: 'text-emerald-600' },
+};
+
+const SIGNAL_TILES = [
+  { key: 'hiring' as const, label: 'Hiring' },
+  { key: 'flight' as const, label: 'Flight' },
+  { key: 'comp'   as const, label: 'Comp'   },
+  { key: 'promo'  as const, label: 'Promo'  },
+];
+
+function signalLevel(signals: DeptSignals, key: typeof SIGNAL_TILES[number]['key']): keyof typeof SIGNAL_CONFIG {
+  if (key === 'hiring') {
+    if (signals.extremeRoles > 0) return 'critical';
+    if (signals.highRoles > 0) return 'warning';
+    return 'healthy';
+  }
+  if (key === 'flight') {
+    if (signals.flightRiskVsMarket > 10) return 'critical';
+    if (signals.flightRiskVsMarket > 0) return 'warning';
+    return 'healthy';
+  }
+  if (key === 'comp') {
+    if (signals.compPercentile < 45) return 'critical';
+    if (signals.compPercentile < 50) return 'warning';
+    return 'healthy';
+  }
+  if (key === 'promo') {
+    if (signals.bottleneck && signals.promotionRate < signals.marketPromoRate) return 'warning';
+    if (signals.promotionRate < signals.marketPromoRate) return 'watch';
+    return 'healthy';
+  }
+  return 'healthy';
+}
+
+function signalValue(signals: DeptSignals, key: typeof SIGNAL_TILES[number]['key']): string {
+  if (key === 'hiring') return signals.hardestToFill > 0 ? `${signals.hardestToFill}d` : '—';
+  if (key === 'flight') return `${signals.flightRiskScore}`;
+  if (key === 'comp') return `p${signals.compPercentile}`;
+  if (key === 'promo') return `${signals.promotionRate}%`;
+  return '—';
+}
+
+const BAR_COLORS = { critical: 'bg-red-300', warning: 'bg-amber-200', watch: 'bg-sky-200', healthy: 'bg-emerald-200' };
+
 function DeptCard({ signals, onClick }: { signals: DeptSignals; onClick: () => void }) {
   const cfg = SIGNAL_CONFIG[signals.overallSignal];
+  const tileSignals = SIGNAL_TILES.map(t => ({ key: t.key, label: t.label, level: signalLevel(signals, t.key), value: signalValue(signals, t.key) }));
+  // Footer: most urgent callout
+  const hasExtremeHiring = signals.extremeRoles > 0;
+  const hasFlightAlert = signals.flightRiskVsMarket > 0;
 
   return (
     <button
       onClick={onClick}
-      className={`text-left rounded-2xl border bg-white p-5 group transition-all duration-200 hover:shadow-lg hover:-translate-y-0.5 focus:outline-none ${cfg.border}`}
+      className="text-left rounded-2xl border border-gray-200 bg-white p-6 group transition-all duration-200 hover:shadow-lg hover:-translate-y-0.5 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-400"
     >
-      <div className="flex items-start justify-between mb-4">
+      {/* Header */}
+      <div className="flex items-start justify-between mb-5">
         <div>
-          <h3 className="text-base font-bold text-gray-900 leading-tight">{signals.dept}</h3>
+          <h3 className="text-base font-bold text-gray-900">{signals.dept}</h3>
           <p className="text-xs text-gray-400 mt-0.5">
             {signals.extremeRoles + signals.highRoles} competitive roles
             {signals.hardestToFill > 0 && ` · up to ${signals.hardestToFill}d to fill`}
           </p>
         </div>
-        <div className="flex items-center gap-2">
-          <span className={`text-xs font-semibold px-2.5 py-1 rounded-full border ${cfg.badge}`}>{cfg.label}</span>
-          <ChevronRight size={15} className="text-gray-300 group-hover:text-gray-600 group-hover:translate-x-0.5 transition-all" />
+        <ChevronRight size={16} className="text-gray-400 group-hover:text-gray-700 group-hover:translate-x-0.5 transition-all flex-shrink-0" />
+      </div>
+
+      {/* Segmented signal bar */}
+      <div className="mb-4">
+        <div className="flex items-center justify-between mb-1.5">
+          <span className="text-xs text-gray-500">Signal breakdown</span>
+          <span className={`text-xs font-bold ${cfg.labelColor}`}>{cfg.label} overall</span>
+        </div>
+        <div className="flex h-3 rounded-full overflow-hidden gap-px bg-gray-100">
+          {tileSignals.map(t => (
+            <div key={t.key} className={`transition-all flex-1 ${BAR_COLORS[t.level]}`} title={t.label} />
+          ))}
         </div>
       </div>
 
-      <div className="space-y-2.5">
-        <div className="flex items-center justify-between text-xs">
-          <span className="text-gray-500 flex items-center gap-1.5"><Zap size={11} className="text-gray-400" />Hiring competition</span>
-          <div className="flex items-center gap-1">
-            {signals.extremeRoles > 0 && (
-              <span className="text-[10px] font-semibold text-red-500 bg-red-50 border border-red-100 px-1.5 py-0.5 rounded-full">{signals.extremeRoles} extreme</span>
-            )}
-            {signals.highRoles > 0 && (
-              <span className="text-[10px] font-semibold text-amber-600 bg-amber-50 border border-amber-100 px-1.5 py-0.5 rounded-full">{signals.highRoles} high</span>
-            )}
-            {signals.extremeRoles === 0 && signals.highRoles === 0 && (
-              <span className="text-[10px] font-semibold text-emerald-600 bg-emerald-50 border border-emerald-100 px-1.5 py-0.5 rounded-full">Low</span>
-            )}
-          </div>
-        </div>
-
-        <div className="flex items-center justify-between text-xs">
-          <span className="text-gray-500 flex items-center gap-1.5"><Activity size={11} className="text-gray-400" />Flight risk</span>
-          <div className="flex items-center gap-1.5">
-            <span className={`text-[10px] font-bold ${signals.flightRiskVsMarket > 0 ? 'text-red-500' : 'text-emerald-600'}`}>
-              {signals.flightRiskScore}/100
-            </span>
-            <TrendBadge trend={signals.flightTrend} />
-            {signals.flightRiskVsMarket > 0 && (
-              <span className="text-[10px] text-red-400">+{signals.flightRiskVsMarket} vs mkt</span>
-            )}
-          </div>
-        </div>
-
-        <div className="flex items-center justify-between text-xs">
-          <span className="text-gray-500 flex items-center gap-1.5"><DollarSign size={11} className="text-gray-400" />Comp position</span>
-          <span className={`text-[10px] font-bold ${signals.compPercentile < 50 ? 'text-amber-600' : 'text-emerald-600'}`}>
-            p{signals.compPercentile} market
-            {signals.compPercentile < 50 && signals.atRiskRoles.length > 0 && (
-              <span className="ml-1 text-gray-400 font-normal">· {signals.atRiskRoles.length} at risk</span>
-            )}
-          </span>
-        </div>
-
-        <div className="flex items-center justify-between text-xs">
-          <span className="text-gray-500 flex items-center gap-1.5"><TrendingUp size={11} className="text-gray-400" />Promotion rate</span>
-          <div className="flex items-center gap-1.5">
-            <span className={`text-[10px] font-bold ${signals.promotionRate < signals.marketPromoRate ? 'text-amber-600' : 'text-emerald-600'}`}>
-              {signals.promotionRate}% <span className="font-normal text-gray-400">vs {signals.marketPromoRate}% mkt</span>
-            </span>
-            {signals.bottleneck && (
-              <span className="text-[9px] font-medium text-amber-600 bg-amber-50 border border-amber-100 px-1 py-0.5 rounded">bottleneck</span>
-            )}
-          </div>
-        </div>
+      {/* Signal tiles */}
+      <div className="grid grid-cols-4 gap-2 mb-4">
+        {tileSignals.map(t => {
+          const tc = TILE_LEVEL_CLASSES[t.level];
+          return (
+            <div key={t.key} className={`rounded-lg p-2 text-center ${tc.bg}`}>
+              <p className={`text-lg font-black leading-none ${tc.text}`}>{t.value}</p>
+              <p className="text-[10px] text-gray-400 mt-0.5">{t.label}</p>
+            </div>
+          );
+        })}
       </div>
 
-      {signals.topRisingSkill && (
-        <div className="mt-3.5 pt-3 border-t border-gray-50 flex items-center gap-1.5 text-[10px] text-gray-500">
-          <BookOpen size={10} className="text-gray-400 flex-shrink-0" />
-          Rising skill: <strong className="text-gray-700 ml-0.5">{signals.topRisingSkill}</strong>
+      {/* Footer callout */}
+      {hasExtremeHiring ? (
+        <div className="flex items-center gap-2 text-xs text-gray-600 bg-red-50 rounded-lg px-3 py-2 border border-red-100">
+          <Zap size={11} className="text-red-400 flex-shrink-0" />
+          <span>{signals.extremeRoles} role{signals.extremeRoles > 1 ? 's' : ''} in extreme hiring competition</span>
+        </div>
+      ) : hasFlightAlert ? (
+        <div className="flex items-center gap-2 text-xs text-gray-600 bg-amber-50 rounded-lg px-3 py-2 border border-amber-100">
+          <Activity size={11} className="text-amber-400 flex-shrink-0" />
+          <span>Flight risk <strong>+{signals.flightRiskVsMarket} pts</strong> above market average</span>
+        </div>
+      ) : signals.topRisingSkill ? (
+        <div className="flex items-center gap-2 text-xs text-gray-600 bg-gray-50 rounded-lg px-3 py-2 border border-gray-100">
+          <BookOpen size={11} className="text-sky-400 flex-shrink-0" />
+          <span>Rising skill: <strong>{signals.topRisingSkill}</strong></span>
+        </div>
+      ) : (
+        <div className="flex items-center gap-2 text-xs text-gray-500 bg-emerald-50 rounded-lg px-3 py-2 border border-emerald-100">
+          <CheckCircle size={11} className="text-emerald-400 flex-shrink-0" />
+          <span>All signals within healthy range</span>
         </div>
       )}
     </button>
