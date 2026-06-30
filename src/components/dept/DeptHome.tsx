@@ -1,6 +1,6 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useRef } from 'react';
 import {
-  AlertTriangle, TrendingUp, DollarSign, Users, ChevronRight,
+  AlertTriangle, TrendingUp, DollarSign, Users, ChevronRight, ChevronLeft,
   Sparkles, ArrowRight, BarChart2, Activity, ArrowUpRight,
   ChevronDown, ChevronUp, Shield, Download,
 } from 'lucide-react';
@@ -366,6 +366,7 @@ function AttentionCard({
 
 export function DeptHome({ onSelectDept, onAskAI, onNavigateToPipeline, onNavigate }: Props) {
   const [input, setInput] = useState('');
+  const teamsScrollRef = useRef<HTMLDivElement>(null);
 
   const kpis        = useMemo(() => computeKpis(), []);
   const deptSnaps   = useMemo(() => computeDeptSnapshots(), []);
@@ -474,9 +475,23 @@ export function DeptHome({ onSelectDept, onAskAI, onNavigateToPipeline, onNaviga
               <h2 className="text-sm font-bold text-gray-900">Teams at a glance</h2>
               <p className="text-[11px] text-gray-400 mt-0.5">Average readiness against role requirements, with each team's biggest gap.</p>
             </div>
-            <span className="text-xs text-gray-400">{deptSnaps.length} teams</span>
+            <div className="flex items-center gap-1">
+              <span className="text-xs text-gray-400 mr-2">{deptSnaps.length} teams</span>
+              <button
+                onClick={() => { teamsScrollRef.current?.scrollBy({ left: -240, behavior: 'smooth' }); }}
+                className="w-7 h-7 rounded-full border border-gray-200 flex items-center justify-center text-gray-400 hover:text-gray-700 hover:border-gray-300 transition-colors bg-white shadow-sm"
+              >
+                <ChevronLeft size={14} />
+              </button>
+              <button
+                onClick={() => { teamsScrollRef.current?.scrollBy({ left: 240, behavior: 'smooth' }); }}
+                className="w-7 h-7 rounded-full border border-gray-200 flex items-center justify-center text-gray-400 hover:text-gray-700 hover:border-gray-300 transition-colors bg-white shadow-sm"
+              >
+                <ChevronRight size={14} />
+              </button>
+            </div>
           </div>
-          <div className="flex gap-4 overflow-x-auto pb-2 -mx-6 px-6 scrollbar-none">
+          <div ref={teamsScrollRef} className="flex gap-4 overflow-x-auto pb-2 -mx-6 px-6 scrollbar-none">
             {deptSnaps.map(snap => (
               <div key={snap.dept} className="flex-shrink-0 w-56">
                 <TeamCard
