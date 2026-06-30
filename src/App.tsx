@@ -207,6 +207,7 @@ export default function App() {
             onSelectDept={(dept) => setNav({ view: 'dept', reveliosDept: dept })}
             onAskAI={openAI}
             onNavigateToPipeline={() => setView('pipeline')}
+            onNavigate={(view) => setView(view as ActiveView)}
           />
         )}
         {nav.view === 'dept' && nav.reveliosDept && (
