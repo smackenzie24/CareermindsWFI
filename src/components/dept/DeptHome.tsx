@@ -537,4 +537,3 @@ export function DeptHome({ onSelectDept, onAskAI, onNavigateToPipeline, onNaviga
 }
 
 
-export { DeptHome }
