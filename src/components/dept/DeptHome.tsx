@@ -1,18 +1,16 @@
-import { useState, useEffect } from 'react';
+import { useState, useMemo } from 'react';
 import {
   AlertTriangle, TrendingUp, DollarSign, Users, ChevronRight,
   Sparkles, ArrowRight, BarChart2, Activity, ArrowUpRight,
-  ChevronDown, ChevronUp, Shield, Star, CheckCircle2,
-  Globe, LogOut, CalendarX,
+  ChevronDown, ChevronUp, Shield, Download,
 } from 'lucide-react';
 import {
   REVELIO_DEPTS, FLIGHT_RISK, COMP_POSITIONING, TALENT_INTEL_RECS,
   ROLE_DEMAND, SKILL_SIGNALS, PROMOTION_RATES,
   type RevelioDept,
 } from '../../data/revelioData';
-import { PEOPLE } from '../../data/promotionData';
-import { computeExecSummaryAsync, type ExecSummary } from '../../data/execSummaryData';
-import { Download } from 'lucide-react';
+import { PEOPLE, getAllReadiness } from '../../data/promotionData';
+import { SKILLS_DATA, type Department } from '../../data/mockData';
 
 interface Props {
   onSelectDept: (dept: RevelioDept) => void;
@@ -21,109 +19,132 @@ interface Props {
   onNavigate: (view: string) => void;
 }
 
-// ── KPI strip ─────────────────────────────────────────────────────────────────
+// ── Computed KPI snapshot (from real data) ────────────────────────────────────
 
-interface KpiItem {
+function computeKpis() {
+  const allReadiness = getAllReadiness();
+
+  // People mapped to a position = everyone in PEOPLE (they all have a level)
+  const totalPeople = PEOPLE.length;
+  const stalledCount = allReadiness.filter(r => r.person.tenure > 24 && r.readinessPct < 50).length;
+
+  // Skill gaps = total individual gap instances across all SKILLS_DATA rows
+  const totalSkillGaps = SKILLS_DATA.reduce((sum, row) => sum + row.belowTarget, 0);
+  const criticalGapSkills = new Set(
+    SKILLS_DATA.filter(row => row.headcount > 0 && (row.belowTarget / row.headcount) >= 0.7).map(r => r.skill)
+  ).size;
+
+  // People above requirement = readiness >= 90%
+  const nearReadyCount = allReadiness.filter(r => r.readinessPct >= 90).length;
+  const readyCount     = allReadiness.filter(r => r.readinessPct >= 100).length;
+
+  // Key-person risks = distinct skills held by ≤2 people across the org
+  // Use headcount from SKILLS_DATA — skills where total headcount is ≤2
+  const skillHeadcounts: Record<string, number> = {};
+  for (const row of SKILLS_DATA) {
+    skillHeadcounts[row.skill] = (skillHeadcounts[row.skill] ?? 0) + row.headcount;
+  }
+  const keyPersonRisks = Object.values(skillHeadcounts).filter(n => n <= 2).length;
+
+  return { totalPeople, stalledCount, totalSkillGaps, criticalGapSkills, nearReadyCount, readyCount, keyPersonRisks };
+}
+
+// ── Per-dept snapshot (from real internal data) ───────────────────────────────
+
+interface DeptSnapshot {
+  dept: Department;
+  headcount: number;
+  avgReadinessPct: number;
+  topGapSkill: string;
+  topGapDelta: number;
+}
+
+function computeDeptSnapshots(): DeptSnapshot[] {
+  const allReadiness = getAllReadiness();
+
+  return (REVELIO_DEPTS as unknown as Department[]).map(dept => {
+    const deptReadiness = allReadiness.filter(r => r.person.department === dept);
+    const avgReadinessPct = deptReadiness.length > 0
+      ? Math.round(deptReadiness.reduce((s, r) => s + r.readinessPct, 0) / deptReadiness.length)
+      : 0;
+
+    const deptSkills = SKILLS_DATA.filter(row => row.department === dept);
+    // Top gap: skill with the biggest absolute gap (expectedLevel - averageActual), weighted by belowTarget
+    const topGap = deptSkills
+      .map(row => ({ skill: row.skill, delta: row.expectedLevel - row.averageActual, below: row.belowTarget }))
+      .sort((a, b) => b.delta * b.below - a.delta * a.below)[0];
+
+    return {
+      dept,
+      headcount: PEOPLE.filter(p => p.department === dept).length,
+      avgReadinessPct,
+      topGapSkill: topGap?.skill ?? '—',
+      topGapDelta: topGap ? -Math.round(topGap.delta * 10) / 10 : 0,
+    };
+  });
+}
+
+// ── KPI card (matches screenshot style) ──────────────────────────────────────
+
+interface KpiDef {
+  value: number | string;
   icon: React.ReactNode;
-  iconColor: string;
-  value: string;
-  suffix?: string;
-  note?: string;
-  noteColor?: string;
   label: string;
-  valueColor: string;
+  sublabel: string;
+  sublabelColor: string;
   onClick: () => void;
 }
 
-function KpiCard({ item }: { item: KpiItem }) {
+function OverviewCard({ kpi }: { kpi: KpiDef }) {
   return (
     <button
-      onClick={item.onClick}
-      className="group bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-md hover:-translate-y-px transition-all text-left px-5 py-4 flex flex-col gap-3 min-w-0"
+      onClick={kpi.onClick}
+      className="group bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-md hover:-translate-y-px transition-all text-left px-5 py-5 flex flex-col gap-2 min-w-0"
     >
-      <div className="flex items-center justify-between">
-        <span className={item.iconColor}>{item.icon}</span>
-        <ArrowRight size={13} className="text-gray-200 group-hover:text-gray-400 transition-colors" />
+      <div className="flex items-start justify-between">
+        <span className="text-3xl font-black text-gray-900 leading-none">{kpi.value}</span>
+        <span className="text-gray-300 group-hover:text-gray-400 transition-colors mt-0.5">{kpi.icon}</span>
       </div>
-      <div className="flex items-baseline gap-1.5 min-w-0">
-        <span className={`text-3xl font-black leading-none tracking-tight ${item.valueColor}`}>{item.value}</span>
-        {item.suffix && <span className="text-sm font-semibold text-gray-400">{item.suffix}</span>}
-        {item.note && <span className={`text-xs font-semibold ${item.noteColor ?? 'text-gray-400'}`}>{item.note}</span>}
-      </div>
-      <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 leading-none">{item.label}</p>
+      <p className="text-xs text-gray-500 leading-snug">{kpi.label}</p>
+      <p className={`text-[11px] font-semibold ${kpi.sublabelColor}`}>{kpi.sublabel}</p>
     </button>
   );
 }
 
-function ordinal(n: number): string {
-  const s = ['th','st','nd','rd'];
-  const v = n % 100;
-  return n + (s[(v - 20) % 10] || s[v] || s[0]);
-}
+// ── Teams at a glance card ─────────────────────────────────────────────────────
 
-function buildKpis(summary: ExecSummary, nav: Props): KpiItem[] {
-  const totalFlagged = summary.overdueCheckIns + summary.criticalCheckIns;
-  const healthColor = summary.orgHealthScore >= 75 ? 'text-emerald-600' : summary.orgHealthScore >= 55 ? 'text-amber-500' : 'text-red-600';
-  const gapColor = summary.peopleWithSkillGaps === 0 ? 'text-emerald-600' : summary.peopleWithSkillGaps <= 10 ? 'text-amber-500' : 'text-red-600';
-  const readyColor = summary.totalNearReady >= 5 ? 'text-emerald-600' : summary.totalNearReady >= 2 ? 'text-amber-500' : 'text-orange-500';
-  const stalledColor = summary.totalStalled === 0 ? 'text-gray-500' : 'text-gray-700';
-  const mgrColor = summary.managersNeedingSupport === 0 ? 'text-emerald-600' : summary.managersNeedingSupport === 1 ? 'text-amber-500' : 'text-orange-500';
-  const rankColor = summary.benchmarkRank <= Math.ceil(summary.benchmarkTotal / 2) ? 'text-emerald-600' : 'text-red-600';
-  const attrColor = summary.attritionScore.score >= 70 ? 'text-red-600' : summary.attritionScore.score >= 45 ? 'text-amber-500' : 'text-emerald-600';
-  const checkInColor = totalFlagged === 0 ? 'text-emerald-600' : summary.criticalCheckIns > 0 ? 'text-red-600' : 'text-amber-500';
+function TeamCard({ snap, onClick }: { snap: DeptSnapshot; onClick: () => void }) {
+  const readinessColor = snap.avgReadinessPct >= 85 ? 'bg-emerald-500' : snap.avgReadinessPct >= 65 ? 'bg-amber-400' : 'bg-red-400';
 
-  return [
-    {
-      icon: <Shield size={18} />, iconColor: 'text-orange-400',
-      value: String(summary.orgHealthScore), suffix: '/100',
-      valueColor: healthColor, label: 'Org Health',
-      onClick: () => nav.onNavigate('heatmap'),
-    },
-    {
-      icon: <AlertTriangle size={18} />, iconColor: 'text-red-400',
-      value: String(summary.peopleWithSkillGaps), note: 'people',
-      valueColor: gapColor, label: 'Below Expected Level',
-      onClick: () => nav.onNavigate('heatmap'),
-    },
-    {
-      icon: <TrendingUp size={18} />, iconColor: 'text-emerald-500',
-      value: String(summary.totalNearReady), note: 'ready',
-      valueColor: readyColor, label: 'Promotable Now',
-      onClick: () => nav.onNavigateToPipeline(),
-    },
-    {
-      icon: <CheckCircle2 size={18} />, iconColor: 'text-gray-400',
-      value: String(summary.totalStalled), note: 'stalled',
-      valueColor: stalledColor, label: 'Stalled 24M+',
-      onClick: () => nav.onNavigateToPipeline(),
-    },
-    {
-      icon: <Users size={18} />, iconColor: 'text-amber-400',
-      value: String(summary.managersNeedingSupport), note: 'flagged',
-      valueColor: mgrColor, label: 'Managers',
-      onClick: () => nav.onNavigate('managers'),
-    },
-    {
-      icon: <Globe size={18} />, iconColor: 'text-orange-400',
-      value: ordinal(summary.benchmarkRank), note: `of ${summary.benchmarkTotal}`,
-      valueColor: rankColor, label: 'Industry Rank',
-      onClick: () => nav.onNavigate('benchmark'),
-    },
-    {
-      icon: <LogOut size={18} />, iconColor: attrColor,
-      value: String(summary.attritionScore.score), suffix: '/100',
-      note: summary.attritionScore.riskLabel, noteColor: attrColor,
-      valueColor: attrColor, label: 'Attrition Risk',
-      onClick: () => nav.onNavigate('benchmark'),
-    },
-    {
-      icon: <CalendarX size={18} />, iconColor: totalFlagged === 0 ? 'text-emerald-400' : summary.criticalCheckIns > 0 ? 'text-red-400' : 'text-amber-400',
-      value: String(totalFlagged), suffix: totalFlagged > 0 ? `/ ${summary.totalHeadcount}` : undefined,
-      note: totalFlagged === 0 ? 'all current' : undefined,
-      valueColor: checkInColor, label: 'No Check-In',
-      onClick: () => nav.onNavigateToPipeline(),
-    },
-  ];
+  return (
+    <button
+      onClick={onClick}
+      className="group bg-white border border-gray-100 rounded-2xl p-5 text-left hover:shadow-md hover:-translate-y-px transition-all w-full shadow-sm"
+    >
+      <div className="flex items-center justify-between mb-1">
+        <p className="text-sm font-bold text-gray-900 group-hover:text-brand-blue transition-colors">{snap.dept}</p>
+        <ChevronRight size={14} className="text-gray-300 group-hover:text-brand-blue transition-colors" />
+      </div>
+      <p className="text-[11px] text-gray-400 mb-4">{snap.headcount} people</p>
+
+      <div className="space-y-1.5 mb-4">
+        <div className="flex items-center justify-between text-[11px]">
+          <span className="text-gray-400">Readiness</span>
+          <span className="font-bold text-gray-700">{snap.avgReadinessPct}%</span>
+        </div>
+        <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+          <div className={`h-full rounded-full transition-all ${readinessColor}`} style={{ width: `${snap.avgReadinessPct}%` }} />
+        </div>
+      </div>
+
+      <div className="flex items-center gap-2">
+        <span className="text-[11px] text-gray-400">Top gap</span>
+        <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-red-50 text-red-600 border border-red-100">
+          {snap.topGapSkill} {snap.topGapDelta}
+        </span>
+      </div>
+    </button>
+  );
 }
 
 // ── Attention items ────────────────────────────────────────────────────────────
@@ -242,8 +263,6 @@ function buildAttentionList(): AttentionItem[] {
   return items.sort((a, b) => ({ critical: 0, high: 1, medium: 2 }[a.urgency] - { critical: 0, high: 1, medium: 2 }[b.urgency]));
 }
 
-// ── Urgency config ─────────────────────────────────────────────────────────────
-
 const URGENCY_CFG = {
   critical: {
     leftBar: 'bg-red-400', iconBg: 'bg-red-100', iconColor: 'text-red-500',
@@ -261,12 +280,6 @@ const URGENCY_CFG = {
     cta: 'bg-sky-500 hover:bg-sky-600 text-white',
   },
 };
-
-const DEPT_HEADCOUNTS: Record<RevelioDept, number> = {
-  Engineering: 52, Product: 15, Design: 8, Data: 17, Marketing: 7, Sales: 11, 'People Ops': 4,
-};
-
-// ── Compact attention card ─────────────────────────────────────────────────────
 
 function AttentionCard({
   item, onSelectDept, onAskAI, onNavigateToPipeline,
@@ -349,76 +362,50 @@ function AttentionCard({
   );
 }
 
-// ── Dept card (right column) ───────────────────────────────────────────────────
-
-function DeptCard({ dept, onClick }: { dept: RevelioDept; onClick: () => void }) {
-  const fr    = FLIGHT_RISK.find(r => r.dept === dept)!;
-  const comp  = COMP_POSITIONING.find(r => r.dept === dept)!;
-  const promo = PROMOTION_RATES.find(r => r.dept === dept)!;
-  const recs  = TALENT_INTEL_RECS.filter(r => r.dept === dept && r.priority === 'critical');
-  const extreme = ROLE_DEMAND.filter(r => r.dept === dept && r.competitionTier === 'extreme');
-
-  const riskColor = fr.flightRiskScore >= 70 ? 'text-red-500' : fr.flightRiskScore >= 60 ? 'text-amber-600' : 'text-emerald-600';
-  const riskBg    = fr.flightRiskScore >= 70 ? 'bg-red-400'   : fr.flightRiskScore >= 60 ? 'bg-amber-400'   : 'bg-emerald-400';
-
-  return (
-    <button onClick={onClick} className="group bg-white border border-gray-200 rounded-xl p-4 text-left hover:border-brand-blue/30 hover:shadow-sm transition-all w-full">
-      <div className="flex items-start justify-between mb-3">
-        <div>
-          <p className="text-sm font-bold text-gray-900 group-hover:text-brand-blue transition-colors">{dept}</p>
-          <p className="text-[10px] text-gray-400">{DEPT_HEADCOUNTS[dept]} people</p>
-        </div>
-        <div className="flex items-center gap-1 mt-0.5">
-          {recs.length > 0 && <AlertTriangle size={11} className="text-red-400" />}
-          <ChevronRight size={12} className="text-gray-300 group-hover:text-brand-blue transition-colors" />
-        </div>
-      </div>
-      <div className="mb-2.5">
-        <div className="flex justify-between items-center mb-1">
-          <span className="text-[10px] text-gray-400">Flight risk</span>
-          <span className={`text-[11px] font-bold ${riskColor}`}>
-            {fr.flightRiskScore}
-            {fr.trend === 'rising'  && <span className="text-[9px] text-red-400 ml-0.5">↑</span>}
-            {fr.trend === 'falling' && <span className="text-[9px] text-emerald-500 ml-0.5">↓</span>}
-          </span>
-        </div>
-        <div className="h-1.5 bg-gray-100 rounded-full">
-          <div className={`h-full rounded-full ${riskBg}`} style={{ width: `${fr.flightRiskScore}%` }} />
-        </div>
-      </div>
-      <div className="grid grid-cols-3 gap-1 pt-2 border-t border-gray-100">
-        <div>
-          <p className="text-[9px] text-gray-400 uppercase tracking-wide">Comp</p>
-          <p className={`text-xs font-bold ${comp.percentilePosition < 50 ? 'text-amber-600' : 'text-emerald-600'}`}>P{comp.percentilePosition}</p>
-        </div>
-        <div>
-          <p className="text-[9px] text-gray-400 uppercase tracking-wide">Promo</p>
-          <p className={`text-xs font-bold ${promo.acmePromotionRatePct < promo.marketMedianPct ? 'text-amber-600' : 'text-emerald-600'}`}>{promo.acmePromotionRatePct}%</p>
-        </div>
-        <div>
-          <p className="text-[9px] text-gray-400 uppercase tracking-wide">Hiring</p>
-          <p className={`text-xs font-bold ${extreme.length > 0 ? 'text-red-500' : 'text-gray-500'}`}>{extreme.length > 0 ? `${extreme.length} hard` : 'OK'}</p>
-        </div>
-      </div>
-    </button>
-  );
-}
-
 // ── Main ───────────────────────────────────────────────────────────────────────
 
 export function DeptHome({ onSelectDept, onAskAI, onNavigateToPipeline, onNavigate }: Props) {
-  const [input, setInput]       = useState('');
-  const [kpiExpanded, setKpiExpanded] = useState(false);
-  const [summary, setSummary]   = useState<ExecSummary | null>(null);
+  const [input, setInput] = useState('');
 
-  useEffect(() => {
-    let cancelled = false;
-    computeExecSummaryAsync().then(r => { if (!cancelled) setSummary(r); });
-    return () => { cancelled = true; };
-  }, []);
-
-  const attentionItems = buildAttentionList();
+  const kpis        = useMemo(() => computeKpis(), []);
+  const deptSnaps   = useMemo(() => computeDeptSnapshots(), []);
+  const attentionItems = useMemo(() => buildAttentionList(), []);
   const criticalCount  = attentionItems.filter(i => i.urgency === 'critical').length;
+
+  const overviewCards: KpiDef[] = [
+    {
+      value: kpis.totalPeople,
+      icon: <Users size={18} />,
+      label: 'People mapped to a position',
+      sublabel: kpis.stalledCount > 0 ? `${kpis.stalledCount} stalled 24M+` : 'all progressing',
+      sublabelColor: kpis.stalledCount > 0 ? 'text-amber-500' : 'text-emerald-600',
+      onClick: () => onNavigateToPipeline(),
+    },
+    {
+      value: kpis.totalSkillGaps,
+      icon: <AlertTriangle size={18} />,
+      label: 'Skill gaps below requirement',
+      sublabel: kpis.criticalGapSkills > 0 ? `${kpis.criticalGapSkills} skills need attention` : 'no critical gaps',
+      sublabelColor: kpis.criticalGapSkills > 0 ? 'text-red-500' : 'text-emerald-600',
+      onClick: () => onNavigate('heatmap'),
+    },
+    {
+      value: kpis.nearReadyCount,
+      icon: <TrendingUp size={18} />,
+      label: 'People above requirement',
+      sublabel: kpis.readyCount > 0 ? `${kpis.readyCount} fully ready · promotion-ready / under-used` : 'promotion-ready / under-used',
+      sublabelColor: 'text-emerald-600',
+      onClick: () => onNavigateToPipeline(),
+    },
+    {
+      value: kpis.keyPersonRisks,
+      icon: <AlertTriangle size={18} />,
+      label: 'Key-person risks',
+      sublabel: kpis.keyPersonRisks > 0 ? 'held by ≤2 people' : 'no single points of failure',
+      sublabelColor: kpis.keyPersonRisks > 0 ? 'text-red-500' : 'text-emerald-600',
+      onClick: () => onNavigate('heatmap'),
+    },
+  ];
 
   function submit(q?: string) {
     const text = (q ?? input).trim();
@@ -428,7 +415,6 @@ export function DeptHome({ onSelectDept, onAskAI, onNavigateToPipeline, onNaviga
   }
 
   const today = new Date().toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' });
-  const kpis  = summary ? buildKpis(summary, { onSelectDept, onAskAI, onNavigateToPipeline, onNavigate }) : [];
 
   return (
     <div className="h-full overflow-y-auto bg-brand-bg-light">
@@ -440,7 +426,7 @@ export function DeptHome({ onSelectDept, onAskAI, onNavigateToPipeline, onNaviga
             <div>
               <p className="text-[11px] text-gray-400 font-medium">{today}</p>
               <h1 className="text-lg font-bold text-gray-900 mt-0.5">Workforce Health Dashboard</h1>
-              <p className="text-xs text-gray-500 mt-0.5">Acme Corp · 114 people · Click any card to investigate</p>
+              <p className="text-xs text-gray-500 mt-0.5">Acme Corp · {kpis.totalPeople} people · Click any card to investigate</p>
             </div>
             <div className="flex-shrink-0 mt-1">
               <button className="flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-lg border bg-white border-gray-200 text-gray-500 hover:border-gray-300 hover:text-gray-700 transition-all">
@@ -466,7 +452,7 @@ export function DeptHome({ onSelectDept, onAskAI, onNavigateToPipeline, onNaviga
             </button>
           </div>
           <div className="flex items-center gap-2 mt-2 flex-wrap">
-            {['Who should I talk to this week?', "Where should we adjust comp before next review?", 'Which roles are hardest to backfill?'].map(q => (
+            {['Who should I talk to this week?', 'Where should we adjust comp before next review?', 'Which roles are hardest to backfill?'].map(q => (
               <button key={q} onClick={() => submit(q)} className="text-[10px] px-2.5 py-1 rounded-full bg-white border border-gray-200 text-gray-500 hover:border-brand-blue/40 hover:text-brand-blue transition-colors">{q}</button>
             ))}
           </div>
@@ -476,54 +462,38 @@ export function DeptHome({ onSelectDept, onAskAI, onNavigateToPipeline, onNaviga
       {/* ── Body ───────────────────────────────────────────────────────── */}
       <div className="max-w-7xl mx-auto px-6 py-5 space-y-6">
 
-        {/* KPI strip */}
-        {summary && (
-          <div>
-            <div className="grid grid-cols-4 gap-3">
-              {kpis.slice(0, 4).map(k => <KpiCard key={k.label} item={k} />)}
-            </div>
-            {kpiExpanded && (
-              <div className="grid grid-cols-4 gap-3 mt-3">
-                {kpis.slice(4).map(k => <KpiCard key={k.label} item={k} />)}
-              </div>
-            )}
-            <div className="flex justify-center mt-2.5">
-              <button onClick={() => setKpiExpanded(e => !e)} className="flex items-center gap-1.5 text-xs text-gray-400 hover:text-gray-600 transition-colors">
-                {kpiExpanded
-                  ? <><ChevronUp size={12} />Hide managers, rank, attrition &amp; check-ins</>
-                  : <><ChevronDown size={12} />Show managers, rank, attrition &amp; check-ins</>}
-              </button>
-            </div>
-          </div>
-        )}
+        {/* Overview KPI cards */}
+        <div className="grid grid-cols-4 gap-4">
+          {overviewCards.map(k => <OverviewCard key={k.label} kpi={k} />)}
+        </div>
 
-        {/* Wins strip */}
-        {summary && summary.wins.length > 0 && (
-          <div className="bg-white border border-gray-100 rounded-2xl p-5 shadow-sm">
-            <h2 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-3 flex items-center gap-1.5">
-              <Star size={11} className="text-amber-400" /> Highlights
-            </h2>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
-              {summary.wins.map((win, i) => (
-                <div key={i} className="flex items-start gap-2.5 p-3 bg-emerald-50 rounded-xl border border-emerald-100">
-                  <CheckCircle2 size={13} className="text-emerald-500 flex-shrink-0 mt-0.5" />
-                  <div>
-                    <p className="text-xs font-semibold text-emerald-800">{win.title}</p>
-                    <p className="text-[11px] text-emerald-700 mt-0.5 leading-relaxed">{win.detail}</p>
-                  </div>
-                </div>
-              ))}
+        {/* Teams at a glance */}
+        <div>
+          <div className="flex items-center justify-between mb-3">
+            <div>
+              <h2 className="text-sm font-bold text-gray-900">Teams at a glance</h2>
+              <p className="text-[11px] text-gray-400 mt-0.5">Average readiness against role requirements, with each team's biggest gap.</p>
             </div>
+            <span className="text-xs text-gray-400">{deptSnaps.length} teams</span>
           </div>
-        )}
+          <div className="grid grid-cols-4 gap-4">
+            {deptSnaps.map(snap => (
+              <TeamCard
+                key={snap.dept}
+                snap={snap}
+                onClick={() => onSelectDept(snap.dept as unknown as RevelioDept)}
+              />
+            ))}
+          </div>
+        </div>
 
-        {/* Two-column: alerts + depts */}
+        {/* Priorities + side column */}
         <div className="flex gap-6 items-start">
 
-          {/* Left: Priorities */}
+          {/* Left: Priority alerts */}
           <div className="flex-1 min-w-0">
             <div className="flex items-center justify-between mb-3">
-              <h2 className="text-xs font-bold text-gray-500 uppercase tracking-wider">Priorities requiring attention</h2>
+              <h2 className="text-sm font-bold text-gray-900">Priorities requiring attention</h2>
               {criticalCount > 0 && (
                 <span className="flex items-center gap-1 text-[10px] font-semibold text-red-600 bg-red-50 border border-red-200 px-2 py-0.5 rounded-full">
                   <AlertTriangle size={9} />{criticalCount} critical
@@ -537,14 +507,27 @@ export function DeptHome({ onSelectDept, onAskAI, onNavigateToPipeline, onNaviga
             </div>
           </div>
 
-          {/* Right: Dept grid */}
-          <div className="w-72 flex-shrink-0">
-            <h2 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-3">Departments</h2>
-            <div className="grid grid-cols-1 gap-2.5">
-              {REVELIO_DEPTS.map(dept => (
-                <DeptCard key={dept} dept={dept} onClick={() => onSelectDept(dept)} />
-              ))}
-            </div>
+          {/* Right: Quick links */}
+          <div className="w-64 flex-shrink-0 space-y-3">
+            <h2 className="text-sm font-bold text-gray-900">Quick access</h2>
+            {([
+              { label: 'Skills heatmap', sub: 'All gaps by team & level', view: 'heatmap', color: 'bg-blue-50 border-blue-100 hover:border-blue-200' },
+              { label: 'Talent pipeline', sub: 'Promotions & flight risk', view: 'pipeline', color: 'bg-emerald-50 border-emerald-100 hover:border-emerald-200' },
+              { label: 'Manager effectiveness', sub: 'Team health by manager', view: 'managers', color: 'bg-amber-50 border-amber-100 hover:border-amber-200' },
+              { label: 'Industry benchmarks', sub: 'Comp & talent vs peers', view: 'benchmark', color: 'bg-purple-50 border-purple-100 hover:border-purple-200' },
+            ] as const).map(item => (
+              <button
+                key={item.view}
+                onClick={() => onNavigate(item.view)}
+                className={`w-full text-left px-4 py-3 rounded-xl border transition-all flex items-center justify-between group ${item.color}`}
+              >
+                <div>
+                  <p className="text-xs font-semibold text-gray-800">{item.label}</p>
+                  <p className="text-[10px] text-gray-500 mt-0.5">{item.sub}</p>
+                </div>
+                <ArrowRight size={12} className="text-gray-300 group-hover:text-gray-500 transition-colors flex-shrink-0" />
+              </button>
+            ))}
           </div>
 
         </div>
@@ -554,3 +537,4 @@ export function DeptHome({ onSelectDept, onAskAI, onNavigateToPipeline, onNaviga
 }
 
 
+export { DeptHome }
