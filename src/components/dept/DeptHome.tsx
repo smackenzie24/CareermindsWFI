@@ -119,7 +119,7 @@ function TeamCard({ snap, onClick }: { snap: DeptSnapshot; onClick: () => void }
   return (
     <button
       onClick={onClick}
-      className="group bg-white border border-gray-100 rounded-2xl p-5 text-left hover:shadow-md hover:-translate-y-px transition-all w-full shadow-sm"
+      className="group bg-white border border-gray-100 rounded-2xl p-5 text-left hover:shadow-md hover:-translate-y-px transition-all w-full h-full shadow-sm"
     >
       <div className="flex items-center justify-between mb-1">
         <p className="text-sm font-bold text-gray-900 group-hover:text-brand-blue transition-colors">{snap.dept}</p>
@@ -476,13 +476,14 @@ export function DeptHome({ onSelectDept, onAskAI, onNavigateToPipeline, onNaviga
             </div>
             <span className="text-xs text-gray-400">{deptSnaps.length} teams</span>
           </div>
-          <div className="grid grid-cols-4 gap-4">
+          <div className="flex gap-4 overflow-x-auto pb-2 -mx-6 px-6 scrollbar-none">
             {deptSnaps.map(snap => (
-              <TeamCard
-                key={snap.dept}
-                snap={snap}
-                onClick={() => onSelectDept(snap.dept as unknown as RevelioDept)}
-              />
+              <div key={snap.dept} className="flex-shrink-0 w-56">
+                <TeamCard
+                  snap={snap}
+                  onClick={() => onSelectDept(snap.dept as unknown as RevelioDept)}
+                />
+              </div>
             ))}
           </div>
         </div>
