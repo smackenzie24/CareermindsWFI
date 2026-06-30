@@ -8,19 +8,21 @@ import { ChatPanel } from './components/ChatPanel';
 import { ManagerEffectiveness } from './components/managerEffectiveness/ManagerEffectiveness';
 import { IndustryBenchmark } from './components/benchmark/IndustryBenchmark';
 import { TalentIntelligence } from './components/talentIntelligence/TalentIntelligence';
-import { ExecutiveSummary } from './components/ExecutiveSummary';
 import { AskAIPage } from './components/ai/AskAIPage';
 import { CommitmentsJournal } from './components/CommitmentsJournal';
 import { HowItWorks } from './components/HowItWorks';
 import { ZeroStatesDesign } from './components/ZeroStatesDesign';
 import { DeptGapReportPicker } from './components/DeptGapReportPicker';
 import { SkillGapReport } from './components/SkillGapReport';
+import { DeptHome } from './components/dept/DeptHome';
+import { DeptDetail } from './components/dept/DeptDetail';
 import type { Department } from './data/mockData';
 import type { NavTarget } from './data/execSummaryData';
 import type { ActionNavTarget } from './data/chatEngine';
 import type { ManagerMetrics } from './data/managerData';
+import type { RevelioDept } from './data/revelioData';
 
-type ActiveView = 'home' | 'heatmap' | 'pipeline' | 'managers' | 'benchmark' | 'talent-intel' | 'ask-ai' | 'journal' | 'how-it-works' | 'gap-report' | 'zero-states';
+type ActiveView = 'home' | 'dept' | 'heatmap' | 'pipeline' | 'managers' | 'benchmark' | 'talent-intel' | 'ask-ai' | 'journal' | 'how-it-works' | 'gap-report' | 'zero-states';
 
 function TourNudge({ onDismiss }: { onDismiss: () => void }) {
   const [visible, setVisible] = useState(() => {
@@ -46,7 +48,7 @@ function TourNudge({ onDismiss }: { onDismiss: () => void }) {
 }
 
 const NAV_ITEMS: { id: ActiveView; label: string; icon: React.ReactNode; accent?: boolean }[] = [
-  { id: 'home',         label: 'Summary',      icon: <Home size={13} /> },
+  { id: 'home',         label: 'Departments',  icon: <Home size={13} /> },
   { id: 'heatmap',      label: 'Skills',       icon: <LayoutGrid size={13} /> },
   { id: 'pipeline',     label: 'Talent Signals', icon: <TrendingUp size={13} /> },
   { id: 'managers',     label: 'Managers',     icon: <BarChart3 size={13} /> },
@@ -61,6 +63,7 @@ const NAV_ITEMS: { id: ActiveView; label: string; icon: React.ReactNode; accent?
 interface NavState {
   view: ActiveView;
   department?: Department;
+  reveliosDept?: RevelioDept;
   managerId?: string;
   aiQuestion?: string;
   pipelineTab?: 'pipeline' | 'hidden-talent' | 'flight-risk';
@@ -143,7 +146,7 @@ export default function App() {
         {/* Scrollable nav items — pushed to the right */}
         <div className="flex items-center gap-0.5 px-2 overflow-x-auto flex-1 min-w-0 scrollbar-none justify-end">
           {NAV_ITEMS.map(item => {
-            const isActive = nav.view === item.id;
+            const isActive = nav.view === item.id || (item.id === 'home' && nav.view === 'dept');
             if (item.accent) {
               return (
                 <button
@@ -200,7 +203,17 @@ export default function App() {
         )}
 
         {nav.view === 'home' && (
-          <ExecutiveSummary onNavigate={navigate} onAskAI={openAI} />
+          <DeptHome
+            onSelectDept={(dept) => setNav({ view: 'dept', reveliosDept: dept })}
+            onAskAI={openAI}
+          />
+        )}
+        {nav.view === 'dept' && nav.reveliosDept && (
+          <DeptDetail
+            dept={nav.reveliosDept}
+            onBack={() => setNav({ view: 'home' })}
+            onAskAI={openAI}
+          />
         )}
         {nav.view === 'heatmap' && (
           <SkillsGapHeatmap
