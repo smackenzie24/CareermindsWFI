@@ -1,310 +1,462 @@
 import { useState } from 'react';
-import { ArrowUpRight, ArrowDownRight, Minus, AlertTriangle, TrendingUp, DollarSign, Users, ChevronRight, Sparkles, Activity } from 'lucide-react';
+import {
+  AlertTriangle, TrendingUp, DollarSign, Users, ChevronRight,
+  Sparkles, ArrowRight, Clock, BarChart2, Activity,
+  ArrowUpRight, ChevronDown, ChevronUp,
+} from 'lucide-react';
 import {
   REVELIO_DEPTS, FLIGHT_RISK, COMP_POSITIONING, TALENT_INTEL_RECS,
   ROLE_DEMAND, SKILL_SIGNALS, PROMOTION_RATES,
   type RevelioDept,
 } from '../../data/revelioData';
+import { PEOPLE } from '../../data/promotionData';
 
 interface Props {
   onSelectDept: (dept: RevelioDept) => void;
   onAskAI: (question?: string) => void;
+  onNavigateToPipeline: () => void;
 }
 
-function getRiskLevel(score: number, marketAvg: number): 'critical' | 'high' | 'moderate' | 'low' {
-  const delta = score - marketAvg;
-  if (score >= 70) return 'critical';
-  if (score >= 60 || delta >= 10) return 'high';
-  if (score >= 50) return 'moderate';
-  return 'low';
+// ── Derive the attention list from real data ──────────────────────────────────
+
+interface AttentionItem {
+  id: string;
+  urgency: 'critical' | 'high' | 'medium';
+  icon: React.ReactNode;
+  headline: string;
+  why: string;
+  people?: string[];          // named people where relevant
+  peopleCount?: number;
+  dept?: RevelioDept;
+  primaryCta: string;
+  primaryAction: 'pipeline' | 'dept' | 'ai';
+  aiQuestion?: string;
 }
 
-const RISK_CONFIG = {
-  critical: { bar: 'bg-red-400',     badge: 'bg-red-50 text-red-600 border-red-200',     label: 'Critical',  dot: 'bg-red-400' },
-  high:     { bar: 'bg-amber-400',   badge: 'bg-amber-50 text-amber-700 border-amber-200', label: 'High',     dot: 'bg-amber-400' },
-  moderate: { bar: 'bg-sky-300',     badge: 'bg-sky-50 text-sky-700 border-sky-200',       label: 'Moderate', dot: 'bg-sky-400' },
-  low:      { bar: 'bg-emerald-400', badge: 'bg-emerald-50 text-emerald-700 border-emerald-200', label: 'Low', dot: 'bg-emerald-400' },
+function buildAttentionList(onSelectDept: (d: RevelioDept) => void): AttentionItem[] {
+  const items: AttentionItem[] = [];
+
+  // 1. High-flight-risk named people who haven't been checked in on
+  const highRiskPeople = PEOPLE.filter(p => p.flightRisk === 'high');
+  if (highRiskPeople.length > 0) {
+    items.push({
+      id: 'flight-risk-named',
+      urgency: 'critical',
+      icon: <TrendingUp size={14} />,
+      headline: `${highRiskPeople.length} people are likely to leave`,
+      why: highRiskPeople[0].flightRiskDrivers?.[0] ?? 'Revelio signals indicate active job-searching behaviour.',
+      people: highRiskPeople.map(p => p.name),
+      peopleCount: highRiskPeople.length,
+      dept: highRiskPeople[0].department as RevelioDept,
+      primaryCta: "See who's at risk",
+      primaryAction: 'pipeline',
+    });
+  }
+
+  // 2. Departments with comp below P50 and named at-risk roles
+  const compAtRisk = COMP_POSITIONING.filter(c => c.percentilePosition < 50 && c.atRiskRoles.length > 0);
+  if (compAtRisk.length > 0) {
+    const depts = compAtRisk.map(c => c.dept).join(', ');
+    const roles = compAtRisk.flatMap(c => c.atRiskRoles).slice(0, 3);
+    const worstDept = compAtRisk.sort((a, b) => a.percentilePosition - b.percentilePosition)[0];
+    items.push({
+      id: 'comp-below-market',
+      urgency: 'critical',
+      icon: <DollarSign size={14} />,
+      headline: `${roles.join(', ')} are paid below market`,
+      why: `${worstDept.dept} sits at P${worstDept.percentilePosition} — competitors are offering ~$${Math.round((worstDept.marketP50 - worstDept.acmeMedian) / 1000)}k more for the same roles.`,
+      dept: worstDept.dept,
+      primaryCta: `Review ${worstDept.dept} comp`,
+      primaryAction: 'dept',
+    });
+  }
+
+  // 3. Engineering promo bottleneck — Senior → Staff with tenure data
+  const engPromo = PROMOTION_RATES.find(r => r.dept === 'Engineering');
+  if (engPromo?.bottleneckedLevel) {
+    const stalledPeople = PEOPLE.filter(
+      p => p.department === 'Engineering' && p.currentLevelId === 'eng-ic3' && p.tenure >= 20
+    );
+    if (stalledPeople.length > 0) {
+      items.push({
+        id: 'promo-bottleneck-eng',
+        urgency: 'high',
+        icon: <BarChart2 size={14} />,
+        headline: `${stalledPeople.length} Senior Engineers have been stuck for 20+ months`,
+        why: `The ${engPromo.bottleneckedLevel} transition takes ${engPromo.avgMonthsToPromotion}mo at Acme vs ${engPromo.marketAvgMonths}mo at peers. Without a visible path, they'll find one externally.`,
+        people: stalledPeople.map(p => p.name),
+        peopleCount: stalledPeople.length,
+        dept: 'Engineering',
+        primaryCta: 'Review promotion pipeline',
+        primaryAction: 'pipeline',
+      });
+    }
+  }
+
+  // 4. Extreme-competition hiring roles — hard to backfill
+  const extremeRoles = ROLE_DEMAND.filter(r => r.competitionTier === 'extreme');
+  if (extremeRoles.length > 0) {
+    const hardest = extremeRoles.sort((a, b) => a.talentSupply - b.talentSupply)[0];
+    items.push({
+      id: 'extreme-hiring',
+      urgency: 'high',
+      icon: <Users size={14} />,
+      headline: `${hardest.role} takes ${hardest.medianDaysToFill} days to fill — market demand up ${hardest.demandGrowthPct}%`,
+      why: `Only ${hardest.talentSupply}/100 candidates available market-wide. If you lose someone in this role you won't replace them quickly.`,
+      dept: hardest.dept,
+      primaryCta: `View ${hardest.dept} talent signals`,
+      primaryAction: 'dept',
+    });
+  }
+
+  // 5. Fast-growing skills with low Acme coverage
+  const urgentSkills = SKILL_SIGNALS
+    .filter(s => s.trending === 'rising' && s.acmeHasPct < s.marketHasPct && s.scarcityScore > 70)
+    .sort((a, b) => b.growthPct - a.growthPct)
+    .slice(0, 1);
+  if (urgentSkills.length > 0) {
+    const sk = urgentSkills[0];
+    items.push({
+      id: 'skill-gap-urgent',
+      urgency: 'high',
+      icon: <Activity size={14} />,
+      headline: `${sk.skill} demand grew ${sk.growthPct}% — only ${sk.acmeHasPct}% of Acme has it`,
+      why: `Market average is ${sk.marketHasPct}%. Scarcity score is ${sk.scarcityScore}/100 — you can't hire your way out of this gap easily.`,
+      dept: sk.relevantDepts[0],
+      primaryCta: 'Ask AI who to upskill',
+      primaryAction: 'ai',
+      aiQuestion: `Who in Engineering or Data should we prioritise for LLM upskilling?`,
+    });
+  }
+
+  // Sort: critical first, then high
+  return items.sort((a, b) => {
+    const order = { critical: 0, high: 1, medium: 2 };
+    return order[a.urgency] - order[b.urgency];
+  });
+}
+
+// ── Urgency config ────────────────────────────────────────────────────────────
+
+const URGENCY = {
+  critical: {
+    border:  'border-red-200',
+    bg:      'bg-red-50',
+    iconBg:  'bg-red-100',
+    iconColor: 'text-red-500',
+    badge:   'bg-red-100 text-red-600 border-red-200',
+    label:   'Needs attention now',
+    bar:     'bg-red-400',
+  },
+  high: {
+    border:  'border-amber-200',
+    bg:      'bg-amber-50',
+    iconBg:  'bg-amber-100',
+    iconColor: 'text-amber-600',
+    badge:   'bg-amber-100 text-amber-700 border-amber-200',
+    label:   'Act this month',
+    bar:     'bg-amber-400',
+  },
+  medium: {
+    border:  'border-sky-200',
+    bg:      'bg-sky-50',
+    iconBg:  'bg-sky-100',
+    iconColor: 'text-sky-600',
+    badge:   'bg-sky-100 text-sky-700 border-sky-200',
+    label:   'Monitor',
+    bar:     'bg-sky-400',
+  },
 };
 
-function TrendIcon({ trend }: { trend: 'rising' | 'stable' | 'falling' }) {
-  if (trend === 'rising')  return <ArrowUpRight size={10} className="text-red-500" />;
-  if (trend === 'falling') return <ArrowDownRight size={10} className="text-emerald-500" />;
-  return <Minus size={10} className="text-gray-400" />;
-}
-
-function CompBar({ pct, p25, p50, p75 }: { pct: number; p25: number; p50: number; p75: number }) {
-  const clamp = Math.max(0, Math.min(100, pct));
-  const color = pct >= 50 ? 'bg-emerald-400' : pct >= 40 ? 'bg-amber-400' : 'bg-red-400';
-  return (
-    <div className="relative h-1.5 bg-gray-100 rounded-full mt-1">
-      <div className="absolute left-[25%] top-0 bottom-0 w-px bg-gray-300 opacity-60" />
-      <div className="absolute left-[50%] top-0 bottom-0 w-px bg-gray-300 opacity-60" />
-      <div className="absolute left-[75%] top-0 bottom-0 w-px bg-gray-300 opacity-60" />
-      <div
-        className={`absolute top-0 left-0 h-full rounded-full ${color}`}
-        style={{ width: `${clamp}%` }}
-      />
-      <div
-        className="absolute top-1/2 -translate-y-1/2 w-2 h-2 rounded-full bg-white border-2 border-gray-400 shadow-sm"
-        style={{ left: `calc(${clamp}% - 4px)` }}
-      />
-    </div>
-  );
-}
-
-interface DeptCardData {
-  dept: RevelioDept;
-  flightRisk: number;
-  flightTrend: 'rising' | 'stable' | 'falling';
-  flightVsMarket: number;
-  compPct: number;
-  atRiskRoles: string[];
-  extremeRoles: number;
-  criticalRecs: number;
-  topSkillGrowth: string;
-  promotionBottleneck: string | null;
-  riskLevel: 'critical' | 'high' | 'moderate' | 'low';
-}
-
-function buildDeptCard(dept: RevelioDept): DeptCardData {
-  const fr = FLIGHT_RISK.find(r => r.dept === dept)!;
-  const comp = COMP_POSITIONING.find(r => r.dept === dept)!;
-  const recs = TALENT_INTEL_RECS.filter(r => r.dept === dept || !r.dept);
-  const criticalRecs = recs.filter(r => r.priority === 'critical').length;
-  const extreme = ROLE_DEMAND.filter(r => r.dept === dept && r.competitionTier === 'extreme');
-  const deptSkills = SKILL_SIGNALS.filter(s => s.relevantDepts.includes(dept) && s.trending === 'rising').sort((a, b) => b.growthPct - a.growthPct);
-  const promo = PROMOTION_RATES.find(r => r.dept === dept)!;
-  return {
-    dept,
-    flightRisk: fr.flightRiskScore,
-    flightTrend: fr.trend,
-    flightVsMarket: fr.flightRiskScore - fr.marketAvgScore,
-    compPct: comp.percentilePosition,
-    atRiskRoles: comp.atRiskRoles,
-    extremeRoles: extreme.length,
-    criticalRecs,
-    topSkillGrowth: deptSkills[0]?.skill ?? '—',
-    promotionBottleneck: promo.bottleneckedLevel,
-    riskLevel: getRiskLevel(fr.flightRiskScore, fr.marketAvgScore),
-  };
-}
+// ── Dept mini-card for secondary section ─────────────────────────────────────
 
 const DEPT_HEADCOUNTS: Record<RevelioDept, number> = {
   Engineering: 52, Product: 15, Design: 8, Data: 17, Marketing: 7, Sales: 11, 'People Ops': 4,
 };
 
-function DeptCard({ data, onClick }: { data: DeptCardData; onClick: () => void }) {
-  const riskCfg = RISK_CONFIG[data.riskLevel];
-  const comp = COMP_POSITIONING.find(r => r.dept === data.dept)!;
+function DeptMiniCard({ dept, onClick }: { dept: RevelioDept; onClick: () => void }) {
+  const fr   = FLIGHT_RISK.find(r => r.dept === dept)!;
+  const comp = COMP_POSITIONING.find(r => r.dept === dept)!;
+  const recs = TALENT_INTEL_RECS.filter(r => r.dept === dept && r.priority === 'critical');
+  const isRisky = fr.flightRiskScore >= 60 || comp.percentilePosition < 48;
 
   return (
     <button
       onClick={onClick}
-      className="group bg-white border border-gray-200 rounded-2xl p-5 text-left hover:border-brand-blue/30 hover:shadow-md transition-all duration-200 flex flex-col gap-4"
+      className="group bg-white border border-gray-200 rounded-xl p-4 text-left hover:border-brand-blue/30 hover:shadow-sm transition-all"
     >
-      {/* Header */}
-      <div className="flex items-start justify-between">
+      <div className="flex items-start justify-between mb-3">
         <div>
-          <div className="flex items-center gap-2 mb-0.5">
-            <h3 className="text-sm font-bold text-gray-900">{data.dept}</h3>
-            <span className="text-[10px] text-gray-400 font-medium">{DEPT_HEADCOUNTS[data.dept]} people</span>
-          </div>
-          {data.criticalRecs > 0 && (
-            <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-1.5 py-0.5 rounded-full border bg-red-50 text-red-600 border-red-200">
-              <AlertTriangle size={8} />
-              {data.criticalRecs} critical action{data.criticalRecs > 1 ? 's' : ''}
-            </span>
-          )}
+          <p className="text-sm font-bold text-gray-900">{dept}</p>
+          <p className="text-[10px] text-gray-400 mt-0.5">{DEPT_HEADCOUNTS[dept]} people</p>
         </div>
-        <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border ${riskCfg.badge} flex-shrink-0`}>
-          {riskCfg.label}
-        </span>
+        <div className="flex items-center gap-1">
+          {recs.length > 0 && (
+            <span className="w-1.5 h-1.5 rounded-full bg-red-400 flex-shrink-0" title="Critical actions" />
+          )}
+          <ChevronRight size={12} className="text-gray-300 group-hover:text-brand-blue transition-colors" />
+        </div>
       </div>
-
-      {/* Signals */}
-      <div className="space-y-3">
-        {/* Flight risk */}
+      <div className="space-y-1.5">
         <div>
-          <div className="flex items-center justify-between mb-1">
-            <div className="flex items-center gap-1.5">
-              <Activity size={10} className="text-gray-400" />
-              <span className="text-[11px] text-gray-500 font-medium">Flight risk</span>
-            </div>
-            <div className="flex items-center gap-1">
-              <TrendIcon trend={data.flightTrend} />
-              <span className="text-[11px] font-bold text-gray-800">{data.flightRisk}</span>
-              <span className="text-[10px] text-gray-400">
-                {data.flightVsMarket > 0 ? `+${data.flightVsMarket}` : data.flightVsMarket} vs market
-              </span>
-            </div>
+          <div className="flex justify-between text-[10px] text-gray-400 mb-0.5">
+            <span>Flight risk</span>
+            <span className={fr.flightRiskScore >= 70 ? 'text-red-500 font-semibold' : fr.flightRiskScore >= 60 ? 'text-amber-600 font-semibold' : 'text-gray-500'}>{fr.flightRiskScore}</span>
           </div>
-          <div className="h-1.5 bg-gray-100 rounded-full">
+          <div className="h-1 bg-gray-100 rounded-full">
             <div
-              className={`h-full rounded-full ${riskCfg.bar}`}
-              style={{ width: `${data.flightRisk}%` }}
+              className={`h-full rounded-full ${fr.flightRiskScore >= 70 ? 'bg-red-400' : fr.flightRiskScore >= 60 ? 'bg-amber-400' : 'bg-emerald-400'}`}
+              style={{ width: `${fr.flightRiskScore}%` }}
             />
           </div>
         </div>
-
-        {/* Comp position */}
-        <div>
-          <div className="flex items-center justify-between mb-1">
-            <div className="flex items-center gap-1.5">
-              <DollarSign size={10} className="text-gray-400" />
-              <span className="text-[11px] text-gray-500 font-medium">Comp position</span>
-            </div>
-            <span className={`text-[11px] font-bold ${data.compPct >= 50 ? 'text-emerald-600' : 'text-amber-600'}`}>
-              P{data.compPct}
-            </span>
-          </div>
-          <CompBar pct={data.compPct} p25={25} p50={50} p75={75} />
-          {data.atRiskRoles.length > 0 && (
-            <p className="text-[10px] text-amber-600 mt-1 truncate">
-              Below P50: {data.atRiskRoles.join(', ')}
-            </p>
-          )}
+        <div className="flex justify-between text-[10px]">
+          <span className="text-gray-400">Comp</span>
+          <span className={comp.percentilePosition < 50 ? 'text-amber-600 font-semibold' : 'text-emerald-600 font-semibold'}>P{comp.percentilePosition}</span>
         </div>
-      </div>
-
-      {/* Bottom signals row */}
-      <div className="grid grid-cols-3 gap-2 pt-1 border-t border-gray-100">
-        <div>
-          <p className="text-[10px] text-gray-400 mb-0.5">Hiring</p>
-          <p className="text-[11px] font-semibold text-gray-700">
-            {data.extremeRoles > 0 ? (
-              <span className="text-red-500">{data.extremeRoles} extreme</span>
-            ) : (
-              <span className="text-emerald-600">Moderate</span>
-            )}
-          </p>
-        </div>
-        <div>
-          <p className="text-[10px] text-gray-400 mb-0.5">Promo gap</p>
-          <p className="text-[11px] font-semibold text-gray-700 leading-tight">
-            {data.promotionBottleneck ? (
-              <span className="text-amber-600 text-[10px]">{data.promotionBottleneck.split('→')[0].trim()}</span>
-            ) : (
-              <span className="text-emerald-600">On track</span>
-            )}
-          </p>
-        </div>
-        <div>
-          <p className="text-[10px] text-gray-400 mb-0.5">Top skill</p>
-          <p className="text-[11px] font-semibold text-gray-700 truncate">{data.topSkillGrowth}</p>
-        </div>
-      </div>
-
-      {/* CTA */}
-      <div className="flex items-center justify-between pt-1 border-t border-gray-100">
-        <span className="text-[11px] text-brand-blue font-semibold opacity-0 group-hover:opacity-100 transition-opacity">
-          View department
-        </span>
-        <ChevronRight size={13} className="text-gray-300 group-hover:text-brand-blue transition-colors ml-auto" />
       </div>
     </button>
   );
 }
 
-const ORG_STATS = (() => {
-  const avgFlight = Math.round(FLIGHT_RISK.reduce((s, r) => s + r.flightRiskScore, 0) / FLIGHT_RISK.length);
-  const avgComp   = Math.round(COMP_POSITIONING.reduce((s, r) => s + r.percentilePosition, 0) / COMP_POSITIONING.length);
-  const extremeCount = ROLE_DEMAND.filter(r => r.competitionTier === 'extreme').length;
-  const critCount = TALENT_INTEL_RECS.filter(r => r.priority === 'critical').length;
-  return { avgFlight, avgComp, extremeCount, critCount };
-})();
+// ── Attention card ────────────────────────────────────────────────────────────
 
-export function DeptHome({ onSelectDept, onAskAI }: Props) {
-  const cards = REVELIO_DEPTS.map(buildDeptCard);
+function AttentionCard({
+  item,
+  onSelectDept,
+  onAskAI,
+  onNavigateToPipeline,
+}: {
+  item: AttentionItem;
+  onSelectDept: (d: RevelioDept) => void;
+  onAskAI: (q?: string) => void;
+  onNavigateToPipeline: () => void;
+}) {
+  const cfg = URGENCY[item.urgency];
+  const [expanded, setExpanded] = useState(false);
+
+  function handleCta() {
+    if (item.primaryAction === 'pipeline') onNavigateToPipeline();
+    else if (item.primaryAction === 'dept' && item.dept) onSelectDept(item.dept);
+    else if (item.primaryAction === 'ai') onAskAI(item.aiQuestion);
+  }
+
+  return (
+    <div className={`border rounded-2xl overflow-hidden ${cfg.border}`}>
+      {/* Urgency bar */}
+      <div className={`h-0.5 ${cfg.bar}`} />
+
+      <div className="p-5">
+        <div className="flex items-start gap-4">
+          {/* Icon */}
+          <div className={`w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 ${cfg.iconBg} ${cfg.iconColor} mt-0.5`}>
+            {item.icon}
+          </div>
+
+          {/* Content */}
+          <div className="flex-1 min-w-0">
+            <div className="flex items-start justify-between gap-3 mb-1.5">
+              <h3 className="text-sm font-bold text-gray-900 leading-snug">{item.headline}</h3>
+              <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border flex-shrink-0 ${cfg.badge}`}>
+                {cfg.label}
+              </span>
+            </div>
+            <p className="text-xs text-gray-500 leading-relaxed">{item.why}</p>
+
+            {/* Named people — collapsed by default if >2 */}
+            {item.people && item.people.length > 0 && (
+              <div className="mt-3">
+                <button
+                  onClick={() => setExpanded(e => !e)}
+                  className="flex items-center gap-1.5 text-[11px] text-gray-500 hover:text-gray-700 transition-colors"
+                >
+                  {expanded ? <ChevronUp size={10} /> : <ChevronDown size={10} />}
+                  {expanded ? 'Hide' : `Show ${item.people.length} people`}
+                </button>
+                {expanded && (
+                  <div className="flex flex-wrap gap-1.5 mt-2">
+                    {item.people.map(name => {
+                      const initials = name.split(' ').map(n => n[0]).join('');
+                      return (
+                        <div key={name} className="flex items-center gap-1.5 bg-white border border-gray-200 rounded-lg px-2 py-1">
+                          <div className="w-5 h-5 rounded-md bg-gradient-to-br from-slate-500 to-slate-700 flex items-center justify-center text-white text-[9px] font-bold flex-shrink-0">
+                            {initials}
+                          </div>
+                          <span className="text-[11px] text-gray-700 font-medium">{name}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* CTA */}
+            <div className="flex items-center gap-3 mt-4">
+              <button
+                onClick={handleCta}
+                className="flex items-center gap-1.5 text-xs font-semibold text-white bg-brand-blue hover:bg-brand-blue-text px-3 py-1.5 rounded-lg transition-colors"
+              >
+                {item.primaryCta}
+                <ArrowRight size={11} />
+              </button>
+              {item.dept && item.primaryAction !== 'dept' && (
+                <button
+                  onClick={() => onSelectDept(item.dept!)}
+                  className="text-xs text-gray-400 hover:text-brand-blue transition-colors flex items-center gap-1"
+                >
+                  View {item.dept} <ArrowUpRight size={10} />
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Main ──────────────────────────────────────────────────────────────────────
+
+export function DeptHome({ onSelectDept, onAskAI, onNavigateToPipeline }: Props) {
   const [input, setInput] = useState('');
+  const [deptsExpanded, setDeptsExpanded] = useState(false);
+
+  const attentionItems = buildAttentionList(onSelectDept);
+  const criticalCount = attentionItems.filter(i => i.urgency === 'critical').length;
 
   function submit(q?: string) {
     const text = (q ?? input).trim();
     if (!text) return;
     onAskAI(text);
+    setInput('');
   }
 
-  const QUICK_QUESTIONS = [
-    'Who is at risk of leaving?',
-    'Where are our biggest skills gaps?',
-    'Which roles are hardest to hire?',
-    'Where is comp below market?',
-  ];
+  const today = new Date().toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' });
 
   return (
     <div className="h-full overflow-y-auto bg-brand-bg-light">
-      {/* Header bar */}
-      <div className="bg-white border-b border-gray-200 px-6 py-4">
-        <div className="max-w-6xl mx-auto flex items-start justify-between gap-6">
-          <div>
-            <h1 className="text-lg font-bold text-gray-900">Workforce Intelligence</h1>
-            <p className="text-sm text-gray-500 mt-0.5">Acme Corp &mdash; 114 people across 7 departments &middot; Powered by Revelio Labs market data</p>
-          </div>
+      <div className="max-w-3xl mx-auto px-6 py-8">
 
-          {/* Org-level stat pills */}
-          <div className="flex items-center gap-3 flex-shrink-0">
-            <div className="flex items-center gap-1.5 px-3 py-1.5 bg-red-50 border border-red-200 rounded-xl">
-              <AlertTriangle size={11} className="text-red-500" />
-              <span className="text-[11px] font-semibold text-red-600">{ORG_STATS.critCount} critical actions</span>
-            </div>
-            <div className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-50 border border-amber-200 rounded-xl">
-              <TrendingUp size={11} className="text-amber-600" />
-              <span className="text-[11px] font-semibold text-amber-700">Avg flight risk {ORG_STATS.avgFlight}</span>
-            </div>
-            <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl border ${ORG_STATS.avgComp >= 50 ? 'bg-emerald-50 border-emerald-200' : 'bg-amber-50 border-amber-200'}`}>
-              <DollarSign size={11} className={ORG_STATS.avgComp >= 50 ? 'text-emerald-600' : 'text-amber-600'} />
-              <span className={`text-[11px] font-semibold ${ORG_STATS.avgComp >= 50 ? 'text-emerald-700' : 'text-amber-700'}`}>Avg comp P{ORG_STATS.avgComp}</span>
-            </div>
-            <div className="flex items-center gap-1.5 px-3 py-1.5 bg-red-50 border border-red-200 rounded-xl">
-              <Users size={11} className="text-red-500" />
-              <span className="text-[11px] font-semibold text-red-600">{ORG_STATS.extremeCount} extreme hiring roles</span>
-            </div>
-          </div>
+        {/* Greeting */}
+        <div className="mb-6">
+          <p className="text-[11px] text-gray-400 font-medium mb-1">{today}</p>
+          <h1 className="text-2xl font-bold text-gray-900">
+            {criticalCount > 0
+              ? `You have ${criticalCount} critical item${criticalCount > 1 ? 's' : ''} to address`
+              : 'Your workforce is in good shape'}
+          </h1>
+          <p className="text-sm text-gray-500 mt-1">Acme Corp &middot; 114 people &middot; Powered by Revelio Labs market intelligence</p>
         </div>
 
         {/* AI bar */}
-        <div className="max-w-6xl mx-auto mt-4">
-          <div className="flex items-center gap-2 bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 focus-within:border-brand-blue focus-within:bg-white transition-all">
-            <Sparkles size={13} className="text-brand-blue flex-shrink-0" />
+        <div className="mb-8 bg-white border border-gray-200 rounded-2xl px-4 py-3 shadow-sm">
+          <div className="flex items-center gap-2">
+            <Sparkles size={14} className="text-brand-blue flex-shrink-0" />
             <input
               type="text"
               value={input}
               onChange={e => setInput(e.target.value)}
               onKeyDown={e => e.key === 'Enter' && submit()}
-              placeholder="Ask anything about your workforce…"
+              placeholder="Ask anything — who should I talk to this week? Where are we losing talent?"
               className="flex-1 bg-transparent text-xs text-gray-800 placeholder-gray-400 outline-none"
             />
             <button
               onClick={() => submit()}
               disabled={!input.trim()}
-              className="px-2.5 py-1 rounded-lg bg-brand-blue hover:bg-brand-blue-text disabled:opacity-30 text-white text-[11px] font-semibold transition-all flex-shrink-0"
+              className="px-3 py-1.5 rounded-lg bg-brand-blue hover:bg-brand-blue-text disabled:opacity-30 text-white text-[11px] font-semibold transition-all flex-shrink-0"
             >
               Ask
             </button>
           </div>
-          <div className="flex items-center gap-2 mt-2 flex-wrap">
-            {QUICK_QUESTIONS.map(q => (
+          <div className="flex items-center gap-2 mt-2.5 flex-wrap">
+            {[
+              'Who should I have a retention conversation with this week?',
+              'Which roles are we most at risk of not being able to backfill?',
+              'Where should we adjust comp before the next review cycle?',
+            ].map(q => (
               <button
                 key={q}
                 onClick={() => submit(q)}
-                className="text-[10px] px-2.5 py-1 rounded-full bg-white border border-gray-200 text-gray-600 hover:border-brand-blue/40 hover:text-brand-blue transition-colors"
+                className="text-[10px] px-2.5 py-1 rounded-full bg-gray-50 border border-gray-200 text-gray-500 hover:border-brand-blue/40 hover:text-brand-blue transition-colors"
               >
                 {q}
               </button>
             ))}
           </div>
         </div>
-      </div>
 
-      {/* Department grid */}
-      <div className="max-w-6xl mx-auto px-6 py-6">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-sm font-semibold text-gray-700">Departments</h2>
-          <span className="text-[11px] text-gray-400">Click a card to drill into signals</span>
+        {/* Attention list */}
+        <div className="mb-8">
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="text-sm font-bold text-gray-800">Priorities</h2>
+            <div className="flex items-center gap-2">
+              {criticalCount > 0 && (
+                <span className="flex items-center gap-1 text-[10px] font-semibold text-red-600 bg-red-50 border border-red-200 px-2 py-0.5 rounded-full">
+                  <AlertTriangle size={9} />
+                  {criticalCount} critical
+                </span>
+              )}
+            </div>
+          </div>
+          <div className="space-y-3">
+            {attentionItems.map(item => (
+              <AttentionCard
+                key={item.id}
+                item={item}
+                onSelectDept={onSelectDept}
+                onAskAI={onAskAI}
+                onNavigateToPipeline={onNavigateToPipeline}
+              />
+            ))}
+          </div>
         </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-          {cards.map(card => (
-            <DeptCard key={card.dept} data={card} onClick={() => onSelectDept(card.dept)} />
-          ))}
+
+        {/* Dept grid — secondary, collapsible */}
+        <div>
+          <button
+            onClick={() => setDeptsExpanded(e => !e)}
+            className="w-full flex items-center justify-between mb-3 group"
+          >
+            <h2 className="text-sm font-bold text-gray-800 group-hover:text-gray-900 transition-colors">All departments</h2>
+            <div className="flex items-center gap-1.5 text-[11px] text-gray-400 group-hover:text-gray-600 transition-colors">
+              <Clock size={11} />
+              <span>Click any for full signals</span>
+              {deptsExpanded ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
+            </div>
+          </button>
+
+          {deptsExpanded && (
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+              {REVELIO_DEPTS.map(dept => (
+                <DeptMiniCard key={dept} dept={dept} onClick={() => onSelectDept(dept)} />
+              ))}
+            </div>
+          )}
+
+          {!deptsExpanded && (
+            <div className="flex gap-2 flex-wrap">
+              {REVELIO_DEPTS.map(dept => {
+                const fr = FLIGHT_RISK.find(r => r.dept === dept)!;
+                const isCritical = fr.flightRiskScore >= 70;
+                return (
+                  <button
+                    key={dept}
+                    onClick={() => onSelectDept(dept)}
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-medium transition-all hover:shadow-sm ${
+                      isCritical
+                        ? 'bg-red-50 border-red-200 text-red-700 hover:border-red-300'
+                        : 'bg-white border-gray-200 text-gray-600 hover:border-brand-blue/30 hover:text-brand-blue'
+                    }`}
+                  >
+                    {isCritical && <span className="w-1.5 h-1.5 rounded-full bg-red-400 flex-shrink-0" />}
+                    {dept}
+                    <ChevronRight size={11} className="opacity-40" />
+                  </button>
+                );
+              })}
+            </div>
+          )}
         </div>
       </div>
     </div>
